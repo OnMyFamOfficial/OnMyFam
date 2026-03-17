@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Shield,
   Users,
@@ -38,8 +37,7 @@ interface AdminStats {
 type AdminTab = "overview" | "users" | "families" | "conversations" | "content";
 
 export default function AdminPage() {
-  const { isGodMode, user } = useAuth();
-  const navigate = useNavigate();
+  const { isGodMode } = useAuth();
 
   if (!isGodMode) {
     return (
@@ -310,7 +308,7 @@ function FamiliesTab() {
             .from("family_members")
             .select("user_id, role, profile:profiles(*)")
             .eq("family_id", f.id);
-          return { ...f, members: (members || []) as { user_id: string; role: string; profile: Profile }[] };
+          return { ...f, members: ((members || []) as unknown as { user_id: string; role: string; profile: Profile }[]) };
         })
       );
       setFamilies(withMembers);
@@ -444,24 +442,24 @@ function ConversationsTab() {
     setLoading(true);
     const { data } = await supabase.rpc("admin_list_conversations");
     if (data) {
-      const convos = data as Conversation[];
+      const convos = data as Record<string, unknown>[];
       const withParticipants = await Promise.all(
         convos.map(async (c) => {
           const { data: parts } = await supabase
             .from("conversation_participants")
             .select("user_id, profile:profiles(*)")
-            .eq("conversation_id", c.id);
-          return { ...c, participants: (parts || []) as { user_id: string; profile: Profile }[] };
+            .eq("conversation_id", c.id as string);
+          return { ...c, participants: (parts || []) as unknown as { user_id: string; profile: Profile }[] };
         })
       );
-      setConversations(withParticipants);
+      setConversations(withParticipants as typeof conversations);
     }
     setLoading(false);
   }
 
   const filtered = search
     ? conversations.filter((c) => {
-        const names = c.participants?.map((p) => p.profile?.display_name || "").join(" ") || "";
+        const names = c.participants?.map((p: { profile?: Profile }) => p.profile?.display_name || "").join(" ") || "";
         return (
           (c.name || "").toLowerCase().includes(search.toLowerCase()) ||
           names.toLowerCase().includes(search.toLowerCase())
@@ -488,7 +486,7 @@ function ConversationsTab() {
 
       <div className="space-y-2">
         {filtered.map((c) => {
-          const participantNames = c.participants?.map((p) => p.profile?.display_name || "?").join(", ") || "No participants";
+          const participantNames = c.participants?.map((p: { profile?: Profile }) => p.profile?.display_name || "?").join(", ") || "No participants";
           return (
             <div
               key={c.id}
@@ -558,7 +556,7 @@ function ContentTab() {
       .order("created_at", { ascending: false })
       .limit(50);
 
-    if (data) setPosts(data as typeof posts);
+    if (data) setPosts(data as unknown as typeof posts);
     setLoading(false);
   }
 
