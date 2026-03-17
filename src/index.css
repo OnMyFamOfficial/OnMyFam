@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+
+  --color-gold-50: hsl(38, 65%, 95%);
+  --color-gold-100: hsl(38, 65%, 88%);
+  --color-gold-200: hsl(38, 65%, 78%);
+  --color-gold-300: hsl(38, 65%, 68%);
+  --color-gold-400: hsl(38, 65%, 60%);
+  --color-gold-500: hsl(38, 65%, 55%);
+  --color-gold-600: hsl(38, 65%, 45%);
+  --color-gold-700: hsl(38, 65%, 35%);
+  --color-gold-800: hsl(38, 65%, 25%);
+  --color-gold-900: hsl(38, 65%, 15%);
+
+  --radius-lg: 0.5rem;
+  --radius-md: calc(var(--radius-lg) - 2px);
+  --radius-sm: calc(var(--radius-lg) - 4px);
+}
+
+:root {
+  --background: hsl(40, 20%, 98%);
+  --foreground: hsl(30, 15%, 10%);
+  --card: hsl(40, 15%, 96%);
+  --card-foreground: hsl(30, 15%, 10%);
+  --popover: hsl(40, 15%, 96%);
+  --popover-foreground: hsl(30, 15%, 10%);
+  --primary: hsl(38, 65%, 55%);
+  --primary-foreground: hsl(40, 20%, 98%);
+  --secondary: hsl(38, 20%, 90%);
+  --secondary-foreground: hsl(30, 15%, 15%);
+  --muted: hsl(38, 10%, 93%);
+  --muted-foreground: hsl(30, 8%, 45%);
+  --accent: hsl(38, 30%, 88%);
+  --accent-foreground: hsl(30, 15%, 15%);
+  --destructive: hsl(0, 72%, 51%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --border: hsl(38, 15%, 85%);
+  --input: hsl(38, 15%, 85%);
+  --ring: hsl(38, 65%, 55%);
+
+  --sidebar-background: hsl(40, 15%, 95%);
+  --sidebar-foreground: hsl(30, 15%, 10%);
+  --sidebar-border: hsl(38, 15%, 85%);
+  --sidebar-accent: hsl(38, 65%, 55%);
+  --sidebar-muted: hsl(30, 8%, 45%);
+
+  --header-background: hsl(40, 15%, 96%);
+  --cover-surround: #ffffff;
+}
+
+.dark {
+  --background: hsl(220, 20%, 8%);
+  --foreground: hsl(40, 15%, 93%);
+  --card: #0f0f0f;
+  --card-foreground: hsl(40, 15%, 93%);
+  --popover: #0f0f0f;
+  --popover-foreground: hsl(40, 15%, 93%);
+  --primary: hsl(38, 65%, 55%);
+  --primary-foreground: hsl(220, 20%, 8%);
+  --secondary: hsl(220, 15%, 18%);
+  --secondary-foreground: hsl(40, 15%, 90%);
+  --muted: hsl(220, 15%, 15%);
+  --muted-foreground: hsl(220, 10%, 50%);
+  --accent: hsl(220, 15%, 18%);
+  --accent-foreground: hsl(40, 15%, 90%);
+  --destructive: hsl(0, 62%, 30%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --border: hsl(220, 15%, 20%);
+  --input: hsl(220, 15%, 20%);
+  --ring: hsl(38, 65%, 55%);
+
+  --sidebar-background: #0f0f0f;
+  --sidebar-foreground: hsl(40, 15%, 90%);
+  --sidebar-border: hsl(220, 15%, 15%);
+  --sidebar-accent: hsl(38, 65%, 55%);
+  --sidebar-muted: hsl(220, 10%, 45%);
+
+  --header-background: #0f0f0f;
+  --cover-surround: #000000;
+}
+
+* {
+  border-color: var(--border);
+}
+
+button, a, [role="button"], input[type="submit"], input[type="button"], select, label[for] {
+  cursor: pointer;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
+}
