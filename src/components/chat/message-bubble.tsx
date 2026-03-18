@@ -114,7 +114,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
   return (
     <div className={cn("flex gap-1 mb-1 group items-start", isMine ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
-      <div className="flex-shrink-0 w-7 mt-0.5">
+      <div className="flex-shrink-0 w-7">
         {showAvatar && !isMine ? (
           <div className="w-7 h-7 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
             {senderProfile?.avatar_url ? (
@@ -207,13 +207,13 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
             className={cn(
               "px-3 py-1.5 rounded-2xl break-words shadow-md dark:shadow-black/40 select-none",
               isEmojiOnly(message.content)
-                ? "text-2xl bg-transparent !shadow-none"
+                ? "bg-transparent !shadow-none"
                 : isMine
                   ? "text-white font-medium rounded-br-md"
                   : "text-white rounded-bl-md"
             )}
             style={isEmojiOnly(message.content)
-              ? undefined
+              ? { fontSize: "40px", lineHeight: "1.1", marginBottom: "0" }
               : isMine
                 ? { background: "linear-gradient(to right, #996414, #3c311f)", fontSize: "16px" }
                 : { background: "linear-gradient(to right, #21190c, #453416)", fontSize: "16px" }
