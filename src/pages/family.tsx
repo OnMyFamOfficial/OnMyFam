@@ -54,16 +54,24 @@ export default function FamilyPage() {
 
     if (error || !family) {
       console.error("Create family error:", error);
+      alert("Failed to create family: " + (error?.message || "Unknown error"));
       setSaving(false);
       return;
     }
 
-    await supabase.from("family_members").insert({
+    console.log("Family created:", family.id);
+
+    const { error: memberError } = await supabase.from("family_members").insert({
       family_id: family.id,
       user_id: user.id,
       role: "admin",
       relation_label: "Creator",
     });
+
+    if (memberError) {
+      console.error("Add member error:", memberError);
+      alert("Family created but failed to add you as member: " + memberError.message);
+    }
 
     await refreshFamilies();
     setCreating(false);
@@ -385,8 +393,8 @@ export default function FamilyPage() {
         )}
       </div>
 
-      {/* Family Settings - admin only */}
-      {isAdmin && (
+      {/* Family Settings - admin or god mode */}
+      {(isAdmin || currentFamily.created_by === user?.id) && (
         <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
           <div className="flex items-center gap-2 mb-3">
             <Settings className="w-4 h-4 text-[var(--muted-foreground)]" />
@@ -407,7 +415,7 @@ export default function FamilyPage() {
                   disabled={savingPrivacy}
                   className={`flex-1 flex items-center gap-3 p-3 rounded-lg border transition-colors text-left cursor-pointer ${
                     currentFamily.privacy_level === opt.value
-                      ? "border-gold-500 bg-gold-500/10"
+                      ? "border-gold-500 bg-gold-500/30"
                       : "border-[var(--border)] hover:border-[var(--muted-foreground)]"
                   }`}
                 >

@@ -56,10 +56,11 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
     const famList = (fams || []) as Family[];
     setFamilies(famList);
 
-    if (famList.length > 0 && !currentFamily) {
+    if (famList.length > 0) {
       const saved = localStorage.getItem("omf-current-family");
+      const current = currentFamily ? famList.find((f) => f.id === currentFamily.id) : null;
       const found = saved ? famList.find((f) => f.id === saved) : null;
-      setCurrentFamily(found || famList[0]);
+      setCurrentFamily(current || found || famList[0]);
     }
 
     setLoading(false);
@@ -72,12 +73,35 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const { data } = await supabase
+    const { data, error: memError } = await supabase
       .from("family_members")
-      .select("*, profile:profiles(*)")
+      .select("*")
       .eq("family_id", currentFamily.id);
 
-    const memberList = (data || []) as (FamilyMember & { profile: Profile })[];
+    console.log("[useFamily] members raw:", data, "error:", memError);
+
+    if (!data || data.length === 0) {
+      setMembers([]);
+      setMyMembership(null);
+      return;
+    }
+
+    // Fetch profiles separately to avoid join issues
+    const userIds = data.map((m) => m.user_id);
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("id", userIds);
+
+    const profileMap = new Map<string, Profile>();
+    for (const p of (profilesData || []) as Profile[]) {
+      profileMap.set(p.id, p);
+    }
+
+    const memberList = (data as FamilyMember[]).map((m) => ({
+      ...m,
+      profile: profileMap.get(m.user_id) || { id: m.user_id, display_name: "Unknown", avatar_url: null } as Profile,
+    }));
     setMembers(memberList);
 
     if (user) {
