@@ -295,16 +295,15 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
                 scrollToMessage(currentPin.id);
                 setCurrentPinIndex((prev) => (prev + 1) % pinnedMessages.length);
               }}
-              className="w-full flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] bg-gold-500/5 hover:bg-gold-500/10 transition-colors cursor-pointer text-left overflow-hidden"
+              className="w-full flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] bg-gold-500/5 hover:bg-gold-500/10 transition-colors cursor-pointer text-left"
+              style={{ maxWidth: "100%", overflow: "hidden" }}
             >
               <Pin className="w-3.5 h-3.5 text-gold-500 rotate-45 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-gold-500 font-medium">
-                    Pinned Message {pinnedMessages.length > 1 ? `${safeIndex + 1}/${pinnedMessages.length}` : ""}
-                  </span>
-                </div>
-                <p className="text-xs text-[var(--foreground)] truncate">
+              <div className="flex-1 overflow-hidden" style={{ minWidth: 0 }}>
+                <span className="text-[10px] text-gold-500 font-medium">
+                  Pinned Message {pinnedMessages.length > 1 ? `${safeIndex + 1}/${pinnedMessages.length}` : ""}
+                </span>
+                <p className="text-xs text-[var(--foreground)] whitespace-nowrap overflow-hidden text-ellipsis">
                   {currentPin.content || "Media"}
                 </p>
               </div>
