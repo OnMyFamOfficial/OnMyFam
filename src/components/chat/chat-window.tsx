@@ -118,10 +118,12 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
     fetchMessages();
   }, [conversation.id, fetchMessages]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages + hide mobile address bar
   useEffect(() => {
     if (!loading) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      // Nudge window scroll to collapse mobile address bar
+      window.scrollTo(0, 1);
     }
   }, [messages.length, loading]);
 

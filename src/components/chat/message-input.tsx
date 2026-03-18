@@ -282,13 +282,6 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
         {/* Emoji picker */}
         {showEmoji && (
           <div className="flex items-center gap-1 px-3 py-2 border-b border-[var(--border)] border-t dark:border-t-[var(--background)]" style={{ boxShadow: "0 -4px 12px rgba(0, 0, 0, 0.3)" }}>
-            <button
-              onClick={() => setShowEmoji(false)}
-              className="p-0.5 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer flex-shrink-0"
-              title="Close"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
             {EMOJI_QUICK.map((emoji) => (
               <button
                 key={emoji}
@@ -301,6 +294,14 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
                 {emoji}
               </button>
             ))}
+            <div className="flex-1" />
+            <button
+              onClick={() => setShowEmoji(false)}
+              className="p-0.5 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer flex-shrink-0"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
@@ -313,26 +314,26 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
             accept="image/*,video/*,.pdf,.doc,.docx,.txt"
             onChange={handleFileSelect}
           />
-          <div className="flex items-end bg-[var(--background)] border border-[var(--input)] rounded-xl focus-within:ring-1 focus-within:ring-gold-500 overflow-hidden">
+          <div className="flex items-end bg-[var(--background)] border border-[var(--input)] rounded-lg focus-within:ring-1 focus-within:ring-gold-500 overflow-hidden">
             {/* Left icons */}
-            <div className="flex items-center flex-shrink-0 pl-2 pb-2">
+            <div className="flex items-center flex-shrink-0 pl-2.5 pb-2.5">
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer disabled:opacity-50"
+                className="p-1.5 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer disabled:opacity-50"
                 title="Attach file"
               >
-                <Paperclip className="w-5 h-5" />
+                <Paperclip className="w-5.5 h-5.5" />
               </button>
               <button
                 onClick={() => setShowEmoji(!showEmoji)}
                 className={cn(
-                  "p-1 rounded hover:bg-[var(--accent)] transition-colors cursor-pointer",
+                  "p-1.5 rounded hover:bg-[var(--accent)] transition-colors cursor-pointer",
                   showEmoji ? "text-gold-500" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
                 )}
                 title="Emoji"
               >
-                <Smile className="w-5 h-5" />
+                <Smile className="w-5.5 h-5.5" />
               </button>
             </div>
 
@@ -350,19 +351,19 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
               placeholder={uploading ? "Uploading..." : "Type a message..."}
               disabled={uploading}
               rows={1}
-              className="flex-1 resize-none bg-transparent px-2 py-2.5 text-sm outline-none overflow-hidden disabled:opacity-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              style={{ minHeight: "38px", maxHeight: "160px", overflowY: text.split("\n").length > 8 ? "auto" : "hidden" }}
+              className="flex-1 resize-none bg-transparent px-2 py-3 text-sm outline-none overflow-hidden disabled:opacity-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              style={{ minHeight: "42px", maxHeight: "160px", overflowY: text.split("\n").length > 8 ? "auto" : "hidden" }}
             />
 
             {/* Send button inside */}
-            <div className="flex items-center flex-shrink-0 pr-2 pb-2">
+            <div className="flex items-center flex-shrink-0 p-2.5">
               <button
                 onClick={handleSend}
                 disabled={!text.trim() || uploading}
-                className="p-1.5 rounded-lg bg-gold-500 text-white hover:bg-gold-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="p-1.5 rounded-md bg-gold-500 text-white hover:bg-gold-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 title="Send"
               >
-                <Send className="w-5 h-5" />
+                <Send className="w-5.5 h-5.5" />
               </button>
             </div>
           </div>

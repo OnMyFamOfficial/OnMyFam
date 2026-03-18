@@ -112,9 +112,9 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
   const hasReactions = reactions && Object.entries(reactions).some(([, users]) => users.size > 0);
 
   return (
-    <div className={cn("flex gap-1 mb-1 group", isMine ? "flex-row-reverse" : "flex-row")}>
+    <div className={cn("flex gap-1 mb-1 group items-start", isMine ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
-      <div className="flex-shrink-0 w-7">
+      <div className="flex-shrink-0 w-7 mt-0.5">
         {showAvatar && !isMine ? (
           <div className="w-7 h-7 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
             {senderProfile?.avatar_url ? (
@@ -203,8 +203,9 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
             onTouchMove={handleTouchEnd}
+            onContextMenu={(e) => e.preventDefault()}
             className={cn(
-              "px-3 py-1.5 rounded-2xl break-words shadow-md dark:shadow-black/40",
+              "px-3 py-1.5 rounded-2xl break-words shadow-md dark:shadow-black/40 select-none",
               isEmojiOnly(message.content)
                 ? "text-2xl bg-transparent !shadow-none"
                 : isMine
@@ -253,29 +254,27 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
 
         {/* Reaction picker popup */}
         {showReactions && (
-          <div className={cn(
-            "absolute z-50 flex items-center gap-2 px-3 py-2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg",
-            isMine ? "right-0" : "left-0",
-            "bottom-full mb-1"
-          )}>
+          <div
+            className="absolute z-50 flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 lg:py-2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg bottom-full mb-1"
+            style={{ left: "0", right: "auto", maxWidth: "calc(100vw - 32px)" }}
+          >
             {REACTION_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
                 onClick={() => handleReact(emoji)}
                 className={cn(
-                  "text-xl hover:scale-125 transition-transform cursor-pointer p-1",
+                  "text-base lg:text-xl hover:scale-125 transition-transform cursor-pointer p-0.5 lg:p-1",
                   myCurrentReaction === emoji && "bg-gold-500/20 rounded-full"
                 )}
               >
                 {emoji}
               </button>
             ))}
-            {/* Plus button to open full menu */}
             <button
               onClick={() => { setShowReactions(false); setShowMenu(true); }}
-              className="p-1 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+              className="p-0.5 lg:p-1 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
             >
-              <PlusCircle className="w-5 h-5" />
+              <PlusCircle className="w-4 h-4 lg:w-5 lg:h-5" />
             </button>
           </div>
         )}
@@ -337,8 +336,8 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
         )}
       </div>
 
-      {/* Action icons - visible on hover (desktop) and always visible (mobile) */}
-      <div className="flex-shrink-0 flex items-center gap-0.5 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity self-center">
+      {/* Action icons - desktop only, hidden on mobile (use long-press instead) */}
+      <div className="flex-shrink-0 hidden lg:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity self-start mt-1">
         <button
           onClick={() => { setShowReactions(!showReactions); setShowMenu(false); }}
           className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
