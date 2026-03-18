@@ -26,8 +26,25 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
   const [hasMore, setHasMore] = useState(true);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
-  const [reactionsMap, setReactionsMap] = useState<Record<string, Record<string, number>>>({});
+  const [reactionsMap, setReactionsMap] = useState<Record<string, Record<string, Set<string>>>>({});
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
+  const [currentPinIndex, setCurrentPinIndex] = useState(0);
+  const [showPinnedOnly, setShowPinnedOnly] = useState(false);
+
+  // Load pinned messages from DB on conversation change
+  useEffect(() => {
+    async function loadPins() {
+      const { data } = await supabase
+        .from("messages")
+        .select("id")
+        .eq("conversation_id", conversation.id)
+        .not("pinned_at", "is", null);
+      if (data) {
+        setPinnedIds(new Set(data.map((m) => m.id)));
+      }
+    }
+    loadPins();
+  }, [conversation.id]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,10 +125,28 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
         markAsRead(conversation.id);
       })
       .on("broadcast", { event: "reaction" }, (payload) => {
-        const { messageId, emoji } = payload.payload as { messageId: string; emoji: string };
+        const { messageId, emoji, userId, action } = payload.payload as { messageId: string; emoji: string; userId: string; action: "add" | "remove" };
         setReactionsMap((prev) => {
-          const msgReactions = { ...(prev[messageId] || {}) };
-          msgReactions[emoji] = (msgReactions[emoji] || 0) + 1;
+          const msgReactions = prev[messageId] ? { ...prev[messageId] } : {} as Record<string, Set<string>>;
+          Object.keys(msgReactions).forEach((e) => {
+            msgReactions[e] = new Set(msgReactions[e]);
+          });
+          if (action === "remove") {
+            if (msgReactions[emoji]) {
+              msgReactions[emoji] = new Set(msgReactions[emoji]);
+              msgReactions[emoji].delete(userId);
+            }
+          } else {
+            // Remove from any other emoji first (one reaction per user)
+            Object.keys(msgReactions).forEach((e) => {
+              if (e !== emoji) {
+                msgReactions[e] = new Set(msgReactions[e]);
+                msgReactions[e].delete(userId);
+              }
+            });
+            msgReactions[emoji] = new Set(msgReactions[emoji] || []);
+            msgReactions[emoji].add(userId);
+          }
           return { ...prev, [messageId]: msgReactions };
         });
       })
@@ -218,23 +253,36 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
           onVideoCall={onStartCall ? () => onStartCall("video") : undefined}
         />
 
-        {/* Pinned messages bar */}
-        {messages.filter((m) => pinnedIds.has(m.id)).length > 0 && (
-          <div className="border-b border-[var(--border)] bg-gold-500/5 px-3 py-1.5 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <Pin className="w-3.5 h-3.5 text-gold-500 rotate-45 flex-shrink-0" />
-            {messages.filter((m) => pinnedIds.has(m.id)).map((m) => (
-              <button
-                key={m.id}
-                onClick={() => {
-                  document.getElementById(`msg-${m.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                }}
-                className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] bg-[var(--accent)] px-2 py-1 rounded-lg truncate max-w-[200px] flex-shrink-0 cursor-pointer transition-colors"
-              >
-                {m.content?.slice(0, 40) || "Media"}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Pinned message strip - Telegram style */}
+        {(() => {
+          const pinnedMessages = messages.filter((m) => pinnedIds.has(m.id));
+          if (pinnedMessages.length === 0) return null;
+          const safeIndex = Math.min(currentPinIndex, pinnedMessages.length - 1);
+          const currentPin = pinnedMessages[safeIndex];
+          if (!currentPin) return null;
+          return (
+            <button
+              onClick={() => {
+                document.getElementById(`msg-${currentPin.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                // Cycle to next pin
+                setCurrentPinIndex((prev) => (prev + 1) % pinnedMessages.length);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] bg-gold-500/5 hover:bg-gold-500/10 transition-colors cursor-pointer text-left"
+            >
+              <Pin className="w-3.5 h-3.5 text-gold-500 rotate-45 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-gold-500 font-medium">
+                    Pinned Message {pinnedMessages.length > 1 ? `${safeIndex + 1}/${pinnedMessages.length}` : ""}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--foreground)] truncate">
+                  {currentPin.content || "Media"}
+                </p>
+              </div>
+            </button>
+          );
+        })()}
 
         {/* Messages area */}
         <div
@@ -263,8 +311,8 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
                   </button>
                 </div>
               )}
-              {messages.map((msg, i) => {
-                const prevMsg = i > 0 ? messages[i - 1] : null;
+              {(showPinnedOnly ? messages.filter((m) => pinnedIds.has(m.id)) : messages).map((msg, i, arr) => {
+                const prevMsg = i > 0 ? arr[i - 1] : null;
                 const showAvatar = !prevMsg || prevMsg.sender_id !== msg.sender_id ||
                   msg.message_type === "system";
                 return (
@@ -291,29 +339,48 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
                         channelRef.current.send({ type: "broadcast", event: "update-message", payload: updated });
                       }
                     }}
-                    onPin={(messageId) => {
+                    onPin={async (messageId) => {
+                      const isPinned = pinnedIds.has(messageId);
+                      await supabase.from("messages").update({
+                        pinned_at: isPinned ? null : new Date().toISOString(),
+                      }).eq("id", messageId);
                       setPinnedIds((prev) => {
                         const next = new Set(prev);
-                        if (next.has(messageId)) next.delete(messageId);
+                        if (isPinned) next.delete(messageId);
                         else next.add(messageId);
                         return next;
                       });
                     }}
-                    onReact={(messageId, emoji) => {
+                    currentUserId={user?.id}
+                    onReact={(messageId, emoji, userId) => {
                       setReactionsMap((prev) => {
-                        const msgReactions = { ...(prev[messageId] || {}) };
-                        msgReactions[emoji] = (msgReactions[emoji] || 0) + 1;
+                        const msgReactions: Record<string, Set<string>> = {};
+                        // Copy existing
+                        Object.entries(prev[messageId] || {}).forEach(([e, s]) => {
+                          msgReactions[e] = new Set(s);
+                        });
+                        // Check if user already reacted with this emoji (toggle off)
+                        if (msgReactions[emoji]?.has(userId)) {
+                          msgReactions[emoji].delete(userId);
+                        } else {
+                          // Remove from any other emoji first
+                          Object.values(msgReactions).forEach((s) => s.delete(userId));
+                          // Add to this emoji
+                          if (!msgReactions[emoji]) msgReactions[emoji] = new Set();
+                          msgReactions[emoji].add(userId);
+                        }
                         return { ...prev, [messageId]: msgReactions };
                       });
                       if (channelRef.current) {
+                        const isRemoving = reactionsMap[messageId]?.[emoji]?.has(userId);
                         channelRef.current.send({
                           type: "broadcast",
                           event: "reaction",
-                          payload: { messageId, emoji },
+                          payload: { messageId, emoji, userId, action: isRemoving ? "remove" : "add" },
                         });
                       }
                     }}
-                    reactions={reactionsMap[msg.id] ? Object.fromEntries(Object.entries(reactionsMap[msg.id]).map(([k, v]) => [k, Array(v).fill("")])) : undefined}
+                    reactions={reactionsMap[msg.id]}
                     isPinned={pinnedIds.has(msg.id)}
                   />
                   </div>
@@ -335,7 +402,25 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
       </div>
 
       {/* Pinned shortcuts column */}
-      <ChatShortcuts />
+      <ChatShortcuts
+        pinnedCount={messages.filter((m) => pinnedIds.has(m.id)).length}
+        showPinnedOnly={showPinnedOnly}
+        onPinUp={() => {
+          const pinned = messages.filter((m) => pinnedIds.has(m.id));
+          if (pinned.length === 0) return;
+          const newIndex = (currentPinIndex - 1 + pinned.length) % pinned.length;
+          setCurrentPinIndex(newIndex);
+          document.getElementById(`msg-${pinned[newIndex].id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }}
+        onPinDown={() => {
+          const pinned = messages.filter((m) => pinnedIds.has(m.id));
+          if (pinned.length === 0) return;
+          const newIndex = (currentPinIndex + 1) % pinned.length;
+          setCurrentPinIndex(newIndex);
+          document.getElementById(`msg-${pinned[newIndex].id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }}
+        onTogglePinFilter={() => setShowPinnedOnly((prev) => !prev)}
+      />
     </div>
   );
 }

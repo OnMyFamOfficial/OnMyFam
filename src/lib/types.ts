@@ -306,6 +306,7 @@ export interface Message {
   } | null;
   reply_to_id: string | null;
   is_deleted: boolean;
+  pinned_at: string | null;
   created_at: string;
   updated_at: string;
   sender?: Profile;

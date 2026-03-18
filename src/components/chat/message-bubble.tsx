@@ -8,12 +8,13 @@ interface MessageBubbleProps {
   isMine: boolean;
   senderProfile: Profile | null;
   showAvatar: boolean;
+  currentUserId?: string;
   onReply?: () => void;
   onEdit?: (messageId: string, newContent: string) => void;
   onDelete?: (messageId: string) => void;
   onPin?: (messageId: string) => void;
-  onReact?: (messageId: string, emoji: string) => void;
-  reactions?: Record<string, string[]>; // emoji -> user display names
+  onReact?: (messageId: string, emoji: string, userId: string) => void;
+  reactions?: Record<string, Set<string>>; // emoji -> set of user IDs
   isPinned?: boolean;
 }
 
@@ -26,12 +27,11 @@ function isEmojiOnly(text: string | null): boolean {
   return emojiRegex.test(stripped);
 }
 
-export function MessageBubble({ message, isMine, senderProfile, showAvatar, onReply, onEdit, onDelete, onPin, onReact, reactions, isPinned }: MessageBubbleProps) {
+export function MessageBubble({ message, isMine, senderProfile, showAvatar, currentUserId, onReply, onEdit, onDelete, onPin, onReact, reactions, isPinned }: MessageBubbleProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.content || "");
-  const [localReactions, setLocalReactions] = useState<Record<string, number>>(reactions ? Object.fromEntries(Object.entries(reactions).map(([k, v]) => [k, v.length])) : {});
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -83,16 +83,18 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
     setShowMenu(false);
   }
 
-  function handleLocalReact(emoji: string) {
-    setLocalReactions((prev) => ({
-      ...prev,
-      [emoji]: (prev[emoji] || 0) + 1,
-    }));
-    onReact?.(message.id, emoji);
+  function handleReact(emoji: string) {
+    if (!currentUserId) return;
+    onReact?.(message.id, emoji, currentUserId);
     setShowReactions(false);
   }
 
-  const hasReactions = Object.keys(localReactions).some((k) => localReactions[k] > 0);
+  // Check if current user already reacted with any emoji
+  const myCurrentReaction = reactions
+    ? Object.entries(reactions).find(([, users]) => users.has(currentUserId || ""))?.[0]
+    : undefined;
+
+  const hasReactions = reactions && Object.entries(reactions).some(([, users]) => users.size > 0);
 
   return (
     <div className={cn("flex gap-1 mb-1 group", isMine ? "flex-row-reverse" : "flex-row")}>
@@ -205,14 +207,19 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
         {/* Reactions display */}
         {hasReactions && (
           <div className={cn("flex flex-wrap gap-1 mt-0.5 px-0.5", isMine ? "justify-end" : "justify-start")}>
-            {Object.entries(localReactions).filter(([, count]) => count > 0).map(([emoji, count]) => (
+            {Object.entries(reactions!).filter(([, users]) => users.size > 0).map(([emoji, users]) => (
               <button
                 key={emoji}
-                onClick={() => handleLocalReact(emoji)}
-                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--accent)] border border-[var(--border)] text-lg hover:border-gold-500/50 transition-colors cursor-pointer"
+                onClick={() => handleReact(emoji)}
+                className={cn(
+                  "flex items-center gap-0.5 px-1.5 py-0.5 rounded-full border text-lg transition-colors cursor-pointer",
+                  users.has(currentUserId || "")
+                    ? "bg-gold-500/20 border-gold-500/50"
+                    : "bg-[var(--accent)] border-[var(--border)] hover:border-gold-500/50"
+                )}
               >
                 <span>{emoji}</span>
-                {count > 1 && <span className="text-[10px] text-[var(--muted-foreground)]">{count}</span>}
+                {users.size > 1 && <span className="text-[10px] text-[var(--muted-foreground)]">{users.size}</span>}
               </button>
             ))}
           </div>
@@ -226,7 +233,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
           {formatTime(message.created_at)}
         </div>
 
-        {/* Reaction picker popup - aligned to outer edge of bubble */}
+        {/* Reaction picker popup */}
         {showReactions && (
           <div className={cn(
             "absolute z-50 flex items-center gap-0.5 px-2 py-1.5 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg",
@@ -236,8 +243,11 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
             {REACTION_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
-                onClick={() => handleLocalReact(emoji)}
-                className="text-lg hover:scale-125 transition-transform cursor-pointer p-0.5"
+                onClick={() => handleReact(emoji)}
+                className={cn(
+                  "text-lg hover:scale-125 transition-transform cursor-pointer p-0.5",
+                  myCurrentReaction === emoji && "bg-gold-500/20 rounded-full"
+                )}
               >
                 {emoji}
               </button>
@@ -283,19 +293,27 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
               <Pin className="w-3.5 h-3.5" /> {isPinned ? "Unpin" : "Pin"}
             </button>
             {isMine && (
-              <button
-                onClick={() => { onDelete?.(message.id); setShowMenu(false); }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer text-left"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Delete
-              </button>
+              <>
+                <div className="my-1 border-t border-[var(--border)]" />
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    if (confirm("Are you sure you want to delete this message?")) {
+                      onDelete?.(message.id);
+                    }
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer text-left"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                </button>
+              </>
             )}
           </div>
         )}
       </div>
 
-      {/* Action icons - opposite side of bubble */}
-      <div className="flex-shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity self-center">
+      {/* Action icons - visible on hover (desktop) and always visible (mobile) */}
+      <div className="flex-shrink-0 flex items-center gap-0.5 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity self-center">
         <button
           onClick={() => { setShowReactions(!showReactions); setShowMenu(false); }}
           className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
