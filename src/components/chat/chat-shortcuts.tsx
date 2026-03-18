@@ -45,24 +45,24 @@ export function ChatShortcuts({ pinnedCount = 0, showPinnedOnly = false, onPinUp
           <>
             <button
               onClick={onPinUp}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-sm"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-sm"
               title="Previous pin"
             >
               <ChevronUp className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate">Prev Pin</span>
+              <span>Prev Pin</span>
             </button>
             <button
               onClick={onPinDown}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-sm"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-sm"
               title="Next pin"
             >
               <ChevronDown className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate">Next Pin</span>
+              <span>Next Pin</span>
             </button>
             <button
               onClick={onTogglePinFilter}
               className={cn(
-                "w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors cursor-pointer text-sm",
+                "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors cursor-pointer text-sm",
                 showPinnedOnly
                   ? "bg-gold-500/20 text-gold-500"
                   : "hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
@@ -70,7 +70,7 @@ export function ChatShortcuts({ pinnedCount = 0, showPinnedOnly = false, onPinUp
               title={showPinnedOnly ? "Show all messages" : "Show pinned only"}
             >
               <Filter className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate">{showPinnedOnly ? "Show All" : "Pinned Only"}</span>
+              <span>{showPinnedOnly ? "Show All" : "Pinned Only"}</span>
             </button>
           </>
         )}

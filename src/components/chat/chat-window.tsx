@@ -247,6 +247,20 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
     }, 2000);
   }
 
+  // Scroll to a message - works on mobile too
+  function scrollToMessage(msgId: string) {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (!el || !containerRef.current) return;
+    const container = containerRef.current;
+    const elTop = el.offsetTop - container.offsetTop;
+    const targetScroll = elTop - container.clientHeight / 2 + el.clientHeight / 2;
+    container.scrollTo({ top: targetScroll, behavior: "smooth" });
+    // Flash highlight
+    el.style.transition = "background-color 0.3s";
+    el.style.backgroundColor = "rgba(184, 134, 11, 0.15)";
+    setTimeout(() => { el.style.backgroundColor = ""; }, 1500);
+  }
+
   // Load more on scroll to top
   function handleScroll() {
     if (!containerRef.current || !hasMore || loading) return;
@@ -276,8 +290,7 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
           return (
             <button
               onClick={() => {
-                document.getElementById(`msg-${currentPin.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                // Cycle to next pin
+                scrollToMessage(currentPin.id);
                 setCurrentPinIndex((prev) => (prev + 1) % pinnedMessages.length);
               }}
               className="w-full flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] bg-gold-500/5 hover:bg-gold-500/10 transition-colors cursor-pointer text-left"
@@ -424,14 +437,14 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
           if (pinned.length === 0) return;
           const newIndex = (currentPinIndex - 1 + pinned.length) % pinned.length;
           setCurrentPinIndex(newIndex);
-          document.getElementById(`msg-${pinned[newIndex].id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+          scrollToMessage(pinned[newIndex].id);
         }}
         onPinDown={() => {
           const pinned = messages.filter((m) => pinnedIds.has(m.id));
           if (pinned.length === 0) return;
           const newIndex = (currentPinIndex + 1) % pinned.length;
           setCurrentPinIndex(newIndex);
-          document.getElementById(`msg-${pinned[newIndex].id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+          scrollToMessage(pinned[newIndex].id);
         }}
         onTogglePinFilter={() => setShowPinnedOnly((prev) => !prev)}
       />

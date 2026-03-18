@@ -22,7 +22,6 @@ interface ChatContextType {
   setChatPanelOpen: (open: boolean) => void;
   openDirectMessage: (userId: string) => Promise<string | null>;
   createGroupChat: (name: string, memberIds: string[]) => Promise<string | null>;
-  createTestChat: () => Promise<string | null>;
   refreshConversations: () => Promise<void>;
   markAsRead: (conversationId: string) => Promise<void>;
 }
@@ -41,7 +40,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const { currentFamily } = useFamily();
   const [conversations, setConversations] = useState<ConversationWithDetails[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationIdRaw] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("omf-active-conversation") || null;
+    }
+    return null;
+  });
+
+  const setActiveConversationId = useCallback((id: string | null) => {
+    setActiveConversationIdRaw(id);
+    if (id) {
+      localStorage.setItem("omf-active-conversation", id);
+    } else {
+      localStorage.removeItem("omf-active-conversation");
+    }
+  }, []);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -251,56 +264,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     return conversationId;
   }, [user, currentFamily, fetchConversations]);
 
-  const createTestChat = useCallback(async (): Promise<string | null> => {
-    if (!user) {
-      console.error("[TestChat] No user");
-      return null;
-    }
-    if (!currentFamily) {
-      console.error("[TestChat] No currentFamily");
-      alert("No family found. Go to the Family page and create one first, then come back.");
-      return null;
-    }
-
-    console.log("[TestChat] Creating in family:", currentFamily.id, currentFamily.name);
-
-    const { data: convo, error: convoError } = await supabase
-      .from("conversations")
-      .insert({
-        family_id: currentFamily.id,
-        type: "group",
-        name: "Test Chat",
-        created_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (convoError || !convo) {
-      console.error("Failed to create test chat:", convoError);
-      return null;
-    }
-
-    await supabase
-      .from("conversation_participants")
-      .insert({
-        conversation_id: convo.id,
-        user_id: user.id,
-        role: "admin",
-      });
-
-    await supabase.from("messages").insert({
-      conversation_id: convo.id,
-      sender_id: user.id,
-      content: "Test chat created. You can message here to test.",
-      message_type: "system",
-    });
-
-    await fetchConversations();
-    setActiveConversationId(convo.id);
-    setChatPanelOpen(true);
-    return convo.id;
-  }, [user, currentFamily, fetchConversations]);
-
   return (
     <ChatContext.Provider
       value={{
@@ -313,7 +276,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setChatPanelOpen,
         openDirectMessage,
         createGroupChat,
-        createTestChat,
         refreshConversations: fetchConversations,
         markAsRead,
       }}

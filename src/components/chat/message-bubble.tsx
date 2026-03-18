@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { MoreHorizontal, Reply, Pencil, Trash2, Pin, Copy, SmilePlus } from "lucide-react";
+import { MoreHorizontal, Reply, Pencil, Trash2, Pin, Copy, SmilePlus, PlusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Message, Profile } from "@/lib/types";
 
@@ -33,6 +33,21 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.content || "");
   const menuRef = useRef<HTMLDivElement>(null);
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleTouchStart() {
+    longPressRef.current = setTimeout(() => {
+      setShowReactions(true);
+      setShowMenu(false);
+    }, 500);
+  }
+
+  function handleTouchEnd() {
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
+  }
 
   useEffect(() => {
     if (!showMenu && !showReactions) return;
@@ -185,19 +200,22 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
           </div>
         ) : message.content ? (
           <div
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            onTouchMove={handleTouchEnd}
             className={cn(
               "px-3 py-1.5 rounded-2xl break-words shadow-md dark:shadow-black/40",
               isEmojiOnly(message.content)
                 ? "text-2xl bg-transparent !shadow-none"
                 : isMine
-                  ? "text-sm text-white font-medium rounded-br-md"
-                  : "text-sm text-white rounded-bl-md"
+                  ? "text-white font-medium rounded-br-md"
+                  : "text-white rounded-bl-md"
             )}
             style={isEmojiOnly(message.content)
               ? undefined
               : isMine
-                ? { background: "linear-gradient(to right, #996414, #3c311f)" }
-                : { background: "linear-gradient(to right, #21190c, #453416)" }
+                ? { background: "linear-gradient(to right, #996414, #3c311f)", fontSize: "16px" }
+                : { background: "linear-gradient(to right, #21190c, #453416)", fontSize: "16px" }
             }
           >
             {message.content}
@@ -236,7 +254,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
         {/* Reaction picker popup */}
         {showReactions && (
           <div className={cn(
-            "absolute z-50 flex items-center gap-0.5 px-2 py-1.5 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg",
+            "absolute z-50 flex items-center gap-2 px-3 py-2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg",
             isMine ? "right-0" : "left-0",
             "bottom-full mb-1"
           )}>
@@ -245,13 +263,20 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
                 key={emoji}
                 onClick={() => handleReact(emoji)}
                 className={cn(
-                  "text-lg hover:scale-125 transition-transform cursor-pointer p-0.5",
+                  "text-xl hover:scale-125 transition-transform cursor-pointer p-1",
                   myCurrentReaction === emoji && "bg-gold-500/20 rounded-full"
                 )}
               >
                 {emoji}
               </button>
             ))}
+            {/* Plus button to open full menu */}
+            <button
+              onClick={() => { setShowReactions(false); setShowMenu(true); }}
+              className="p-1 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+            >
+              <PlusCircle className="w-5 h-5" />
+            </button>
           </div>
         )}
 

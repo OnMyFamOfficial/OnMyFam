@@ -304,16 +304,8 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
           </div>
         )}
 
-        {/* Input row */}
-        <div className="flex items-center gap-1.5 p-2">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="p-2.5 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer disabled:opacity-50"
-            title="Attach file"
-          >
-            <Paperclip className="w-6 h-6" />
-          </button>
+        {/* Input row - icons inside the input box */}
+        <div className="p-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -321,45 +313,59 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
             accept="image/*,video/*,.pdf,.doc,.docx,.txt"
             onChange={handleFileSelect}
           />
+          <div className="flex items-end bg-[var(--background)] border border-[var(--input)] rounded-xl focus-within:ring-1 focus-within:ring-gold-500 overflow-hidden">
+            {/* Left icons */}
+            <div className="flex items-center flex-shrink-0 pl-2 pb-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer disabled:opacity-50"
+                title="Attach file"
+              >
+                <Paperclip className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowEmoji(!showEmoji)}
+                className={cn(
+                  "p-1 rounded hover:bg-[var(--accent)] transition-colors cursor-pointer",
+                  showEmoji ? "text-gold-500" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                )}
+                title="Emoji"
+              >
+                <Smile className="w-5 h-5" />
+              </button>
+            </div>
 
-          <button
-            onClick={() => setShowEmoji(!showEmoji)}
-            className={cn(
-              "p-2.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer",
-              showEmoji ? "text-gold-500" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-            )}
-            title="Emoji"
-          >
-            <Smile className="w-6 h-6" />
-          </button>
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                const el = e.target;
+                el.style.height = "auto";
+                el.style.height = Math.min(el.scrollHeight, 160) + "px";
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={uploading ? "Uploading..." : "Type a message..."}
+              disabled={uploading}
+              rows={1}
+              className="flex-1 resize-none bg-transparent px-2 py-2.5 text-sm outline-none overflow-hidden disabled:opacity-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              style={{ minHeight: "38px", maxHeight: "160px", overflowY: text.split("\n").length > 8 ? "auto" : "hidden" }}
+            />
 
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              // Auto-grow
-              const el = e.target;
-              el.style.height = "auto";
-              el.style.height = Math.min(el.scrollHeight, 160) + "px";
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder={uploading ? "Uploading..." : "Type a message..."}
-            disabled={uploading}
-            rows={1}
-            className="flex-1 resize-none bg-[var(--background)] border border-[var(--input)] rounded-xl px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-gold-500 overflow-hidden disabled:opacity-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            style={{ minHeight: "30px", maxHeight: "160px", overflowY: text.split("\n").length > 8 ? "auto" : "hidden" }}
-          />
-
-          <button
-            onClick={handleSend}
-            disabled={!text.trim() || uploading}
-            className="flex items-center justify-center rounded-xl bg-gold-500 text-white hover:bg-gold-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer flex-shrink-0"
-            style={{ width: "30px", height: "30px" }}
-            title="Send"
-          >
-            <Send className="w-6 h-6" />
-          </button>
+            {/* Send button inside */}
+            <div className="flex items-center flex-shrink-0 pr-2 pb-2">
+              <button
+                onClick={handleSend}
+                disabled={!text.trim() || uploading}
+                className="p-1.5 rounded-lg bg-gold-500 text-white hover:bg-gold-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                title="Send"
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </>

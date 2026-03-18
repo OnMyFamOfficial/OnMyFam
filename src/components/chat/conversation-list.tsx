@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, Users, FlaskConical } from "lucide-react";
-import { useAuth } from "@/components/auth/auth-provider";
+import { Search, Plus, Users } from "lucide-react";
 import { useChat } from "./chat-provider";
 import { ConversationItem } from "./conversation-item";
 import { GroupCreateModal } from "./group-create-modal";
@@ -10,8 +9,7 @@ interface ConversationListProps {
 }
 
 export function ConversationList({ onSelectConversation }: ConversationListProps) {
-  const { isGodMode } = useAuth();
-  const { conversations, unreadCounts, activeConversationId, setActiveConversationId, createTestChat } = useChat();
+  const { conversations, unreadCounts, activeConversationId, setActiveConversationId } = useChat();
   const [search, setSearch] = useState("");
   const [showGroupCreate, setShowGroupCreate] = useState(false);
 
@@ -58,18 +56,6 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
             <p className="text-xs mt-1">
               {search ? "Try a different search" : "Click a family member to start chatting"}
             </p>
-            {!search && isGodMode && (
-              <button
-                onClick={async () => {
-                  await createTestChat();
-                  onSelectConversation?.();
-                }}
-                className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/15 text-red-400 text-xs font-medium hover:bg-red-500/25 transition-colors cursor-pointer"
-              >
-                <FlaskConical className="w-3.5 h-3.5" />
-                Create Test Chat
-              </button>
-            )}
           </div>
         ) : (
           <div className="space-y-0.5">
