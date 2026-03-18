@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Search, Plus, Users } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Search, Plus, Users, User, UsersRound, X } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
+import { useFamily } from "@/lib/hooks/use-family";
 import { useChat } from "./chat-provider";
 import { ConversationItem } from "./conversation-item";
 import { GroupCreateModal } from "./group-create-modal";
@@ -9,9 +11,25 @@ interface ConversationListProps {
 }
 
 export function ConversationList({ onSelectConversation }: ConversationListProps) {
-  const { conversations, unreadCounts, activeConversationId, setActiveConversationId } = useChat();
+  const { user } = useAuth();
+  const { members } = useFamily();
+  const { conversations, unreadCounts, activeConversationId, setActiveConversationId, openDirectMessage } = useChat();
   const [search, setSearch] = useState("");
   const [showGroupCreate, setShowGroupCreate] = useState(false);
+  const [showNewMenu, setShowNewMenu] = useState(false);
+  const [showDmPicker, setShowDmPicker] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showNewMenu) return;
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowNewMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showNewMenu]);
 
   const filtered = search
     ? conversations.filter((c) =>
@@ -19,19 +37,48 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
       )
     : conversations;
 
+  const otherMembers = members.filter((m) => m.user_id !== user?.id);
+
+  async function handleStartDm(userId: string) {
+    setShowDmPicker(false);
+    const convoId = await openDirectMessage(userId);
+    if (convoId) {
+      setActiveConversationId(convoId);
+      onSelectConversation?.();
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-3 py-3 border-b border-[var(--border)] dark:bg-black">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-base">Messages</h3>
-          <button
-            onClick={() => setShowGroupCreate(true)}
-            className="p-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer"
-            title="New group chat"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowNewMenu(!showNewMenu)}
+              className="p-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer"
+              title="New conversation"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            {showNewMenu && (
+              <div className="absolute right-0 top-full mt-1 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px] z-50">
+                <button
+                  onClick={() => { setShowNewMenu(false); setShowDmPicker(true); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+                >
+                  <User className="w-4 h-4" /> New Chat
+                </button>
+                <button
+                  onClick={() => { setShowNewMenu(false); setShowGroupCreate(true); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+                >
+                  <UsersRound className="w-4 h-4" /> New Group Chat
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2 bg-[var(--background)] dark:!bg-[#38394d] border border-[var(--input)] rounded-lg px-2.5 py-1.5">
           <Search className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
@@ -45,35 +92,72 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
         </div>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto p-1.5 [scrollbar-width:thin] chat-gradient-down">
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-[var(--muted-foreground)]">
-            <Users className="w-8 h-8 mb-2 opacity-50" />
-            <p className="text-sm">
-              {search ? "No conversations found" : "No messages yet"}
-            </p>
-            <p className="text-xs mt-1">
-              {search ? "Try a different search" : "Click a family member to start chatting"}
-            </p>
+      {/* DM member picker */}
+      {showDmPicker ? (
+        <div className="flex-1 overflow-y-auto [scrollbar-width:thin]">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
+            <span className="text-sm font-medium">Choose a person</span>
+            <button
+              onClick={() => setShowDmPicker(false)}
+              className="p-1 rounded hover:bg-[var(--accent)] transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-        ) : (
-          <div className="space-y-0.5">
-            {filtered.map((convo) => (
-              <ConversationItem
-                key={convo.id}
-                conversation={convo}
-                isActive={convo.id === activeConversationId}
-                unreadCount={unreadCounts[convo.id] || 0}
-                onClick={() => {
-                  setActiveConversationId(convo.id);
-                  onSelectConversation?.();
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+          {otherMembers.length === 0 ? (
+            <p className="text-sm text-[var(--muted-foreground)] text-center py-8">No family members yet</p>
+          ) : (
+            otherMembers.map((m) => (
+              <button
+                key={m.user_id}
+                onClick={() => handleStartDm(m.user_id)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+              >
+                <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {m.profile?.avatar_url ? (
+                    <img src={m.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-medium text-gold-500">
+                      {m.profile?.display_name?.charAt(0).toUpperCase() || "?"}
+                    </span>
+                  )}
+                </div>
+                <span className="text-sm truncate">{m.profile?.display_name || "Unknown"}</span>
+              </button>
+            ))
+          )}
+        </div>
+      ) : (
+        /* Conversation list */
+        <div className="flex-1 overflow-y-auto p-1.5 [scrollbar-width:thin] chat-gradient-down">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-[var(--muted-foreground)]">
+              <Users className="w-8 h-8 mb-2 opacity-50" />
+              <p className="text-sm">
+                {search ? "No conversations found" : "No messages yet"}
+              </p>
+              <p className="text-xs mt-1">
+                {search ? "Try a different search" : "Tap + to start a conversation"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              {filtered.map((convo) => (
+                <ConversationItem
+                  key={convo.id}
+                  conversation={convo}
+                  isActive={convo.id === activeConversationId}
+                  unreadCount={unreadCounts[convo.id] || 0}
+                  onClick={() => {
+                    setActiveConversationId(convo.id);
+                    onSelectConversation?.();
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showGroupCreate && (
         <GroupCreateModal onClose={() => setShowGroupCreate(false)} />
