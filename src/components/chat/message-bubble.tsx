@@ -205,7 +205,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
             onTouchMove={handleTouchEnd}
             onContextMenu={(e) => e.preventDefault()}
             className={cn(
-              "px-3 py-1.5 rounded-2xl break-words shadow-md dark:shadow-black/40 select-none",
+              "px-3 py-1.5 rounded-2xl break-words shadow-md dark:shadow-black/40 lg:select-auto select-none",
               isEmojiOnly(message.content)
                 ? "bg-transparent !shadow-none"
                 : isMine
