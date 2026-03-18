@@ -1,3 +1,5 @@
+import { useState, useRef, useEffect } from "react";
+import { MoreHorizontal, Reply, Pencil, Trash2, Pin, Copy, SmilePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Message, Profile } from "@/lib/types";
 
@@ -7,9 +9,42 @@ interface MessageBubbleProps {
   senderProfile: Profile | null;
   showAvatar: boolean;
   onReply?: () => void;
+  onEdit?: (messageId: string, newContent: string) => void;
+  onDelete?: (messageId: string) => void;
+  onPin?: (messageId: string) => void;
+  onReact?: (messageId: string, emoji: string) => void;
 }
 
-export function MessageBubble({ message, isMine, senderProfile, showAvatar, onReply }: MessageBubbleProps) {
+const REACTION_EMOJIS = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F62E}", "\u{1F622}", "\u{1F64F}", "\u{1F389}", "\u{1F525}"];
+
+// Check if a string is only emojis (no regular text)
+function isEmojiOnly(text: string | null): boolean {
+  if (!text) return false;
+  const stripped = text.replace(/[\s\uFE0F]/g, "");
+  const emojiRegex = /^(?:\p{Emoji_Presentation}|\p{Extended_Pictographic})+$/u;
+  return emojiRegex.test(stripped);
+}
+
+export function MessageBubble({ message, isMine, senderProfile, showAvatar, onReply, onEdit, onDelete, onPin, onReact }: MessageBubbleProps) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [showReactions, setShowReactions] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(message.content || "");
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!showMenu && !showReactions) return;
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+        setShowReactions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showMenu, showReactions]);
+
   if (message.message_type === "system") {
     return (
       <div className="flex justify-center py-1">
@@ -34,8 +69,23 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
     return new Date(dateStr).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
 
+  function handleCopy() {
+    if (message.content) {
+      navigator.clipboard.writeText(message.content);
+    }
+    setShowMenu(false);
+  }
+
+  function handleEditSubmit() {
+    if (editText.trim() && editText.trim() !== message.content) {
+      onEdit?.(message.id, editText.trim());
+    }
+    setEditing(false);
+    setShowMenu(false);
+  }
+
   return (
-    <div className={cn("flex gap-2 mb-1 group", isMine ? "flex-row-reverse" : "flex-row")}>
+    <div className={cn("flex gap-1 mb-1 group", isMine ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
       <div className="flex-shrink-0 w-7">
         {showAvatar && !isMine ? (
@@ -51,8 +101,8 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
         ) : null}
       </div>
 
-      {/* Bubble */}
-      <div className="max-w-[75%] min-w-0">
+      {/* Bubble + time */}
+      <div className="max-w-[65%] min-w-0 relative" ref={menuRef}>
         {/* Reply preview */}
         {message.reply_to && (
           <div className={cn(
@@ -102,19 +152,46 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
           </a>
         )}
 
-        {/* Text content */}
-        {message.content && (
+        {/* Text content (or edit mode) */}
+        {editing ? (
+          <div className={cn("rounded-2xl overflow-hidden", isMine ? "ml-auto" : "")}>
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleEditSubmit(); }
+                if (e.key === "Escape") { setEditing(false); setEditText(message.content || ""); }
+              }}
+              className="w-full resize-none bg-[var(--background)] border border-gold-500 rounded-xl px-3 py-1.5 text-sm outline-none max-h-24"
+              rows={2}
+              autoFocus
+            />
+            <div className="flex gap-1 mt-1">
+              <button onClick={handleEditSubmit} className="text-[10px] text-gold-500 hover:underline cursor-pointer">Save</button>
+              <span className="text-[10px] text-[var(--muted-foreground)]">|</span>
+              <button onClick={() => { setEditing(false); setEditText(message.content || ""); }} className="text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">Cancel</button>
+            </div>
+          </div>
+        ) : message.content ? (
           <div
             className={cn(
-              "px-3 py-1.5 rounded-2xl text-sm break-words",
-              isMine
-                ? "bg-gold-500 text-white rounded-br-md"
-                : "bg-[var(--accent)] text-[var(--foreground)] rounded-bl-md"
+              "px-3 py-1.5 rounded-2xl break-words",
+              isEmojiOnly(message.content)
+                ? "text-2xl bg-transparent"
+                : isMine
+                  ? "text-sm text-white font-medium rounded-br-md"
+                  : "text-sm text-white rounded-bl-md"
             )}
+            style={isEmojiOnly(message.content)
+              ? undefined
+              : isMine
+                ? { background: "linear-gradient(to right, #996414, #3c311f)" }
+                : { background: "linear-gradient(to right, #21190c, #453416)" }
+            }
           >
             {message.content}
           </div>
-        )}
+        ) : null}
 
         {/* Time */}
         <div className={cn(
@@ -122,15 +199,98 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
           isMine ? "text-right" : "text-left"
         )}>
           {formatTime(message.created_at)}
-          {onReply && (
-            <button
-              onClick={onReply}
-              className="ml-2 hover:text-[var(--foreground)] cursor-pointer"
-            >
-              Reply
-            </button>
-          )}
         </div>
+
+        {/* Popups anchored to bubble */}
+        {showReactions && (
+          <div className={cn(
+            "absolute z-50 flex items-center gap-0.5 px-2 py-1.5 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg",
+            isMine ? "left-0" : "right-0",
+            "bottom-full mb-1"
+          )}>
+            {REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => {
+                  onReact?.(message.id, emoji);
+                  setShowReactions(false);
+                }}
+                className="text-lg hover:scale-125 transition-transform cursor-pointer p-0.5"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {showMenu && (
+          <div className={cn(
+            "absolute z-50 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[140px]",
+            "right-0 bottom-full mb-1"
+          )}>
+            {onReply && (
+              <button
+                onClick={() => { onReply(); setShowMenu(false); }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+              >
+                <Reply className="w-3.5 h-3.5" />
+                Reply
+              </button>
+            )}
+            {isMine && message.message_type === "text" && (
+              <button
+                onClick={() => { setEditing(true); setShowMenu(false); }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Edit
+              </button>
+            )}
+            {message.content && (
+              <button
+                onClick={handleCopy}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                Copy
+              </button>
+            )}
+            <button
+              onClick={() => { onPin?.(message.id); setShowMenu(false); }}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+            >
+              <Pin className="w-3.5 h-3.5" />
+              Pin
+            </button>
+            {isMine && (
+              <button
+                onClick={() => { onDelete?.(message.id); setShowMenu(false); }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer text-left"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Action icons - opposite side of bubble */}
+      <div className="flex-shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity self-center">
+        <button
+          onClick={() => { setShowReactions(!showReactions); setShowMenu(false); }}
+          className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+          title="React"
+        >
+          <SmilePlus className="w-6 h-6" />
+        </button>
+        <button
+          onClick={() => { setShowMenu(!showMenu); setShowReactions(false); }}
+          className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+          title="More"
+        >
+          <MoreHorizontal className="w-6 h-6" />
+        </button>
       </div>
     </div>
   );

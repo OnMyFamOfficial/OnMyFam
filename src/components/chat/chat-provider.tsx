@@ -82,13 +82,25 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     // Get all participants for these conversations
     const { data: allParticipants } = await supabase
       .from("conversation_participants")
-      .select("*, profile:profiles(*)")
+      .select("*")
       .in("conversation_id", convoIds);
 
+    // Get unique user IDs and fetch their profiles
+    const userIds = [...new Set((allParticipants || []).map((p) => p.user_id))];
+    const { data: profilesData } = userIds.length > 0
+      ? await supabase.from("profiles").select("*").in("id", userIds)
+      : { data: [] };
+
+    const profileMap = new Map<string, Profile>();
+    for (const p of (profilesData || []) as Profile[]) {
+      profileMap.set(p.id, p);
+    }
+
     const participantsByConvo = new Map<string, (ConversationParticipant & { profile: Profile })[]>();
-    for (const p of (allParticipants || []) as (ConversationParticipant & { profile: Profile })[]) {
+    for (const p of (allParticipants || []) as ConversationParticipant[]) {
+      const profile = profileMap.get(p.user_id) || { id: p.user_id, display_name: "Unknown", avatar_url: null } as Profile;
       const list = participantsByConvo.get(p.conversation_id) || [];
-      list.push(p);
+      list.push({ ...p, profile });
       participantsByConvo.set(p.conversation_id, list);
     }
 
@@ -270,7 +282,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [user, currentFamily, fetchConversations]);
 
   const createTestChat = useCallback(async (): Promise<string | null> => {
-    if (!user || !currentFamily) return null;
+    if (!user) {
+      console.error("[TestChat] No user");
+      return null;
+    }
+    if (!currentFamily) {
+      console.error("[TestChat] No currentFamily");
+      alert("No family found. Go to the Family page and create one first, then come back.");
+      return null;
+    }
+
+    console.log("[TestChat] Creating in family:", currentFamily.id, currentFamily.name);
 
     const { data: convo, error: convoError } = await supabase
       .from("conversations")

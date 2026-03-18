@@ -29,18 +29,48 @@ export default function DiscussionDetailPage() {
     const [discRes, repliesRes] = await Promise.all([
       supabase
         .from("discussions")
-        .select("*, author:profiles!discussions_author_id_fkey(*)")
+        .select("*")
         .eq("id", id)
         .single(),
       supabase
         .from("discussion_replies")
-        .select("*, author:profiles!discussion_replies_author_id_fkey(*)")
+        .select("*")
         .eq("discussion_id", id)
         .order("created_at", { ascending: true }),
     ]);
 
-    setDiscussion(discRes.data as FullDiscussion);
-    setReplies((repliesRes.data as FullReply[]) || []);
+    if (!discRes.data) {
+      setLoading(false);
+      return;
+    }
+
+    // Fetch author profiles separately
+    const authorIds = new Set<string>();
+    authorIds.add(discRes.data.author_id);
+    for (const r of repliesRes.data || []) {
+      authorIds.add((r as DiscussionReply).author_id);
+    }
+
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("id", [...authorIds]);
+
+    const profileMap = new Map<string, Profile>();
+    for (const p of (profiles || []) as Profile[]) {
+      profileMap.set(p.id, p);
+    }
+
+    setDiscussion({
+      ...discRes.data,
+      author: profileMap.get(discRes.data.author_id),
+    } as FullDiscussion);
+    setReplies(
+      ((repliesRes.data || []) as DiscussionReply[]).map((r) => ({
+        ...r,
+        author: profileMap.get(r.author_id),
+      })) as FullReply[]
+    );
     setLoading(false);
   }
 

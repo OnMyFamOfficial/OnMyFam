@@ -24,7 +24,7 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-3 py-3 border-b border-[var(--border)]">
+      <div className="px-3 py-3 border-b border-[var(--border)] dark:bg-black">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-base">Messages</h3>
           <button
@@ -35,7 +35,7 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
             <Plus className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex items-center gap-2 bg-[var(--background)] border border-[var(--input)] rounded-lg px-2.5 py-1.5">
+        <div className="flex items-center gap-2 bg-[var(--background)] dark:!bg-[#38394d] border border-[var(--input)] rounded-lg px-2.5 py-1.5">
           <Search className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
           <input
             type="text"
@@ -48,7 +48,7 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto p-1.5 [scrollbar-width:thin]">
+      <div className="flex-1 overflow-y-auto p-1.5 [scrollbar-width:thin] chat-gradient-down">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-[var(--muted-foreground)]">
             <Users className="w-8 h-8 mb-2 opacity-50" />

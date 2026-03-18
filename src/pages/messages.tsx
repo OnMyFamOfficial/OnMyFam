@@ -33,7 +33,7 @@ export default function MessagesPage() {
       {/* Desktop: two-column layout */}
       <div className="hidden lg:flex w-full">
         {/* Left: conversation list */}
-        <div className="w-80 border-r border-[var(--border)] flex-shrink-0">
+        <div className="w-64 border-r border-[var(--border)] flex-shrink-0">
           <ConversationList />
         </div>
 

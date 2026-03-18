@@ -33,12 +33,35 @@ export default function DiscussionsPage() {
 
     const { data } = await supabase
       .from("discussions")
-      .select("*, author:profiles!discussions_author_id_fkey(*)")
+      .select("*")
       .eq("family_id", currentFamily.id)
       .order("is_pinned", { ascending: false })
       .order("updated_at", { ascending: false });
 
-    setDiscussions((data as FullDiscussion[]) || []);
+    if (!data || data.length === 0) {
+      setDiscussions([]);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch author profiles
+    const authorIds = [...new Set(data.map((d) => d.author_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("id", authorIds);
+
+    const profileMap = new Map<string, Profile>();
+    for (const p of (profiles || []) as Profile[]) {
+      profileMap.set(p.id, p);
+    }
+
+    setDiscussions(
+      data.map((d) => ({
+        ...d,
+        author: profileMap.get(d.author_id),
+      })) as FullDiscussion[]
+    );
     setLoading(false);
   }
 

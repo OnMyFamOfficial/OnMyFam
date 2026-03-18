@@ -54,9 +54,9 @@
 .dark {
   --background: hsl(220, 20%, 8%);
   --foreground: hsl(40, 15%, 93%);
-  --card: #0f0f0f;
+  --card: #000000;
   --card-foreground: hsl(40, 15%, 93%);
-  --popover: #0f0f0f;
+  --popover: #000000;
   --popover-foreground: hsl(40, 15%, 93%);
   --primary: hsl(38, 65%, 55%);
   --primary-foreground: hsl(220, 20%, 8%);
@@ -72,18 +72,58 @@
   --input: hsl(220, 15%, 20%);
   --ring: hsl(38, 65%, 55%);
 
-  --sidebar-background: #0f0f0f;
+  --sidebar-background: #000000;
   --sidebar-foreground: hsl(40, 15%, 90%);
   --sidebar-border: hsl(220, 15%, 15%);
   --sidebar-accent: hsl(38, 65%, 55%);
   --sidebar-muted: hsl(220, 10%, 45%);
 
-  --header-background: #0f0f0f;
+  --header-background: #000000;
   --cover-surround: #000000;
 }
 
 * {
   border-color: var(--border);
+}
+
+/* Dark mode chat gradients */
+.dark .chat-gradient-down {
+  background: linear-gradient(to bottom, #000000, var(--background));
+}
+.dark .chat-gradient-chat {
+  background: linear-gradient(to bottom, var(--background), #38394d);
+}
+
+/* Dark mode chat scrollbar */
+.dark .chat-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.dark .chat-scrollbar::-webkit-scrollbar-track {
+  background: var(--background);
+}
+.dark .chat-scrollbar::-webkit-scrollbar-thumb {
+  background: #38394d;
+  border-radius: 4px;
+}
+.dark .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4a4b63;
+}
+
+/* Inset scrollbar inside textarea so it doesn't overlap the border */
+.dark textarea.chat-scrollbar {
+  scrollbar-gutter: stable;
+  overflow-y: overlay;
+}
+.dark textarea.chat-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.dark textarea.chat-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
+}
+.dark textarea.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: #38394d;
+  border-radius: 3px;
 }
 
 button, a, [role="button"], input[type="submit"], input[type="button"], select, label[for] {

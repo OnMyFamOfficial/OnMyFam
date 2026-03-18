@@ -6,6 +6,7 @@ import { ChatHeader } from "./chat-header";
 import { MessageBubble } from "./message-bubble";
 import { MessageInput } from "./message-input";
 import { TypingIndicator } from "./typing-indicator";
+import { ChatShortcuts } from "./chat-shortcuts";
 import type { Message, Profile } from "@/lib/types";
 
 interface ChatWindowProps {
@@ -41,7 +42,7 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
   const fetchMessages = useCallback(async (before?: string) => {
     let query = supabase
       .from("messages")
-      .select("*, sender:profiles!messages_sender_id_fkey(*), reply_to:messages!messages_reply_to_id_fkey(*, sender:profiles!messages_sender_id_fkey(*))")
+      .select("*")
       .eq("conversation_id", conversation.id)
       .order("created_at", { ascending: false })
       .limit(PAGE_SIZE);
@@ -94,22 +95,12 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
           table: "messages",
           filter: `conversation_id=eq.${conversation.id}`,
         },
-        async (payload) => {
+        (payload) => {
           const newMsg = payload.new as Message;
-          // Fetch with sender profile
-          const { data } = await supabase
-            .from("messages")
-            .select("*, sender:profiles!messages_sender_id_fkey(*), reply_to:messages!messages_reply_to_id_fkey(*, sender:profiles!messages_sender_id_fkey(*))")
-            .eq("id", newMsg.id)
-            .single();
-
-          if (data) {
-            setMessages((prev) => {
-              // Avoid duplicates
-              if (prev.some((m) => m.id === data.id)) return prev;
-              return [...prev, data as unknown as Message];
-            });
-          }
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
 
           // Auto mark as read since we're viewing this conversation
           markAsRead(conversation.id);
@@ -194,69 +185,89 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <ChatHeader
-        conversation={conversation}
-        onBack={onBack}
-        onAudioCall={onStartCall ? () => onStartCall("audio") : undefined}
-        onVideoCall={onStartCall ? () => onStartCall("video") : undefined}
-      />
+    <div className="flex h-full">
+      {/* Main chat column */}
+      <div className="flex flex-col flex-1 min-w-0">
+        <ChatHeader
+          conversation={conversation}
+          onBack={onBack}
+          onAudioCall={onStartCall ? () => onStartCall("audio") : undefined}
+          onVideoCall={onStartCall ? () => onStartCall("video") : undefined}
+        />
 
-      {/* Messages area */}
-      <div
-        ref={containerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-3 py-2 [scrollbar-width:thin]"
-      >
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <span className="text-sm text-[var(--muted-foreground)]">Loading messages...</span>
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)]">
-            <p className="text-sm">No messages yet</p>
-            <p className="text-xs mt-1">Send the first message!</p>
-          </div>
-        ) : (
-          <>
-            {hasMore && (
-              <div className="text-center py-2">
-                <button
-                  onClick={() => fetchMessages(messages[0].created_at)}
-                  className="text-xs text-gold-500 hover:underline cursor-pointer"
-                >
-                  Load older messages
-                </button>
-              </div>
-            )}
-            {messages.map((msg, i) => {
-              const prevMsg = i > 0 ? messages[i - 1] : null;
-              const showAvatar = !prevMsg || prevMsg.sender_id !== msg.sender_id ||
-                msg.message_type === "system";
-              return (
-                <MessageBubble
-                  key={msg.id}
-                  message={msg}
-                  isMine={msg.sender_id === user?.id}
-                  senderProfile={msg.sender as Profile || profileMap.get(msg.sender_id) || null}
-                  showAvatar={showAvatar}
-                  onReply={() => setReplyTo(msg)}
-                />
-              );
-            })}
-            <div ref={messagesEndRef} />
-          </>
-        )}
+        {/* Messages area */}
+        <div
+          ref={containerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-3 py-2 chat-gradient-chat chat-scrollbar"
+        >
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <span className="text-sm text-[var(--muted-foreground)]">Loading messages...</span>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)]">
+              <p className="text-sm">No messages yet</p>
+              <p className="text-xs mt-1">Send the first message!</p>
+            </div>
+          ) : (
+            <>
+              {hasMore && (
+                <div className="text-center py-2">
+                  <button
+                    onClick={() => fetchMessages(messages[0].created_at)}
+                    className="text-xs text-gold-500 hover:underline cursor-pointer"
+                  >
+                    Load older messages
+                  </button>
+                </div>
+              )}
+              {messages.map((msg, i) => {
+                const prevMsg = i > 0 ? messages[i - 1] : null;
+                const showAvatar = !prevMsg || prevMsg.sender_id !== msg.sender_id ||
+                  msg.message_type === "system";
+                return (
+                  <MessageBubble
+                    key={msg.id}
+                    message={msg}
+                    isMine={msg.sender_id === user?.id}
+                    senderProfile={msg.sender as Profile || profileMap.get(msg.sender_id) || null}
+                    showAvatar={showAvatar}
+                    onReply={() => setReplyTo(msg)}
+                    onEdit={async (messageId, newContent) => {
+                      await supabase.from("messages").update({ content: newContent }).eq("id", messageId);
+                      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, content: newContent } : m));
+                    }}
+                    onDelete={async (messageId) => {
+                      await supabase.from("messages").update({ is_deleted: true, content: null }).eq("id", messageId);
+                      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, is_deleted: true, content: null } : m));
+                    }}
+                    onPin={(messageId) => {
+                      console.log("Pin message:", messageId);
+                    }}
+                    onReact={(messageId, emoji) => {
+                      console.log("React to message:", messageId, emoji);
+                    }}
+                  />
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </>
+          )}
 
-        <TypingIndicator names={typingUsers} />
+          <TypingIndicator names={typingUsers} />
+        </div>
+
+        <MessageInput
+          conversationId={conversation.id}
+          replyTo={replyTo}
+          onClearReply={() => setReplyTo(null)}
+          onTyping={handleTyping}
+        />
       </div>
 
-      <MessageInput
-        conversationId={conversation.id}
-        replyTo={replyTo}
-        onClearReply={() => setReplyTo(null)}
-        onTyping={handleTyping}
-      />
+      {/* Pinned shortcuts column */}
+      <ChatShortcuts />
     </div>
   );
 }

@@ -33,10 +33,12 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
   async function refreshFamilies() {
     if (!user) return;
 
-    const { data: memberships } = await supabase
+    const { data: memberships, error: memErr } = await supabase
       .from("family_members")
       .select("family_id")
       .eq("user_id", user.id);
+
+    console.log("[useFamily] memberships:", memberships, "error:", memErr);
 
     if (!memberships || memberships.length === 0) {
       setFamilies([]);
