@@ -129,7 +129,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
       </div>
 
       {/* Bubble + time */}
-      <div className="max-w-[65%] min-w-0 relative" ref={menuRef}>
+      <div className="max-w-[90%] min-w-0 relative" ref={menuRef}>
         {/* Pin indicator */}
         {isPinned && (
           <div className={cn("flex items-center gap-1 text-[10px] text-gold-500 mb-0.5 px-1", isMine ? "justify-end" : "justify-start")}>
