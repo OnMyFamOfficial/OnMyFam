@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus } from "lucide-react";
+import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
@@ -16,7 +16,7 @@ interface SearchResult {
 
 export default function FamilyPage() {
   const { user } = useAuth();
-  const { currentFamily, members, refreshFamilies } = useFamily();
+  const { currentFamily, members, myMembership, refreshFamilies } = useFamily();
   const [creating, setCreating] = useState(false);
   const [searching, setSearching] = useState(false);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
@@ -138,6 +138,20 @@ export default function FamilyPage() {
       await refreshFamilies();
     }
     setJoining(null);
+  }
+
+  const isAdmin = myMembership?.role === "admin" || myMembership?.role === "moderator";
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
+
+  async function handlePrivacyChange(level: string) {
+    if (!currentFamily) return;
+    setSavingPrivacy(true);
+    await supabase
+      .from("families")
+      .update({ privacy_level: level })
+      .eq("id", currentFamily.id);
+    await refreshFamilies();
+    setSavingPrivacy(false);
   }
 
   // No family yet
@@ -370,6 +384,44 @@ export default function FamilyPage() {
           </div>
         )}
       </div>
+
+      {/* Family Settings - admin only */}
+      {isAdmin && (
+        <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Settings className="w-4 h-4 text-[var(--muted-foreground)]" />
+            <h3 className="font-semibold">Family Settings</h3>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Who can find and join this family?</label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              {[
+                { value: "public", label: "Public", desc: "Anyone can find and join", icon: Globe, color: "text-green-400" },
+                { value: "invite_only", label: "Invite Only", desc: "Searchable, but need an invite to join", icon: Mail, color: "text-gold-500" },
+                { value: "private", label: "Private", desc: "Hidden from search, invite link only", icon: Lock, color: "text-red-400" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handlePrivacyChange(opt.value)}
+                  disabled={savingPrivacy}
+                  className={`flex-1 flex items-center gap-3 p-3 rounded-lg border transition-colors text-left cursor-pointer ${
+                    currentFamily.privacy_level === opt.value
+                      ? "border-gold-500 bg-gold-500/10"
+                      : "border-[var(--border)] hover:border-[var(--muted-foreground)]"
+                  }`}
+                >
+                  <opt.icon className={`w-5 h-5 flex-shrink-0 ${opt.color}`} />
+                  <div>
+                    <p className="text-sm font-medium">{opt.label}</p>
+                    <p className="text-[10px] text-[var(--muted-foreground)]">{opt.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Members list */}
       <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
