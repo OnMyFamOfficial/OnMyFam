@@ -203,7 +203,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
             onTouchMove={handleTouchEnd}
-            onContextMenu={(e) => e.preventDefault()}
+            onContextMenu={(e) => { if (window.innerWidth < 1024) e.preventDefault(); }}
             className={cn(
               "px-3 py-1.5 rounded-2xl break-words shadow-md dark:shadow-black/40 lg:select-auto select-none",
               isEmojiOnly(message.content)
