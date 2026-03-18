@@ -60,7 +60,16 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
     if (before) {
       setMessages((prev) => [...fetched, ...prev]);
     } else {
-      setMessages(fetched);
+      setMessages((prev) => {
+        if (prev.length === 0) return fetched;
+        // Merge: keep existing, add any new ones
+        const existingIds = new Set(prev.map((m) => m.id));
+        const newOnes = fetched.filter((m) => !existingIds.has(m.id));
+        if (newOnes.length === 0) return prev;
+        return [...prev, ...newOnes].sort((a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+      });
     }
 
     setHasMore(data.length === PAGE_SIZE);
@@ -83,10 +92,24 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
     }
   }, [messages.length, loading]);
 
-  // Realtime subscription for new messages
+  // Realtime: use broadcast for reliable cross-user delivery + postgres_changes as backup
   useEffect(() => {
     const channel = supabase
       .channel(`msgs-${conversation.id}`)
+      .on("broadcast", { event: "new-message" }, (payload) => {
+        const newMsg = payload.payload as Message;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
+        markAsRead(conversation.id);
+      })
+      .on("broadcast", { event: "update-message" }, (payload) => {
+        const updated = payload.payload as Message;
+        setMessages((prev) =>
+          prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
+        );
+      })
       .on(
         "postgres_changes",
         {
@@ -101,34 +124,23 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
-
-          // Auto mark as read since we're viewing this conversation
           markAsRead(conversation.id);
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${conversation.id}`,
-        },
-        (payload) => {
-          const updated = payload.new as Message;
-          setMessages((prev) =>
-            prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
-          );
         }
       )
       .subscribe();
 
     channelRef.current = channel;
 
+    // Poll every 5 seconds as fallback for missed realtime events
+    const pollInterval = setInterval(() => {
+      fetchMessages();
+    }, 5000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
-  }, [conversation.id, markAsRead]);
+  }, [conversation.id, markAsRead, fetchMessages]);
 
   // Typing indicators via broadcast
   useEffect(() => {
@@ -236,11 +248,19 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
                     onReply={() => setReplyTo(msg)}
                     onEdit={async (messageId, newContent) => {
                       await supabase.from("messages").update({ content: newContent }).eq("id", messageId);
-                      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, content: newContent } : m));
+                      const updated = { ...msg, content: newContent };
+                      setMessages((prev) => prev.map((m) => m.id === messageId ? updated : m));
+                      if (channelRef.current) {
+                        channelRef.current.send({ type: "broadcast", event: "update-message", payload: updated });
+                      }
                     }}
                     onDelete={async (messageId) => {
                       await supabase.from("messages").update({ is_deleted: true, content: null }).eq("id", messageId);
-                      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, is_deleted: true, content: null } : m));
+                      const updated = { ...msg, is_deleted: true, content: null };
+                      setMessages((prev) => prev.map((m) => m.id === messageId ? updated : m));
+                      if (channelRef.current) {
+                        channelRef.current.send({ type: "broadcast", event: "update-message", payload: updated });
+                      }
                     }}
                     onPin={(messageId) => {
                       console.log("Pin message:", messageId);

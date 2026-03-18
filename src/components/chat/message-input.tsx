@@ -36,7 +36,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
   const sendMessage = useCallback(async (content: string | null, type: string = "text", mediaUrl?: string, metadata?: Record<string, unknown>) => {
     if (!user) return;
 
-    await supabase.from("messages").insert({
+    const { data } = await supabase.from("messages").insert({
       conversation_id: conversationId,
       sender_id: user.id,
       content: type === "text" ? content : (content || null),
@@ -44,7 +44,17 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
       media_url: mediaUrl || null,
       media_metadata: metadata || null,
       reply_to_id: replyTo?.id || null,
-    });
+    }).select().single();
+
+    // Broadcast to other users for reliable delivery
+    if (data) {
+      const channel = supabase.channel(`msgs-${conversationId}`);
+      await channel.send({
+        type: "broadcast",
+        event: "new-message",
+        payload: data,
+      });
+    }
 
     onClearReply();
   }, [user, conversationId, replyTo, onClearReply]);

@@ -233,52 +233,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const createGroupChat = useCallback(async (name: string, memberIds: string[]): Promise<string | null> => {
     if (!user || !currentFamily) return null;
 
-    // Create the conversation
-    const { data: convo, error: convoError } = await supabase
-      .from("conversations")
-      .insert({
-        family_id: currentFamily.id,
-        type: "group",
-        name,
-        created_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (convoError || !convo) {
-      console.error("Failed to create group chat:", convoError);
-      return null;
-    }
-
-    // Add all members (including creator)
-    const allMembers = [user.id, ...memberIds.filter((id) => id !== user.id)];
-    const { error: partError } = await supabase
-      .from("conversation_participants")
-      .insert(
-        allMembers.map((uid) => ({
-          conversation_id: convo.id,
-          user_id: uid,
-          role: uid === user.id ? "admin" : "member",
-        }))
-      );
-
-    if (partError) {
-      console.error("Failed to add participants:", partError);
-      return null;
-    }
-
-    // Send system message
-    await supabase.from("messages").insert({
-      conversation_id: convo.id,
-      sender_id: user.id,
-      content: `${name} was created`,
-      message_type: "system",
+    const { data, error } = await supabase.rpc("create_group_chat", {
+      p_family_id: currentFamily.id,
+      p_name: name,
+      p_member_ids: memberIds,
     });
 
+    if (error || !data) {
+      console.error("Failed to create group chat:", error);
+      return null;
+    }
+
+    const conversationId = data as string;
     await fetchConversations();
-    setActiveConversationId(convo.id);
+    setActiveConversationId(conversationId);
     setChatPanelOpen(true);
-    return convo.id;
+    return conversationId;
   }, [user, currentFamily, fetchConversations]);
 
   const createTestChat = useCallback(async (): Promise<string | null> => {
