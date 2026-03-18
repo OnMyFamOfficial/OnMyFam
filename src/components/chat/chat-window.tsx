@@ -272,9 +272,9 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full overflow-hidden">
       {/* Main chat column */}
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0 overflow-x-hidden">
         <ChatHeader
           conversation={conversation}
           onBack={onBack}
@@ -295,8 +295,7 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
                 scrollToMessage(currentPin.id);
                 setCurrentPinIndex((prev) => (prev + 1) % pinnedMessages.length);
               }}
-              className="w-full flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] bg-gold-500/5 hover:bg-gold-500/10 transition-colors cursor-pointer text-left"
-              style={{ maxWidth: "100%", overflow: "hidden" }}
+              className="w-full flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] bg-gold-500/5 hover:bg-gold-500/10 transition-colors cursor-pointer text-left overflow-hidden"
             >
               <Pin className="w-3.5 h-3.5 text-gold-500 rotate-45 flex-shrink-0" />
               <div className="flex-1 overflow-hidden" style={{ minWidth: 0 }}>

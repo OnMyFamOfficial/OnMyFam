@@ -29,16 +29,16 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-6rem)] -m-4 lg:-m-6 flex">
+    <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-6rem)] -m-4 lg:-m-6 flex overflow-hidden">
       {/* Desktop: two-column layout */}
-      <div className="hidden lg:flex w-full">
+      <div className="hidden lg:flex w-full overflow-hidden">
         {/* Left: conversation list */}
         <div className="w-64 border-r border-[var(--border)] flex-shrink-0">
           <ConversationList />
         </div>
 
         {/* Right: active chat */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0 overflow-hidden">
           {activeConversation ? (
             <ChatWindow
               conversation={activeConversation}
