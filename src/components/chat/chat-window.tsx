@@ -34,12 +34,13 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
   // Load pinned messages from DB on conversation change
   useEffect(() => {
     async function loadPins() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("messages")
-        .select("id")
+        .select("id, pinned_at")
         .eq("conversation_id", conversation.id)
         .not("pinned_at", "is", null);
-      if (data) {
+      console.log("[Pins] loaded:", data, "error:", error);
+      if (data && data.length > 0) {
         setPinnedIds(new Set(data.map((m) => m.id)));
       }
     }
@@ -58,7 +59,7 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
     }
   }
 
-  // Fetch messages
+  // Fetch messages - initial load or load older
   const fetchMessages = useCallback(async (before?: string) => {
     let query = supabase
       .from("messages")
@@ -78,21 +79,33 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
     const fetched = (data as unknown as Message[]).reverse();
 
     if (before) {
-      setMessages((prev) => [...fetched, ...prev]);
-    } else {
       setMessages((prev) => {
-        if (prev.length === 0) return fetched;
-        // Merge: keep existing, add any new ones
         const existingIds = new Set(prev.map((m) => m.id));
         const newOnes = fetched.filter((m) => !existingIds.has(m.id));
-        if (newOnes.length === 0) return prev;
-        return [...prev, ...newOnes].sort((a, b) =>
+        return [...newOnes, ...prev];
+      });
+      setHasMore(data.length === PAGE_SIZE);
+    } else {
+      setMessages((prev) => {
+        if (prev.length === 0) {
+          setHasMore(data.length === PAGE_SIZE);
+          return fetched;
+        }
+        // Poll merge: combine without duplicates
+        const allById = new Map<string, Message>();
+        for (const m of prev) allById.set(m.id, m);
+        for (const m of fetched) {
+          if (!allById.has(m.id)) allById.set(m.id, m);
+        }
+        const merged = [...allById.values()].sort((a, b) =>
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
+        // Only update if something actually changed
+        if (merged.length === prev.length) return prev;
+        return merged;
       });
     }
 
-    setHasMore(data.length === PAGE_SIZE);
     setLoading(false);
   }, [conversation.id]);
 
@@ -177,10 +190,10 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
 
     channelRef.current = channel;
 
-    // Poll every 5 seconds as fallback for missed realtime events
+    // Poll every 10 seconds as fallback for missed realtime events
     const pollInterval = setInterval(() => {
       fetchMessages();
-    }, 5000);
+    }, 10000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -341,9 +354,10 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
                     }}
                     onPin={async (messageId) => {
                       const isPinned = pinnedIds.has(messageId);
-                      await supabase.from("messages").update({
+                      const { error: pinError } = await supabase.from("messages").update({
                         pinned_at: isPinned ? null : new Date().toISOString(),
                       }).eq("id", messageId);
+                      console.log("[Pin] save:", messageId, isPinned ? "unpin" : "pin", "error:", pinError);
                       setPinnedIds((prev) => {
                         const next = new Set(prev);
                         if (isPinned) next.delete(messageId);
