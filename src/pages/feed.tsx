@@ -218,7 +218,7 @@ export default function FeedPage() {
       <div className="relative">
         <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
           <div className="flex gap-3 items-center">
-            <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+            <div className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
               {profile?.avatar_url ? (
                 <img
                   src={profile.avatar_url}
@@ -317,7 +317,7 @@ export default function FeedPage() {
             <div className="p-5">
               {/* Author row */}
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {profile?.avatar_url ? (
                     <img
                       src={profile.avatar_url}
@@ -422,7 +422,7 @@ export default function FeedPage() {
               <button
                 onClick={handlePost}
                 disabled={posting || (!postText.trim() && postFiles.length === 0)}
-                className="px-5 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                className="px-5 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 flex items-center gap-1.5"
               >
                 <Send className="w-4 h-4" />
                 {posting ? "Posting..." : "Post"}
@@ -487,7 +487,7 @@ export default function FeedPage() {
             >
               {/* Author */}
               <div className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden">
+                <div className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
                   {post.author?.avatar_url ? (
                     <img
                       src={post.author.avatar_url}
@@ -630,7 +630,7 @@ export default function FeedPage() {
                     )
                     .map((comment) => (
                       <div key={comment.id} className="flex gap-2 mt-3">
-                        <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
                           {comment.author?.avatar_url ? (
                             <img
                               src={comment.author.avatar_url}
@@ -662,7 +662,7 @@ export default function FeedPage() {
 
                   {/* Comment input */}
                   <div className="flex gap-2 mt-3">
-                    <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
                       <span className="text-xs font-medium text-gold-500">
                         {profile?.display_name?.charAt(0).toUpperCase() || "?"}
                       </span>

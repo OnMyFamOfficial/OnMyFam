@@ -41,7 +41,7 @@ export function ConversationItem({ conversation, isActive, unreadCount, onClick 
     >
       {/* Avatar */}
       <div className="relative flex-shrink-0">
-        <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden">
+        <div className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
           {conversation.displayAvatar ? (
             <img
               src={conversation.displayAvatar}

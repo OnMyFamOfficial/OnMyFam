@@ -86,7 +86,7 @@ export function GroupCreateModal({ onClose }: GroupCreateModalProps) {
                       onClick={() => toggleMember(m.user_id)}
                       className="w-full flex items-center gap-3 px-3 py-2 hover:bg-[var(--accent)] transition-colors text-left cursor-pointer"
                     >
-                      <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
                         {m.profile?.avatar_url ? (
                           <img src={m.profile.avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : (
@@ -114,7 +114,7 @@ export function GroupCreateModal({ onClose }: GroupCreateModalProps) {
           <button
             onClick={handleCreate}
             disabled={!name.trim() || selected.size < 1 || creating}
-            className="w-full py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="w-full py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
           >
             {creating ? "Creating..." : "Create Group Chat"}
           </button>

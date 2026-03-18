@@ -63,7 +63,7 @@ export default function LandingPage() {
           </Link>
           <Link
             to="/signup"
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-gold-500 text-white hover:bg-gold-600 transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors"
           >
             Get Started
           </Link>
@@ -81,7 +81,7 @@ export default function LandingPage() {
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
             to="/signup"
-            className="px-8 py-3 text-base font-medium rounded-lg bg-gold-500 text-white hover:bg-gold-600 transition-colors shadow-lg shadow-gold-500/20"
+            className="px-8 py-3 text-base font-medium rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors shadow-lg shadow-gold-500/20"
           >
             Start Your Family Space
           </Link>
@@ -111,7 +111,7 @@ export default function LandingPage() {
                 key={feature.title}
                 className="p-6 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-gold-500/30 transition-colors"
               >
-                <div className="w-12 h-12 rounded-lg bg-gold-500/10 flex items-center justify-center mb-4">
+                <div className="w-12 h-12 rounded-md bg-gold-500/10 flex items-center justify-center mb-4">
                   <feature.icon className="w-6 h-6 text-gold-500" />
                 </div>
                 <h3 className="text-lg font-semibold text-[var(--foreground)]">
@@ -136,7 +136,7 @@ export default function LandingPage() {
         </p>
         <Link
           to="/signup"
-          className="mt-8 inline-block px-8 py-3 text-base font-medium rounded-lg bg-gold-500 text-white hover:bg-gold-600 transition-colors shadow-lg shadow-gold-500/20"
+          className="mt-8 inline-block px-8 py-3 text-base font-medium rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors shadow-lg shadow-gold-500/20"
         >
           Get Started Free
         </Link>

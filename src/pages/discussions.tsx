@@ -110,7 +110,7 @@ export default function DiscussionsPage() {
         </div>
         <button
           onClick={() => setCreating(true)}
-          className="px-4 py-2 rounded-lg bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2"
+          className="px-4 py-2 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           New Thread
@@ -158,7 +158,7 @@ export default function DiscussionsPage() {
               disabled={
                 saving || !form.title.trim() || !form.content.trim()
               }
-              className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
             >
               {saving ? "Posting..." : "Post Discussion"}
             </button>
@@ -196,7 +196,7 @@ export default function DiscussionsPage() {
               className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4 cursor-pointer hover:border-gold-500/30 transition-colors"
             >
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {disc.author?.avatar_url ? (
                     <img
                       src={disc.author.avatar_url}

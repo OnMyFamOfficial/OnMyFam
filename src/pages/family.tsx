@@ -183,7 +183,7 @@ export default function FamilyPage() {
             <div className="flex gap-3 justify-center mt-6">
               <button
                 onClick={() => setCreating(true)}
-                className="px-6 py-2.5 rounded-lg bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2"
+                className="px-6 py-2.5 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Create Family
@@ -233,7 +233,7 @@ export default function FamilyPage() {
               <button
                 onClick={handleCreateFamily}
                 disabled={saving || !form.name.trim()}
-                className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50"
+                className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50"
               >
                 {saving ? "Creating..." : "Create Family"}
               </button>
@@ -265,7 +265,7 @@ export default function FamilyPage() {
               <button
                 onClick={handleSearch}
                 disabled={searchLoading || !searchQuery.trim()}
-                className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50"
+                className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50"
               >
                 {searchLoading ? "Searching..." : "Search"}
               </button>
@@ -276,7 +276,7 @@ export default function FamilyPage() {
               <div className="space-y-2">
                 {searchResults.map((fam) => (
                   <div key={fam.id} className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border)] hover:border-gold-500/30 transition-colors">
-                    <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center flex-shrink-0">
                       <Users className="w-5 h-5 text-gold-500" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -298,7 +298,7 @@ export default function FamilyPage() {
                       <button
                         onClick={() => handleJoinFamily(fam.id)}
                         disabled={joining === fam.id}
-                        className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 flex-shrink-0 flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-md bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 flex-shrink-0 flex items-center gap-1"
                       >
                         <UserPlus className="w-3.5 h-3.5" />
                         {joining === fam.id ? "Joining..." : "Join"}
@@ -364,7 +364,7 @@ export default function FamilyPage() {
           {!inviteToken ? (
             <button
               onClick={handleCreateInvite}
-              className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors flex items-center gap-2"
+              className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Generate Link
@@ -372,7 +372,7 @@ export default function FamilyPage() {
           ) : (
             <button
               onClick={copyInviteLink}
-              className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors flex items-center gap-2"
+              className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors flex items-center gap-2"
             >
               {copied ? (
                 <>
@@ -444,7 +444,7 @@ export default function FamilyPage() {
                 key={member.id}
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--accent)] transition-colors"
               >
-                <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden">
+                <div className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
                   {p.avatar_url ? (
                     <img
                       src={p.avatar_url}

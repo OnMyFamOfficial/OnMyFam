@@ -176,7 +176,7 @@ export function FriendsPanel({ showUpcoming = false }: { showUpcoming?: boolean 
             {/* Avatar + name */}
             <div className="px-5 pb-5">
               <div className="-mt-10 mb-3">
-                <div className="w-20 h-20 rounded-full bg-[var(--card)] border-4 border-[var(--card)] flex items-center justify-center overflow-hidden shadow-lg">
+                <div className="w-20 h-20 rounded-md bg-[var(--card)] border-4 border-[var(--card)] flex items-center justify-center overflow-hidden shadow-lg">
                   <div className="w-full h-full bg-gold-500/20 flex items-center justify-center">
                     <span className="text-2xl font-bold text-gold-500">
                       {profileModal.name.charAt(0).toUpperCase()}
@@ -321,7 +321,7 @@ export function FriendsPanel({ showUpcoming = false }: { showUpcoming?: boolean 
                       className="flex items-center gap-3 px-4 py-2 hover:bg-[var(--accent)] transition-colors cursor-pointer"
                       onClick={() => setProfileModal(pending)}
                     >
-                      <div className="w-8 h-8 rounded-full bg-gold-500/10 flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 rounded-md bg-gold-500/10 flex items-center justify-center flex-shrink-0">
                         <UserPlus className="w-4 h-4 text-gold-500/60" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -395,7 +395,7 @@ export function FriendsPanel({ showUpcoming = false }: { showUpcoming?: boolean 
                     title={member.isMe ? undefined : `Message ${member.profile.display_name}`}
                   >
                     <div className="relative flex-shrink-0">
-                      <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden">
+                      <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
                         {member.profile.avatar_url ? (
                           <img
                             src={member.profile.avatar_url}

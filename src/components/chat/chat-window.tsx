@@ -7,6 +7,7 @@ import { MessageBubble } from "./message-bubble";
 import { MessageInput } from "./message-input";
 import { TypingIndicator } from "./typing-indicator";
 import { ChatShortcuts } from "./chat-shortcuts";
+import { Pin } from "lucide-react";
 import type { Message, Profile } from "@/lib/types";
 
 interface ChatWindowProps {
@@ -25,6 +26,8 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
   const [hasMore, setHasMore] = useState(true);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [reactionsMap, setReactionsMap] = useState<Record<string, Record<string, number>>>({});
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -103,6 +106,14 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
           return [...prev, newMsg];
         });
         markAsRead(conversation.id);
+      })
+      .on("broadcast", { event: "reaction" }, (payload) => {
+        const { messageId, emoji } = payload.payload as { messageId: string; emoji: string };
+        setReactionsMap((prev) => {
+          const msgReactions = { ...(prev[messageId] || {}) };
+          msgReactions[emoji] = (msgReactions[emoji] || 0) + 1;
+          return { ...prev, [messageId]: msgReactions };
+        });
       })
       .on("broadcast", { event: "update-message" }, (payload) => {
         const updated = payload.payload as Message;
@@ -207,6 +218,24 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
           onVideoCall={onStartCall ? () => onStartCall("video") : undefined}
         />
 
+        {/* Pinned messages bar */}
+        {messages.filter((m) => pinnedIds.has(m.id)).length > 0 && (
+          <div className="border-b border-[var(--border)] bg-gold-500/5 px-3 py-1.5 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <Pin className="w-3.5 h-3.5 text-gold-500 rotate-45 flex-shrink-0" />
+            {messages.filter((m) => pinnedIds.has(m.id)).map((m) => (
+              <button
+                key={m.id}
+                onClick={() => {
+                  document.getElementById(`msg-${m.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+                className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] bg-[var(--accent)] px-2 py-1 rounded-lg truncate max-w-[200px] flex-shrink-0 cursor-pointer transition-colors"
+              >
+                {m.content?.slice(0, 40) || "Media"}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Messages area */}
         <div
           ref={containerRef}
@@ -239,8 +268,8 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
                 const showAvatar = !prevMsg || prevMsg.sender_id !== msg.sender_id ||
                   msg.message_type === "system";
                 return (
+                  <div key={msg.id} id={`msg-${msg.id}`}>
                   <MessageBubble
-                    key={msg.id}
                     message={msg}
                     isMine={msg.sender_id === user?.id}
                     senderProfile={msg.sender as Profile || profileMap.get(msg.sender_id) || null}
@@ -263,12 +292,31 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
                       }
                     }}
                     onPin={(messageId) => {
-                      console.log("Pin message:", messageId);
+                      setPinnedIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(messageId)) next.delete(messageId);
+                        else next.add(messageId);
+                        return next;
+                      });
                     }}
                     onReact={(messageId, emoji) => {
-                      console.log("React to message:", messageId, emoji);
+                      setReactionsMap((prev) => {
+                        const msgReactions = { ...(prev[messageId] || {}) };
+                        msgReactions[emoji] = (msgReactions[emoji] || 0) + 1;
+                        return { ...prev, [messageId]: msgReactions };
+                      });
+                      if (channelRef.current) {
+                        channelRef.current.send({
+                          type: "broadcast",
+                          event: "reaction",
+                          payload: { messageId, emoji },
+                        });
+                      }
                     }}
+                    reactions={reactionsMap[msg.id] ? Object.fromEntries(Object.entries(reactionsMap[msg.id]).map(([k, v]) => [k, Array(v).fill("")])) : undefined}
+                    isPinned={pinnedIds.has(msg.id)}
                   />
+                  </div>
                 );
               })}
               <div ref={messagesEndRef} />

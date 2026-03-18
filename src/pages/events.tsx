@@ -54,7 +54,7 @@ export default function EventsPage() {
         </div>
         <button
           onClick={() => navigate("/events/create")}
-          className="px-4 py-2 rounded-lg bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2"
+          className="px-4 py-2 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Create Event

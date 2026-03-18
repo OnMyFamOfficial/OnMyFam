@@ -152,7 +152,7 @@ export default function EventCreatePage() {
           <button
             type="submit"
             disabled={saving || !form.title.trim() || !form.starts_at}
-            className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50"
+            className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50"
           >
             {saving ? "Creating..." : "Create Event"}
           </button>

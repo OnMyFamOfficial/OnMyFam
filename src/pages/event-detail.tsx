@@ -203,7 +203,7 @@ export default function EventDetailPage() {
                 key={r.id}
                 className="flex items-center gap-2 bg-[var(--background)] rounded-full px-3 py-1"
               >
-                <div className="w-6 h-6 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden">
+                <div className="w-6 h-6 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
                   {r.user?.avatar_url ? (
                     <img
                       src={r.user.avatar_url}
@@ -234,7 +234,7 @@ export default function EventDetailPage() {
           ) : (
             messages.map((msg) => (
               <div key={msg.id} className="flex gap-2">
-                <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {msg.user?.avatar_url ? (
                     <img
                       src={msg.user.avatar_url}
@@ -280,7 +280,7 @@ export default function EventDetailPage() {
           <button
             onClick={sendMessage}
             disabled={!chatText.trim()}
-            className="px-3 py-2 rounded-lg bg-gold-500 text-white hover:bg-gold-600 disabled:opacity-50 transition-colors"
+            className="px-3 py-2 rounded-md bg-gold-500 text-white hover:bg-gold-600 disabled:opacity-50 transition-colors"
           >
             <Send className="w-4 h-4" />
           </button>

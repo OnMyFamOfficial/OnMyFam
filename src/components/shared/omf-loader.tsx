@@ -36,7 +36,7 @@ export function OmfLoader({ size = "md", className, text }: OmfLoaderProps) {
         />
         <div
           className={cn(
-            "rounded-full bg-gold-500/20 flex items-center justify-center animate-pulse",
+            "rounded-md bg-gold-500/20 flex items-center justify-center animate-pulse",
             sizeClasses[size]
           )}
           style={{ animationDuration: "2s" }}

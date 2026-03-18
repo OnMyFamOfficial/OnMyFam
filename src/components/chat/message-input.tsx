@@ -64,6 +64,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
     if (!trimmed) return;
     setText("");
     setShowEmoji(false);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
     await sendMessage(trimmed);
     textareaRef.current?.focus();
   }
@@ -244,7 +245,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
                 <button
                   onClick={handleModalSend}
                   disabled={uploading}
-                  className="p-1.5 rounded-lg bg-gold-500 text-white hover:bg-gold-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className="p-1.5 rounded-md bg-gold-500 text-white hover:bg-gold-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -280,7 +281,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
 
         {/* Emoji picker */}
         {showEmoji && (
-          <div className="flex items-center gap-1 px-3 py-2 border-b border-[var(--border)] border-t dark:border-t-[var(--background)]">
+          <div className="flex items-center gap-1 px-3 py-2 border-b border-[var(--border)] border-t dark:border-t-[var(--background)]" style={{ boxShadow: "0 -4px 12px rgba(0, 0, 0, 0.3)" }}>
             <button
               onClick={() => setShowEmoji(false)}
               className="p-0.5 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer flex-shrink-0"
@@ -335,20 +336,26 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
           <textarea
             ref={textareaRef}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              // Auto-grow
+              const el = e.target;
+              el.style.height = "auto";
+              el.style.height = Math.min(el.scrollHeight, 160) + "px";
+            }}
             onKeyDown={handleKeyDown}
             placeholder={uploading ? "Uploading..." : "Type a message..."}
             disabled={uploading}
             rows={1}
-            className="flex-1 resize-none bg-[var(--background)] border border-[var(--input)] rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-gold-500 max-h-24 overflow-y-auto disabled:opacity-50 chat-scrollbar"
-            style={{ minHeight: "60px" }}
+            className="flex-1 resize-none bg-[var(--background)] border border-[var(--input)] rounded-xl px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-gold-500 overflow-hidden disabled:opacity-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ minHeight: "30px", maxHeight: "160px", overflowY: text.split("\n").length > 8 ? "auto" : "hidden" }}
           />
 
           <button
             onClick={handleSend}
             disabled={!text.trim() || uploading}
             className="flex items-center justify-center rounded-xl bg-gold-500 text-white hover:bg-gold-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer flex-shrink-0"
-            style={{ width: "60px", height: "60px" }}
+            style={{ width: "30px", height: "30px" }}
             title="Send"
           >
             <Send className="w-6 h-6" />

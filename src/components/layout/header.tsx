@@ -37,7 +37,7 @@ export function Header({ onMenuClick, onRightMenuClick }: HeaderProps) {
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-gold-500 rounded-full" />
         </button>
 
-        <div className="w-8 h-8 rounded-full bg-gold-500/20 border border-gold-500/30 flex items-center justify-center overflow-hidden">
+        <div className="w-8 h-8 rounded-md bg-gold-500/20 border border-gold-500/30 flex items-center justify-center overflow-hidden">
           {profile?.avatar_url ? (
             <img
               src={profile.avatar_url}

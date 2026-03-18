@@ -82,7 +82,7 @@ function AdminDashboard() {
     <div className="max-w-6xl mx-auto">
       {/* God Mode Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-lg shadow-red-500/25">
+        <div className="w-10 h-10 rounded-md bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-lg shadow-red-500/25">
           <Crown className="w-5 h-5 text-white" />
         </div>
         <div>
@@ -222,7 +222,7 @@ function UsersTab() {
               className="flex items-center gap-3 p-3 bg-[var(--card)] border border-[var(--border)] rounded-xl"
             >
               {/* Avatar */}
-              <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+              <div className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
                 {u.avatar_url ? (
                   <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
                 ) : (
@@ -343,7 +343,7 @@ function FamiliesTab() {
               onClick={() => setExpandedId(expanded ? null : f.id)}
               className="w-full flex items-center gap-3 p-4 text-left hover:bg-[var(--accent)] transition-colors cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center flex-shrink-0">
                 <Home className="w-5 h-5 text-gold-500" />
               </div>
               <div className="flex-1 min-w-0">
@@ -366,7 +366,7 @@ function FamiliesTab() {
                 {!isMember && (
                   <button
                     onClick={(e) => { e.stopPropagation(); joinFamily(f.id); }}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-gold-500 text-white font-medium hover:bg-gold-600 transition-colors cursor-pointer"
+                    className="text-xs px-3 py-1.5 rounded-md bg-gold-500 text-white font-medium hover:bg-gold-600 transition-colors cursor-pointer"
                   >
                     <UserPlus className="w-3.5 h-3.5 inline mr-1" />
                     Join
@@ -382,7 +382,7 @@ function FamiliesTab() {
                 {f.members && f.members.length > 0 ? (
                   f.members.map((m) => (
                     <div key={m.user_id} className="flex items-center gap-3 py-2">
-                      <div className="w-7 h-7 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      <div className="w-7 h-7 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
                         {m.profile?.avatar_url ? (
                           <img src={m.profile.avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : (
@@ -492,7 +492,7 @@ function ConversationsTab() {
               key={c.id}
               className="flex items-center gap-3 p-3 bg-[var(--card)] border border-[var(--border)] rounded-xl"
             >
-              <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center flex-shrink-0">
                 <MessageCircle className="w-5 h-5 text-gold-500" />
               </div>
               <div className="flex-1 min-w-0">
@@ -578,7 +578,7 @@ function ContentTab() {
             key={post.id}
             className="flex items-start gap-3 p-3 bg-[var(--card)] border border-[var(--border)] rounded-xl"
           >
-            <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+            <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
               {(post.author as any)?.avatar_url ? (
                 <img src={(post.author as any).avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (

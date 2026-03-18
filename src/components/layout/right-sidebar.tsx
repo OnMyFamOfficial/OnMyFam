@@ -175,7 +175,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
             <div className="h-24 bg-gradient-to-r from-gold-700 via-gold-500 to-gold-400" />
             <div className="px-5 pb-5">
               <div className="-mt-10 mb-3">
-                <div className="w-20 h-20 rounded-full bg-[var(--card)] border-4 border-[var(--card)] flex items-center justify-center overflow-hidden shadow-lg">
+                <div className="w-20 h-20 rounded-md bg-[var(--card)] border-4 border-[var(--card)] flex items-center justify-center overflow-hidden shadow-lg">
                   <div className="w-full h-full bg-gold-500/20 flex items-center justify-center">
                     <span className="text-2xl font-bold text-gold-500">{profileModal.name.charAt(0).toUpperCase()}</span>
                   </div>
@@ -287,7 +287,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
               <div className="pb-1">
                 {pendingList.map((pending) => (
                   <div key={pending.id} className="flex items-center gap-3 px-4 py-2 hover:bg-[var(--accent)] transition-colors cursor-pointer" onClick={() => setProfileModal(pending)}>
-                    <div className="w-8 h-8 rounded-full bg-gold-500/10 flex items-center justify-center flex-shrink-0"><UserPlus className="w-4 h-4 text-gold-500/60" /></div>
+                    <div className="w-8 h-8 rounded-md bg-gold-500/10 flex items-center justify-center flex-shrink-0"><UserPlus className="w-4 h-4 text-gold-500/60" /></div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{pending.name}</p>
                       <p className="text-[10px] text-[var(--muted-foreground)]">{pending.type === "incoming" ? "Wants to link" : "Request sent"}</p>
@@ -325,7 +325,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
               {familyMembers.map((member) => (
                 <div key={member.id} className="flex items-center gap-3 px-4 py-2 hover:bg-[var(--accent)] transition-colors cursor-pointer" onClick={() => { if (!member.isMe) openDirectMessage(member.id); }}>
                   <div className="relative flex-shrink-0">
-                    <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden">
+                    <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
                       {member.profile.avatar_url ? (
                         <img src={member.profile.avatar_url} alt={member.profile.display_name} className="w-full h-full object-cover" />
                       ) : (
@@ -457,7 +457,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
                         className="flex items-center gap-3 px-4 py-2 hover:bg-[var(--accent)] transition-colors cursor-pointer"
                         onClick={() => setProfileModal(pending)}
                       >
-                        <div className="w-8 h-8 rounded-full bg-gold-500/10 flex items-center justify-center flex-shrink-0">
+                        <div className="w-8 h-8 rounded-md bg-gold-500/10 flex items-center justify-center flex-shrink-0">
                           <UserPlus className="w-4 h-4 text-gold-500/60" />
                         </div>
                         <div className="min-w-0 flex-1">
@@ -516,7 +516,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
                       title={member.isMe ? undefined : `Message ${member.profile.display_name}`}
                     >
                       <div className="relative flex-shrink-0">
-                        <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden">
+                        <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
                           {member.profile.avatar_url ? (
                             <img src={member.profile.avatar_url} alt={member.profile.display_name} className="w-full h-full object-cover" />
                           ) : (

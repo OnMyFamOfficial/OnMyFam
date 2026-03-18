@@ -93,7 +93,7 @@ export default function AlbumDetailPage() {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="px-4 py-2 rounded-lg bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+          className="px-4 py-2 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50"
         >
           <Upload className="w-4 h-4" />
           {uploading ? "Uploading..." : "Upload Photos"}

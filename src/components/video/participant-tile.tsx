@@ -25,9 +25,9 @@ export function ParticipantTile({ name, avatarUrl, isMuted, isSelf, videoStream 
         />
       ) : (
         <div className="flex flex-col items-center gap-2">
-          <div className="w-16 h-16 rounded-full bg-gold-500/20 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-md bg-gold-500/20 flex items-center justify-center">
             {avatarUrl ? (
-              <img src={avatarUrl} alt={name} className="w-full h-full rounded-full object-cover" />
+              <img src={avatarUrl} alt={name} className="w-full h-full rounded-md object-cover" />
             ) : (
               <span className="text-2xl font-bold text-gold-500">
                 {name.charAt(0).toUpperCase()}

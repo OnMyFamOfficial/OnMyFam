@@ -79,7 +79,7 @@ export default function PhotosPage() {
         </div>
         <button
           onClick={() => setCreating(true)}
-          className="px-4 py-2 rounded-lg bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2"
+          className="px-4 py-2 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           New Album
@@ -115,7 +115,7 @@ export default function PhotosPage() {
             <button
               onClick={handleCreate}
               disabled={saving || !form.title.trim()}
-              className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors"
             >
               {saving ? "Creating..." : "Create Album"}
             </button>

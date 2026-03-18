@@ -15,7 +15,7 @@ export function IncomingCallToast() {
         {/* Caller info */}
         <div className="flex items-center gap-3 mb-4">
           <div className="relative">
-            <div className="w-12 h-12 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden animate-pulse">
+            <div className="w-12 h-12 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden animate-pulse">
               {incomingCall.initiator?.avatar_url ? (
                 <img
                   src={incomingCall.initiator.avatar_url}

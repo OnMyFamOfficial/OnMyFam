@@ -127,7 +127,7 @@ export function VideoCallModal() {
           {activeCall.status === "ringing" ? (
             <div className="relative bg-gray-800 rounded-xl aspect-video flex items-center justify-center">
               <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-gold-500/20 flex items-center justify-center mx-auto mb-2 animate-pulse">
+                <div className="w-16 h-16 rounded-md bg-gold-500/20 flex items-center justify-center mx-auto mb-2 animate-pulse">
                   <span className="text-2xl font-bold text-gold-500">?</span>
                 </div>
                 <p className="text-gray-400 text-sm">Ringing...</p>

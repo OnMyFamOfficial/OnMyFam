@@ -118,7 +118,7 @@ export default function DiscussionDetailPage() {
         </div>
         <h1 className="text-2xl font-bold">{discussion.title}</h1>
         <div className="flex items-center gap-3 mt-3">
-          <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden">
+          <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
             {discussion.author?.avatar_url ? (
               <img
                 src={discussion.author.avatar_url}
@@ -159,7 +159,7 @@ export default function DiscussionDetailPage() {
             className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden">
+              <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
                 {reply.author?.avatar_url ? (
                   <img
                     src={reply.author.avatar_url}
@@ -203,7 +203,7 @@ export default function DiscussionDetailPage() {
           <button
             onClick={handleReply}
             disabled={sending || !replyText.trim()}
-            className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors flex items-center gap-2"
+            className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors flex items-center gap-2"
           >
             <Send className="w-4 h-4" />
             {sending ? "Sending..." : "Reply"}

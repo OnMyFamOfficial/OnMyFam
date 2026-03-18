@@ -142,7 +142,7 @@ export default function InviteClaimPage() {
               <div className="mt-6 space-y-3">
                 <Link
                   to="/login"
-                  className="block w-full px-4 py-2.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors"
+                  className="block w-full px-4 py-2.5 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors"
                 >
                   Sign In
                 </Link>
@@ -167,7 +167,7 @@ export default function InviteClaimPage() {
               </p>
               <button
                 onClick={handleClaim}
-                className="mt-6 w-full px-4 py-2.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors"
+                className="mt-6 w-full px-4 py-2.5 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors"
               >
                 Join Family
               </button>
@@ -197,7 +197,7 @@ export default function InviteClaimPage() {
               </p>
               <Link
                 to="/feed"
-                className="mt-6 inline-block px-4 py-2.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors"
+                className="mt-6 inline-block px-4 py-2.5 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors"
               >
                 Go to Feed
               </Link>

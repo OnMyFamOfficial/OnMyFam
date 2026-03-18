@@ -106,7 +106,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               collapsed ? "justify-center w-full" : "space-x-3"
             )}
           >
-            <div className="w-8 h-8 rounded-full bg-gold-500 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-md bg-gold-500 flex items-center justify-center flex-shrink-0">
               <span className="text-white font-serif font-bold text-sm">F</span>
             </div>
             {!collapsed && (

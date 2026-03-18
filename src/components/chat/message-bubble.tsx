@@ -13,11 +13,12 @@ interface MessageBubbleProps {
   onDelete?: (messageId: string) => void;
   onPin?: (messageId: string) => void;
   onReact?: (messageId: string, emoji: string) => void;
+  reactions?: Record<string, string[]>; // emoji -> user display names
+  isPinned?: boolean;
 }
 
 const REACTION_EMOJIS = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F62E}", "\u{1F622}", "\u{1F64F}", "\u{1F389}", "\u{1F525}"];
 
-// Check if a string is only emojis (no regular text)
 function isEmojiOnly(text: string | null): boolean {
   if (!text) return false;
   const stripped = text.replace(/[\s\uFE0F]/g, "");
@@ -25,14 +26,14 @@ function isEmojiOnly(text: string | null): boolean {
   return emojiRegex.test(stripped);
 }
 
-export function MessageBubble({ message, isMine, senderProfile, showAvatar, onReply, onEdit, onDelete, onPin, onReact }: MessageBubbleProps) {
+export function MessageBubble({ message, isMine, senderProfile, showAvatar, onReply, onEdit, onDelete, onPin, onReact, reactions, isPinned }: MessageBubbleProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.content || "");
+  const [localReactions, setLocalReactions] = useState<Record<string, number>>(reactions ? Object.fromEntries(Object.entries(reactions).map(([k, v]) => [k, v.length])) : {});
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu on outside click
   useEffect(() => {
     if (!showMenu && !showReactions) return;
     function handleClick(e: MouseEvent) {
@@ -70,9 +71,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
   }
 
   function handleCopy() {
-    if (message.content) {
-      navigator.clipboard.writeText(message.content);
-    }
+    if (message.content) navigator.clipboard.writeText(message.content);
     setShowMenu(false);
   }
 
@@ -84,12 +83,23 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
     setShowMenu(false);
   }
 
+  function handleLocalReact(emoji: string) {
+    setLocalReactions((prev) => ({
+      ...prev,
+      [emoji]: (prev[emoji] || 0) + 1,
+    }));
+    onReact?.(message.id, emoji);
+    setShowReactions(false);
+  }
+
+  const hasReactions = Object.keys(localReactions).some((k) => localReactions[k] > 0);
+
   return (
     <div className={cn("flex gap-1 mb-1 group", isMine ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
       <div className="flex-shrink-0 w-7">
         {showAvatar && !isMine ? (
-          <div className="w-7 h-7 rounded-full bg-gold-500/20 flex items-center justify-center overflow-hidden">
+          <div className="w-7 h-7 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
             {senderProfile?.avatar_url ? (
               <img src={senderProfile.avatar_url} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -103,6 +113,13 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
 
       {/* Bubble + time */}
       <div className="max-w-[65%] min-w-0 relative" ref={menuRef}>
+        {/* Pin indicator */}
+        {isPinned && (
+          <div className={cn("flex items-center gap-1 text-[10px] text-gold-500 mb-0.5 px-1", isMine ? "justify-end" : "justify-start")}>
+            <Pin className="w-2.5 h-2.5 rotate-45" /> Pinned
+          </div>
+        )}
+
         {/* Reply preview */}
         {message.reply_to && (
           <div className={cn(
@@ -120,19 +137,11 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
 
         {/* Image/video media */}
         {(message.message_type === "image" || message.message_type === "video") && message.media_url && (
-          <div className={cn("mb-1 rounded-xl overflow-hidden", isMine ? "ml-auto" : "")}>
+          <div className={cn("mb-1 rounded-xl overflow-hidden shadow-md dark:shadow-black/40", isMine ? "ml-auto" : "")}>
             {message.message_type === "image" ? (
-              <img
-                src={message.media_url}
-                alt=""
-                className="max-w-full max-h-64 rounded-xl object-cover"
-              />
+              <img src={message.media_url} alt="" className="max-w-full max-h-64 rounded-xl object-cover" />
             ) : (
-              <video
-                src={message.media_url}
-                controls
-                className="max-w-full max-h-64 rounded-xl"
-              />
+              <video src={message.media_url} controls className="max-w-full max-h-64 rounded-xl" />
             )}
           </div>
         )}
@@ -144,7 +153,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-xl text-sm mb-1 hover:opacity-80 transition-opacity",
+              "flex items-center gap-2 px-3 py-2 rounded-xl text-sm mb-1 hover:opacity-80 transition-opacity shadow-md dark:shadow-black/40",
               isMine ? "bg-gold-500 text-white ml-auto" : "bg-[var(--accent)]"
             )}
           >
@@ -175,9 +184,9 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
         ) : message.content ? (
           <div
             className={cn(
-              "px-3 py-1.5 rounded-2xl break-words",
+              "px-3 py-1.5 rounded-2xl break-words shadow-md dark:shadow-black/40",
               isEmojiOnly(message.content)
-                ? "text-2xl bg-transparent"
+                ? "text-2xl bg-transparent !shadow-none"
                 : isMine
                   ? "text-sm text-white font-medium rounded-br-md"
                   : "text-sm text-white rounded-bl-md"
@@ -193,6 +202,22 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
           </div>
         ) : null}
 
+        {/* Reactions display */}
+        {hasReactions && (
+          <div className={cn("flex flex-wrap gap-1 mt-0.5 px-0.5", isMine ? "justify-end" : "justify-start")}>
+            {Object.entries(localReactions).filter(([, count]) => count > 0).map(([emoji, count]) => (
+              <button
+                key={emoji}
+                onClick={() => handleLocalReact(emoji)}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--accent)] border border-[var(--border)] text-lg hover:border-gold-500/50 transition-colors cursor-pointer"
+              >
+                <span>{emoji}</span>
+                {count > 1 && <span className="text-[10px] text-[var(--muted-foreground)]">{count}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Time */}
         <div className={cn(
           "text-[10px] text-[var(--muted-foreground)] mt-0.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity",
@@ -201,20 +226,17 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
           {formatTime(message.created_at)}
         </div>
 
-        {/* Popups anchored to bubble */}
+        {/* Reaction picker popup - aligned to outer edge of bubble */}
         {showReactions && (
           <div className={cn(
             "absolute z-50 flex items-center gap-0.5 px-2 py-1.5 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg",
-            isMine ? "left-0" : "right-0",
+            isMine ? "right-0" : "left-0",
             "bottom-full mb-1"
           )}>
             {REACTION_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
-                onClick={() => {
-                  onReact?.(message.id, emoji);
-                  setShowReactions(false);
-                }}
+                onClick={() => handleLocalReact(emoji)}
                 className="text-lg hover:scale-125 transition-transform cursor-pointer p-0.5"
               >
                 {emoji}
@@ -223,18 +245,19 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
           </div>
         )}
 
+        {/* Context menu popup */}
         {showMenu && (
           <div className={cn(
             "absolute z-50 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[140px]",
-            "right-0 bottom-full mb-1"
+            isMine ? "right-0" : "left-0",
+            "bottom-full mb-1"
           )}>
             {onReply && (
               <button
                 onClick={() => { onReply(); setShowMenu(false); }}
                 className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
               >
-                <Reply className="w-3.5 h-3.5" />
-                Reply
+                <Reply className="w-3.5 h-3.5" /> Reply
               </button>
             )}
             {isMine && message.message_type === "text" && (
@@ -242,8 +265,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
                 onClick={() => { setEditing(true); setShowMenu(false); }}
                 className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
               >
-                <Pencil className="w-3.5 h-3.5" />
-                Edit
+                <Pencil className="w-3.5 h-3.5" /> Edit
               </button>
             )}
             {message.content && (
@@ -251,24 +273,21 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, onRe
                 onClick={handleCopy}
                 className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
               >
-                <Copy className="w-3.5 h-3.5" />
-                Copy
+                <Copy className="w-3.5 h-3.5" /> Copy
               </button>
             )}
             <button
               onClick={() => { onPin?.(message.id); setShowMenu(false); }}
               className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
             >
-              <Pin className="w-3.5 h-3.5" />
-              Pin
+              <Pin className="w-3.5 h-3.5" /> {isPinned ? "Unpin" : "Pin"}
             </button>
             {isMine && (
               <button
                 onClick={() => { onDelete?.(message.id); setShowMenu(false); }}
                 className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer text-left"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete
+                <Trash2 className="w-3.5 h-3.5" /> Delete
               </button>
             )}
           </div>
