@@ -115,7 +115,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
     <div className={cn("flex gap-1 mb-1 group items-start", isMine ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
       <div className="flex-shrink-0 w-7">
-        {showAvatar && !isMine ? (
+        {showAvatar ? (
           <div className="w-7 h-7 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
             {senderProfile?.avatar_url ? (
               <img src={senderProfile.avatar_url} alt="" className="w-full h-full object-cover" />
