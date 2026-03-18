@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { X, Minimize2, Maximize2 } from "lucide-react";
+import { X, Minimize2, Maximize2, Maximize } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useChat } from "./chat-provider";
 import { useVideoCall } from "@/components/video/video-call-provider";
 import { ConversationList } from "./conversation-list";
@@ -7,15 +8,24 @@ import { ChatWindow } from "./chat-window";
 import { cn } from "@/lib/utils";
 
 export function ChatPanel() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { chatPanelOpen, setChatPanelOpen, activeConversationId, setActiveConversationId, conversations } = useChat();
   const { startCall } = useVideoCall();
   const [minimized, setMinimized] = useState(false);
 
+  // Don't show mini chat on the Messages page
+  if (location.pathname.startsWith("/messages")) return null;
   if (!chatPanelOpen) return null;
 
   const activeConversation = activeConversationId
     ? conversations.find((c) => c.id === activeConversationId) || null
     : null;
+
+  function handleOpenFull() {
+    setChatPanelOpen(false);
+    navigate("/messages");
+  }
 
   return (
     <div
@@ -30,6 +40,13 @@ export function ChatPanel() {
           {activeConversation ? activeConversation.displayName : "Messages"}
         </span>
         <div className="flex items-center gap-0.5">
+          <button
+            onClick={handleOpenFull}
+            className="p-1 rounded hover:bg-[var(--accent)] transition-colors cursor-pointer"
+            title="Open in full page"
+          >
+            <Maximize className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={() => setMinimized(!minimized)}
             className="p-1 rounded hover:bg-[var(--accent)] transition-colors cursor-pointer"

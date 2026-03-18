@@ -108,9 +108,9 @@ export default function ProfilePage() {
             />
 
             {/* Avatar — inside cover, vertically centered, left gap = vertical gap */}
-            <div className="absolute top-1/2 -translate-y-1/2 left-[9px] sm:left-[25px] lg:left-[41px]">
+            <div className="absolute top-1/2 -translate-y-1/2 left-[5px] sm:left-[13px] lg:left-[21px]">
               <div className="relative group">
-                <div className="rounded-2xl bg-[var(--background)] border-4 border-white/20 flex items-center justify-center overflow-hidden shadow-lg" style={{ width: 270, height: 270 }}>
+                <div className="rounded-2xl bg-[var(--background)] border-4 border-white/20 flex items-center justify-center overflow-hidden shadow-lg" style={{ width: 310, height: 310 }}>
                   {displayAvatar ? (
                     <img
                       src={displayAvatar}

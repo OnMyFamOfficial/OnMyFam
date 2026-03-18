@@ -42,6 +42,7 @@ export default function MessagesPage() {
           {activeConversation ? (
             <ChatWindow
               conversation={activeConversation}
+              showShortcuts
               onStartCall={(type) => {
                 startCall(activeConversation.id, type);
               }}

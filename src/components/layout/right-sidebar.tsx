@@ -82,26 +82,13 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
     return () => { supabase.removeChannel(channel); };
   }, [currentFamily, user]);
 
-  const mockMembers: MemberWithPresence[] = [
-    { id: "mock-1", profile: { id: "mock-1", display_name: "Mommy", avatar_url: null, bio: null, location: null, phone: null, created_at: "", updated_at: "" } as Profile, online: true, isMe: false, lastSeen: null },
-    { id: "mock-2", profile: { id: "mock-2", display_name: "Brian", avatar_url: null, bio: null, location: null, phone: null, created_at: "", updated_at: "" } as Profile, online: true, isMe: false, lastSeen: null },
-    { id: "mock-3", profile: { id: "mock-3", display_name: "Fifi", avatar_url: null, bio: null, location: null, phone: null, created_at: "", updated_at: "" } as Profile, online: false, isMe: false, lastSeen: null },
-    { id: "mock-4", profile: { id: "mock-4", display_name: "Jocelyn", avatar_url: null, bio: null, location: null, phone: null, created_at: "", updated_at: "" } as Profile, online: false, isMe: false, lastSeen: null },
-    { id: "mock-5", profile: { id: "mock-5", display_name: "Paradise", avatar_url: null, bio: null, location: null, phone: null, created_at: "", updated_at: "" } as Profile, online: true, isMe: false, lastSeen: null },
-    { id: "mock-8", profile: { id: "mock-8", display_name: "LaDonna", avatar_url: null, bio: null, location: null, phone: null, created_at: "", updated_at: "" } as Profile, online: true, isMe: false, lastSeen: null },
-    { id: "mock-6", profile: { id: "mock-6", display_name: "Melony", avatar_url: null, bio: null, location: null, phone: null, created_at: "", updated_at: "" } as Profile, online: false, isMe: false, lastSeen: null },
-    { id: "mock-7", profile: { id: "mock-7", display_name: "Katie", avatar_url: null, bio: null, location: null, phone: null, created_at: "", updated_at: "" } as Profile, online: false, isMe: false, lastSeen: null },
-  ];
-
-  const realMembers: MemberWithPresence[] = members.map((m) => ({
+  const familyMembers: MemberWithPresence[] = members.map((m) => ({
     id: m.user_id,
     profile: m.profile,
     online: onlineIds.has(m.user_id) || m.user_id === user?.id,
     isMe: m.user_id === user?.id,
     lastSeen: null,
-  }));
-
-  const familyMembers = [...realMembers, ...mockMembers].sort((a, b) => {
+  })).sort((a, b) => {
     if (a.isMe) return -1;
     if (b.isMe) return 1;
     if (a.online && !b.online) return -1;
@@ -111,11 +98,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
 
   const onlineCount = familyMembers.filter((m) => m.online).length;
 
-  const [pendingList, setPendingList] = useState<PendingMember[]>([
-    { id: "pending-1", name: "Uncle Ray", type: "incoming" },
-    { id: "pending-2", name: "Cousin Tasha", type: "incoming" },
-    { id: "pending-3", name: "Auntie Pam", type: "outgoing" },
-  ]);
+  const [pendingList, setPendingList] = useState<PendingMember[]>([]);
 
   function handleConfirm() {
     if (!confirmAction) return;

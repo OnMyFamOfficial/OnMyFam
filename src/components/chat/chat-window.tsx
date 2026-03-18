@@ -14,11 +14,12 @@ interface ChatWindowProps {
   conversation: ConversationWithDetails;
   onBack?: () => void;
   onStartCall?: (type: "audio" | "video") => void;
+  showShortcuts?: boolean;
 }
 
 const PAGE_SIZE = 40;
 
-export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProps) {
+export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = false }: ChatWindowProps) {
   const { user } = useAuth();
   const { markAsRead } = useChat();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -430,8 +431,8 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
         />
       </div>
 
-      {/* Pinned shortcuts column */}
-      <ChatShortcuts
+      {/* Pinned shortcuts column - only on messages page */}
+      {showShortcuts && <ChatShortcuts
         pinnedCount={messages.filter((m) => pinnedIds.has(m.id)).length}
         showPinnedOnly={showPinnedOnly}
         onPinUp={() => {
@@ -449,7 +450,7 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
           scrollToMessage(pinned[newIndex].id);
         }}
         onTogglePinFilter={() => setShowPinnedOnly((prev) => !prev)}
-      />
+      />}
     </div>
   );
 }
