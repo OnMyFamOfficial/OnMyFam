@@ -352,7 +352,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
               disabled={uploading}
               rows={1}
               className="flex-1 resize-none bg-transparent px-2 outline-none overflow-hidden disabled:opacity-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              style={{ minHeight: "42px", maxHeight: "160px", fontSize: "16px", lineHeight: "1.5", paddingTop: "10px", paddingBottom: "10px", overflowY: text.split("\n").length > 8 ? "auto" : "hidden" }}
+              style={{ minHeight: "42px", maxHeight: "160px", fontSize: "16px", lineHeight: "1.5", paddingTop: "5px", paddingBottom: "5px", overflowY: text.split("\n").length > 8 ? "auto" : "hidden" }}
             />
 
             {/* Send button inside */}
