@@ -254,9 +254,11 @@ export function ChatWindow({ conversation, onBack, onStartCall }: ChatWindowProp
     const el = document.getElementById(`msg-${msgId}`);
     if (!el || !containerRef.current) return;
     const container = containerRef.current;
-    const elTop = el.offsetTop - container.offsetTop;
-    const targetScroll = elTop - container.clientHeight / 2 + el.clientHeight / 2;
-    container.scrollTo({ top: targetScroll, behavior: "smooth" });
+    // Use getBoundingClientRect for reliable positioning
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const scrollOffset = elRect.top - containerRect.top - (containerRect.height / 2) + (elRect.height / 2);
+    container.scrollBy({ top: scrollOffset, behavior: "smooth" });
     // Flash highlight
     el.style.transition = "background-color 0.3s";
     el.style.backgroundColor = "rgba(184, 134, 11, 0.15)";
