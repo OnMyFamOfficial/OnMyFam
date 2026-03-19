@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, MapPin, Users, Plus } from "lucide-react";
+import { Calendar, MapPin, Users, Plus, Filter, X } from "lucide-react";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
+import { EVENT_CATEGORIES } from "@/lib/constants";
 import { format } from "date-fns";
 import type { FamilyEvent, Profile } from "@/lib/types";
 
@@ -13,6 +14,10 @@ export default function EventsPage() {
   const { currentFamily } = useFamily();
   const [events, setEvents] = useState<FullEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (currentFamily) loadEvents();
@@ -72,6 +77,69 @@ export default function EventsPage() {
         </button>
       </div>
 
+      {/* Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
+            showFilters || categoryFilter !== "all" || dateFrom || dateTo
+              ? "border-gold-500 bg-gold-500/10 text-gold-500"
+              : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+          }`}
+        >
+          <Filter className="w-3.5 h-3.5" />
+          Filters
+          {(categoryFilter !== "all" || dateFrom || dateTo) && (
+            <span className="w-1.5 h-1.5 rounded-full bg-gold-500" />
+          )}
+        </button>
+
+        {showFilters && (
+          <>
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="rounded-lg border border-[var(--input)] bg-[var(--background)] px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-gold-500"
+                title="From date"
+              />
+              <span className="text-xs text-[var(--muted-foreground)]">to</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="rounded-lg border border-[var(--input)] bg-[var(--background)] px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-gold-500"
+                title="To date"
+              />
+            </div>
+
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="rounded-lg border border-[var(--input)] bg-[var(--background)] px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-gold-500 cursor-pointer"
+            >
+              <option value="all">All Types</option>
+              {EVENT_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                </option>
+              ))}
+            </select>
+
+            {(categoryFilter !== "all" || dateFrom || dateTo) && (
+              <button
+                onClick={() => { setCategoryFilter("all"); setDateFrom(""); setDateTo(""); }}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+              >
+                <X className="w-3 h-3" /> Clear
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
       {loading ? (
         <div className="text-center py-8 text-[var(--muted-foreground)]">
           Loading events...
@@ -86,7 +154,12 @@ export default function EventsPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {events.map((event) => (
+          {events.filter((event) => {
+            if (categoryFilter !== "all" && event.category !== categoryFilter) return false;
+            if (dateFrom && new Date(event.starts_at) < new Date(dateFrom)) return false;
+            if (dateTo && new Date(event.starts_at) > new Date(dateTo + "T23:59:59")) return false;
+            return true;
+          }).map((event) => (
             <div
               key={event.id}
               onClick={() => navigate(`/events/${event.id}`)}
