@@ -430,7 +430,11 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
           replyTo={replyTo}
           onClearReply={() => setReplyTo(null)}
           onTyping={handleTyping}
-          onScrollToBottom={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
+          onScrollToBottom={() => {
+            if (containerRef.current) {
+              containerRef.current.scrollTo({ top: containerRef.current.scrollHeight, behavior: "smooth" });
+            }
+          }}
         />
       </div>
 
