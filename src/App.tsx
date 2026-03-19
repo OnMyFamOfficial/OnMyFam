@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { ThemeProvider } from "@/components/shared/theme-provider";
@@ -8,25 +9,26 @@ import { IncomingCallToast } from "@/components/video/incoming-call-toast";
 import { VideoCallModal } from "@/components/video/video-call-modal";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { AppLayout } from "@/components/layout/app-layout";
+import { OmfLoader } from "@/components/shared/omf-loader";
 
-import LandingPage from "@/pages/landing";
-import LoginPage from "@/pages/login";
-import SignupPage from "@/pages/signup";
-import AuthCallbackPage from "@/pages/auth-callback";
-import FeedPage from "@/pages/feed";
-import FamilyPage from "@/pages/family";
-import EventsPage from "@/pages/events";
-import EventDetailPage from "@/pages/event-detail";
-import EventCreatePage from "@/pages/event-create";
-import PhotosPage from "@/pages/photos";
-import AlbumDetailPage from "@/pages/album-detail";
-import DiscussionsPage from "@/pages/discussions";
-import DiscussionDetailPage from "@/pages/discussion-detail";
-import ProfilePage from "@/pages/profile";
-import SettingsPage from "@/pages/settings";
-import InviteClaimPage from "@/pages/invite-claim";
-import MessagesPage from "@/pages/messages";
-import AdminPage from "@/pages/admin";
+const LandingPage = lazy(() => import("@/pages/landing"));
+const LoginPage = lazy(() => import("@/pages/login"));
+const SignupPage = lazy(() => import("@/pages/signup"));
+const AuthCallbackPage = lazy(() => import("@/pages/auth-callback"));
+const FeedPage = lazy(() => import("@/pages/feed"));
+const FamilyPage = lazy(() => import("@/pages/family"));
+const EventsPage = lazy(() => import("@/pages/events"));
+const EventDetailPage = lazy(() => import("@/pages/event-detail"));
+const EventCreatePage = lazy(() => import("@/pages/event-create"));
+const PhotosPage = lazy(() => import("@/pages/photos"));
+const AlbumDetailPage = lazy(() => import("@/pages/album-detail"));
+const DiscussionsPage = lazy(() => import("@/pages/discussions"));
+const DiscussionDetailPage = lazy(() => import("@/pages/discussion-detail"));
+const ProfilePage = lazy(() => import("@/pages/profile"));
+const SettingsPage = lazy(() => import("@/pages/settings"));
+const InviteClaimPage = lazy(() => import("@/pages/invite-claim"));
+const MessagesPage = lazy(() => import("@/pages/messages"));
+const AdminPage = lazy(() => import("@/pages/admin"));
 
 export default function App() {
   return (
@@ -36,6 +38,7 @@ export default function App() {
           <ChatProvider>
           <VideoCallProvider>
           <BrowserRouter>
+            <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-[var(--background)]"><OmfLoader size="lg" text="Loading..." /></div>}>
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<LandingPage />} />
@@ -69,6 +72,7 @@ export default function App() {
                 <Route path="/admin" element={<AdminPage />} />
               </Route>
             </Routes>
+            </Suspense>
           </BrowserRouter>
           <IncomingCallToast />
           <VideoCallModal />
