@@ -52,12 +52,12 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-3 py-3 border-b border-[var(--border)] bg-[var(--card)]">
-        <div className="flex items-center justify-between mb-2">
-          <div className="relative" ref={menuRef}>
+        <div className="mb-2">
+          <div className="relative w-full" ref={menuRef}>
             <button
               onClick={() => setShowNewMenu(!showNewMenu)}
               className="w-full px-3 py-1.5 rounded-lg bg-gold-500 text-sm font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer hover:bg-gold-600"
-              title="New conversation"
+              title="New Conversation"
             >
               <Plus className="w-3.5 h-3.5" />
               New Conversation

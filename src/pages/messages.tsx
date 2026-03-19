@@ -99,7 +99,7 @@ export default function MessagesPage() {
               </div>
 
               {/* Call buttons + more - right next to conversation name */}
-              <div className="flex items-center gap-0.5 ml-3">
+              <div className="flex items-center gap-0.5 ml-6">
                 <button
                   onClick={() => startCall(activeConversation.id, "audio")}
                   className="p-1.5 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
