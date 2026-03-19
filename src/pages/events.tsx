@@ -324,9 +324,12 @@ export default function EventsPage() {
           {events.filter((event) => {
             const now = new Date();
             const eventDate = new Date(event.starts_at);
-            // Tab filter
-            if (activeTab === "upcoming" && eventDate < now) return false;
-            if (activeTab === "past" && eventDate >= now) return false;
+            // Tab filter - compare by end of day for all-day events
+            const compareDate = event.is_all_day
+              ? new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), 23, 59, 59)
+              : eventDate;
+            if (activeTab === "upcoming" && compareDate < now) return false;
+            if (activeTab === "past" && compareDate >= now) return false;
             if (activeTab === "mine" && event.created_by !== user?.id) return false;
             // Category filter
             if (categoryFilter !== "all" && event.category !== categoryFilter) return false;
@@ -383,7 +386,9 @@ export default function EventsPage() {
                 <div className="mt-2 space-y-1 text-sm text-[var(--muted-foreground)]">
                   <p className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" />
-                    {format(new Date(event.starts_at), "MMM d, yyyy 'at' h:mm a")}
+                    {event.is_all_day
+                      ? format(new Date(event.starts_at), "MMM d, yyyy") + " (All Day)"
+                      : format(new Date(event.starts_at), "MMM d, yyyy 'at' h:mm a")}
                   </p>
                   {event.location && (
                     <p className="flex items-center gap-1.5">

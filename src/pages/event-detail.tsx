@@ -294,9 +294,17 @@ export default function EventDetailPage() {
           <div className="mt-4 space-y-2 text-sm text-[var(--muted-foreground)]">
             <p className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              {format(new Date(event.starts_at), "EEEE, MMMM d, yyyy 'at' h:mm a")}
-              {event.ends_at &&
+              {event.is_all_day
+                ? format(new Date(event.starts_at), "EEEE, MMMM d, yyyy") + " (All Day)"
+                : format(new Date(event.starts_at), "EEEE, MMMM d, yyyy 'at' h:mm a")}
+              {event.ends_at && !event.is_all_day &&
                 ` - ${format(new Date(event.ends_at), "h:mm a")}`}
+              {event.ends_at && event.is_all_day &&
+                ` - ${format(new Date(event.ends_at), "MMMM d, yyyy")}`}
+            </p>
+            <p className="flex items-center gap-2 text-xs">
+              <span className="w-4" />
+              {Intl.DateTimeFormat().resolvedOptions().timeZone}
             </p>
             {event.location && (
               <p className="flex items-center gap-2">

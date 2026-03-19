@@ -47,17 +47,17 @@ export default function EventCreatePage() {
     if (!user || !currentFamily || !form.title.trim() || !startDate) return;
     setSaving(true);
 
-    // Build date/time
+    // Build date/time - use noon for all-day events to avoid timezone date-shift
     const startDateStr = format(startDate, "yyyy-MM-dd");
     const startsAt = form.is_all_day || !form.start_time
-      ? new Date(`${startDateStr}T00:00:00`).toISOString()
+      ? new Date(`${startDateStr}T12:00:00`).toISOString()
       : new Date(`${startDateStr}T${form.start_time}`).toISOString();
 
     let endsAt: string | null = null;
     if (endDate) {
       const endDateStr = format(endDate, "yyyy-MM-dd");
       endsAt = form.is_all_day || !form.end_time
-        ? new Date(`${endDateStr}T23:59:59`).toISOString()
+        ? new Date(`${endDateStr}T12:00:00`).toISOString()
         : new Date(`${endDateStr}T${form.end_time}`).toISOString();
     }
 
