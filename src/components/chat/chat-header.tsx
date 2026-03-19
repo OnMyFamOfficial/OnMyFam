@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Phone, Video, MoreVertical, Trash2, LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -13,6 +14,7 @@ interface ChatHeaderProps {
 }
 
 export function ChatHeader({ conversation, onBack, onAudioCall, onVideoCall }: ChatHeaderProps) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { setActiveConversationId, setChatPanelOpen, refreshConversations } = useChat();
   const [showMenu, setShowMenu] = useState(false);
@@ -66,7 +68,15 @@ export function ChatHeader({ conversation, onBack, onAudioCall, onVideoCall }: C
       )}
 
       {/* Avatar */}
-      <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+      <div
+        className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-gold-500/50 transition-all"
+        onClick={() => {
+          if (conversation.type === "direct" && conversation.otherParticipants[0]) {
+            navigate(`/profile/${conversation.otherParticipants[0].user_id}`);
+          }
+        }}
+        title={conversation.type === "direct" ? `View ${conversation.displayName}'s profile` : conversation.displayName}
+      >
         {conversation.displayAvatar ? (
           <img src={conversation.displayAvatar} alt="" className="w-full h-full object-cover" />
         ) : (

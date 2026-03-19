@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { MoreHorizontal, Reply, Pencil, Trash2, Pin, Copy, SmilePlus, PlusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Message, Profile } from "@/lib/types";
@@ -28,6 +29,7 @@ function isEmojiOnly(text: string | null): boolean {
 }
 
 export function MessageBubble({ message, isMine, senderProfile, showAvatar, currentUserId, onReply, onEdit, onDelete, onPin, onReact, reactions, isPinned }: MessageBubbleProps) {
+  const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -116,7 +118,11 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
       {/* Avatar */}
       <div className="flex-shrink-0 w-7">
         {showAvatar ? (
-          <div className="w-7 h-7 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
+          <div
+            className="w-7 h-7 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-gold-500/50 transition-all"
+            onClick={() => navigate(`/profile/${message.sender_id}`)}
+            title={senderProfile?.display_name || "View profile"}
+          >
             {senderProfile?.avatar_url ? (
               <img src={senderProfile.avatar_url} alt="" className="w-full h-full object-cover" />
             ) : (
