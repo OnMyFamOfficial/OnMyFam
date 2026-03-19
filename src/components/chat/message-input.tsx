@@ -443,17 +443,20 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                   </button>
                 </div>
                 {/* Category tabs */}
-                <div className="flex gap-0.5 px-2 py-1 border-b border-[var(--border)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex gap-0.5 px-2 py-1.5 border-b border-[var(--border)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {EMOJI_CATEGORIES.map((cat, i) => (
                     <button
                       key={cat.name}
                       onClick={() => setEmojiCategory(i)}
-                      className={`p-1.5 rounded text-base transition-colors cursor-pointer flex-shrink-0 ${
-                        emojiCategory === i ? "bg-gold-500/20" : "hover:bg-[var(--accent)]"
+                      className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
+                        emojiCategory === i
+                          ? "bg-gold-500/20 text-gold-500"
+                          : "hover:bg-[var(--accent)] text-[var(--muted-foreground)]"
                       }`}
                       title={cat.name}
                     >
-                      {cat.icon}
+                      <span className="text-base leading-none">{cat.icon}</span>
+                      <span className="text-[8px] leading-none">{cat.name}</span>
                     </button>
                   ))}
                 </div>
@@ -522,7 +525,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                       {gifSearch ? "No GIFs found" : "Trending GIFs"}
                     </p>
                   ) : (
-                    <div className="columns-3 gap-1">
+                    <div className="columns-4 gap-1">
                       {gifs.map((gif) => (
                         <button
                           key={gif.id}
@@ -571,7 +574,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                       {stickerSearch ? "No stickers found" : "Trending stickers"}
                     </p>
                   ) : (
-                    <div className="columns-3 gap-1">
+                    <div className="columns-4 gap-1">
                       {stickers.map((s) => (
                         <button
                           key={s.id}

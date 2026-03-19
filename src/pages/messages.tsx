@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { Phone, Video, MoreVertical, Bell, Menu, ArrowLeft, Trash2, LogOut } from "lucide-react";
+import { Phone, Video, MoreVertical, Bell, Menu, ArrowLeft, Trash2, LogOut, UserPlus, X } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useChat } from "@/components/chat/chat-provider";
+import { useFamily } from "@/lib/hooks/use-family";
 import { useVideoCall } from "@/components/video/video-call-provider";
 import { supabase } from "@/lib/supabase";
 import { ConversationList } from "@/components/chat/conversation-list";
@@ -15,8 +16,11 @@ export default function MessagesPage() {
   const { user, profile } = useAuth();
   const { conversations, activeConversationId, setActiveConversationId, refreshConversations } = useChat();
   const { startCall } = useVideoCall();
+  const { members } = useFamily();
   const [mobileShowChat, setMobileShowChat] = useState(!!paramConvoId);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [addingMember, setAddingMember] = useState<string | null>(null);
 
   const effectiveId = paramConvoId || activeConversationId;
   const activeConversation = effectiveId
@@ -42,6 +46,29 @@ export default function MessagesPage() {
     await refreshConversations();
   }
 
+  async function handleAddMember(userId: string) {
+    if (!activeConversation) return;
+    setAddingMember(userId);
+    const { error } = await supabase.from("conversation_participants").insert({
+      conversation_id: activeConversation.id,
+      user_id: userId,
+      role: "member",
+    });
+    if (error) {
+      console.error("Add member error:", error);
+    } else {
+      await supabase.from("messages").insert({
+        conversation_id: activeConversation.id,
+        sender_id: user!.id,
+        content: "A new member was added to the chat",
+        message_type: "system",
+      });
+      await refreshConversations();
+    }
+    setAddingMember(null);
+    setShowAddMember(false);
+  }
+
   async function handleLeaveChat() {
     if (!user || !activeConversation || !confirm("Leave this chat?")) return;
     await supabase.from("conversation_participants").delete()
@@ -52,6 +79,58 @@ export default function MessagesPage() {
   }
 
   return (
+    <>
+      {/* Add Member Modal */}
+      {showAddMember && activeConversation && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowAddMember(false)} />
+          <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-sm max-h-[70vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-gold-500" />
+                <h3 className="font-semibold text-sm">Add to Chat</h3>
+              </div>
+              <button onClick={() => setShowAddMember(false)} className="p-1 rounded-lg hover:bg-[var(--accent)] cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {(() => {
+                const currentParticipantIds = new Set(activeConversation.participants.map((p) => p.user_id));
+                const available = members.filter((m) => !currentParticipantIds.has(m.user_id));
+                if (available.length === 0) {
+                  return <p className="text-sm text-[var(--muted-foreground)] text-center py-8">All family members are already in this chat</p>;
+                }
+                return available.map((m) => (
+                  <button
+                    key={m.user_id}
+                    onClick={() => handleAddMember(m.user_id)}
+                    disabled={addingMember === m.user_id}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--accent)] transition-colors cursor-pointer text-left disabled:opacity-50"
+                  >
+                    <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {m.profile?.avatar_url ? (
+                        <img src={m.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs font-medium text-gold-500">
+                          {m.profile?.display_name?.charAt(0).toUpperCase() || "?"}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm flex-1 truncate">{m.profile?.display_name || "Unknown"}</span>
+                    {addingMember === m.user_id ? (
+                      <span className="text-xs text-[var(--muted-foreground)]">Adding...</span>
+                    ) : (
+                      <UserPlus className="w-4 h-4 text-[var(--muted-foreground)]" />
+                    )}
+                  </button>
+                ));
+              })()}
+            </div>
+          </div>
+        </>
+      )}
+
     <div className="h-[calc(100dvh-4rem)] lg:h-screen -m-4 lg:-m-6 flex flex-col overflow-hidden">
       {/* Messages header bar */}
       <div className="h-14 bg-[var(--header-background)] border-b border-[var(--border)] flex items-center px-4 lg:px-0 flex-shrink-0">
@@ -132,6 +211,13 @@ export default function MessagesPage() {
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setShowMoreMenu(false)} />
                       <div className="absolute right-0 top-full mt-1 z-50 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px]">
+                        <button
+                          onClick={() => { setShowMoreMenu(false); setShowAddMember(true); }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+                        >
+                          <UserPlus className="w-4 h-4" /> Add Member
+                        </button>
+                        <div className="my-1 border-t border-[var(--border)]" />
                         {isCreator ? (
                           <button
                             onClick={() => { setShowMoreMenu(false); handleDeleteChat(); }}
@@ -216,5 +302,6 @@ export default function MessagesPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
