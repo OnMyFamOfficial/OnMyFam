@@ -453,7 +453,7 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
           scrollToMessage(pinned[newIndex].id);
         }}
         onTogglePinFilter={() => setShowPinnedOnly((prev) => !prev)}
-        onPinEvent={async (eventId, title) => {
+        onPinEvent={async (_eventId, title) => {
           if (!user) return;
           const { data } = await supabase.from("messages").insert({
             conversation_id: conversation.id,
