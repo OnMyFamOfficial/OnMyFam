@@ -20,6 +20,7 @@ export default function MessagesPage() {
   const [mobileShowChat, setMobileShowChat] = useState(!!paramConvoId);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
   const [addingMember, setAddingMember] = useState<string | null>(null);
 
   const effectiveId = paramConvoId || activeConversationId;
@@ -131,6 +132,52 @@ export default function MessagesPage() {
         </>
       )}
 
+      {/* Members Modal */}
+      {showMembers && activeConversation && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowMembers(false)} />
+          <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-sm max-h-[70vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+              <h3 className="font-semibold text-sm">{activeConversation.displayName} ({activeConversation.participants.length} members)</h3>
+              <button onClick={() => setShowMembers(false)} className="p-1 rounded-lg hover:bg-[var(--accent)] cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {activeConversation.participants.map((p) => (
+                <button
+                  key={p.user_id}
+                  onClick={() => { setShowMembers(false); navigate(`/profile/${p.user_id}`); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+                >
+                  <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {p.profile?.avatar_url ? (
+                      <img src={p.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-medium text-gold-500">
+                        {p.profile?.display_name?.charAt(0).toUpperCase() || "?"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm truncate block">{p.profile?.display_name || "Unknown"}</span>
+                    <span className="text-[10px] text-[var(--muted-foreground)]">{p.user_id === user?.id ? "You" : p.role}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="px-4 py-2 border-t border-[var(--border)]">
+              <button
+                onClick={() => { setShowMembers(false); setShowAddMember(true); }}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-gold-500 text-sm font-medium hover:bg-gold-600 transition-colors cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" /> Add Member
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
     <div className="h-[calc(100dvh-4rem)] lg:h-screen -m-4 lg:-m-6 flex flex-col overflow-hidden">
       {/* Messages header bar */}
       <div className="h-14 bg-[var(--header-background)] border-b border-[var(--border)] flex items-center px-4 lg:px-0 flex-shrink-0">
@@ -167,6 +214,8 @@ export default function MessagesPage() {
                 onClick={() => {
                   if (activeConversation.type === "direct" && activeConversation.otherParticipants[0]) {
                     navigate(`/profile/${activeConversation.otherParticipants[0].user_id}`);
+                  } else {
+                    setShowMembers(true);
                   }
                 }}
               >
