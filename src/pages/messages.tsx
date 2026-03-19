@@ -149,8 +149,8 @@ export default function MessagesPage() {
           )}
         </div>
 
-        {/* Right: bell + avatar */}
-        <div className="flex items-center gap-1 px-4 flex-shrink-0">
+        {/* Right: bell + avatar (desktop only) */}
+        <div className="hidden lg:flex items-center gap-1 px-4 flex-shrink-0">
           <button className="relative p-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors">
             <Bell className="w-4 h-4" />
             <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-gold-500 rounded-full" />
