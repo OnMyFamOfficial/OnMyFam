@@ -5,6 +5,7 @@ import { Header } from "./header";
 import { MobileNav } from "./mobile-nav";
 import { RightSidebar } from "./right-sidebar";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { InstallPrompt } from "@/components/shared/install-prompt";
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -32,6 +33,7 @@ export function AppLayout() {
         onMobileClose={() => setRightSidebarOpen(false)}
       />
       <ChatPanel />
+      <InstallPrompt />
     </div>
   );
 }
