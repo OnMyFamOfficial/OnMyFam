@@ -15,11 +15,12 @@ interface ChatWindowProps {
   onBack?: () => void;
   onStartCall?: (type: "audio" | "video") => void;
   showShortcuts?: boolean;
+  hideHeader?: boolean;
 }
 
 const PAGE_SIZE = 40;
 
-export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = false }: ChatWindowProps) {
+export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = false, hideHeader = false }: ChatWindowProps) {
   const { user } = useAuth();
   const { markAsRead } = useChat();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -278,12 +279,12 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
     <div className="flex h-full overflow-hidden">
       {/* Main chat column */}
       <div className="flex flex-col flex-1 min-w-0 overflow-x-hidden">
-        <ChatHeader
+        {!hideHeader && <ChatHeader
           conversation={conversation}
           onBack={onBack}
           onAudioCall={onStartCall ? () => onStartCall("audio") : undefined}
           onVideoCall={onStartCall ? () => onStartCall("video") : undefined}
-        />
+        />}
 
         {/* Pinned message strip - Telegram style */}
         {(() => {

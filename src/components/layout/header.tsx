@@ -23,9 +23,12 @@ const PAGE_INFO: Record<string, { title: string; subtitle: string }> = {
 export function Header({ onMenuClick, onRightMenuClick }: HeaderProps) {
   const { profile } = useAuth();
   const location = useLocation();
-  // Try exact path first, then base path
   const basePath = "/" + (location.pathname.split("/")[1] || "feed");
+  const isMessages = basePath === "/messages";
   const pageInfo = PAGE_INFO[location.pathname] || PAGE_INFO[basePath] || { title: "On My Fam", subtitle: "Where Family Stays Connected" };
+
+  // Don't show the default header on messages page (it has its own)
+  if (isMessages) return null;
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-[var(--header-background)] border-b border-[var(--border)] flex items-center justify-between px-4 lg:px-6">
@@ -65,7 +68,6 @@ export function Header({ onMenuClick, onRightMenuClick }: HeaderProps) {
           )}
         </div>
 
-        {/* Right sidebar hamburger - mobile only */}
         {onRightMenuClick && (
           <button
             onClick={onRightMenuClick}

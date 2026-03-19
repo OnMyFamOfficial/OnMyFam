@@ -11,7 +11,7 @@ export function AppLayout() {
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--background)]">
+    <div className="flex h-screen overflow-hidden light-gradient dark:bg-[var(--background)]">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

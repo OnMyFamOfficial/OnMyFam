@@ -340,7 +340,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
           className={cn(
             "w-9 h-full shrink-0 cursor-pointer relative border-l transition-colors duration-300",
             collapsed
-              ? "bg-gradient-to-b from-gold-500/30 via-gold-600/20 to-gold-500/30 border-gold-500/30 hover:from-gold-500/50 hover:via-gold-600/40 hover:to-gold-500/50"
+              ? "bg-[var(--sidebar-background)] border-[var(--sidebar-border)] hover:brightness-110"
               : "bg-gradient-to-b from-gold-600 via-gold-500 to-gold-600 border-gold-500/30"
           )}
           onClick={() => setCollapsed(!collapsed)}
@@ -384,7 +384,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
 
         {/* Expandable content panel */}
         <aside className={cn(
-          "h-full bg-[var(--sidebar-background)] border-l border-[var(--border)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-all duration-300 flex flex-col",
+          "h-full light-gradient dark:bg-[var(--sidebar-background)] border-l border-[var(--border)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-all duration-300 flex flex-col",
           collapsed ? "w-0 opacity-0 overflow-hidden" : "w-[276px] opacity-100"
         )}>
 

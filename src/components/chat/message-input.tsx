@@ -314,7 +314,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
             accept="image/*,video/*,.pdf,.doc,.docx,.txt"
             onChange={handleFileSelect}
           />
-          <div className="flex items-end bg-[var(--background)] border border-[var(--input)] rounded-lg focus-within:ring-1 focus-within:ring-gold-500 overflow-hidden">
+          <div className="flex items-end bg-[var(--background)] border border-[var(--input)] rounded-lg overflow-hidden">
             {/* Left icons */}
             <div className="flex items-center flex-shrink-0 pl-2.5 pb-2.5">
               <button
@@ -356,11 +356,12 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
             />
 
             {/* Send button inside */}
-            <div className="flex items-center flex-shrink-0 p-2.5">
+            <div className="flex items-center flex-shrink-0" style={{ padding: "2.5px 2.5px 2.5px 0" }}>
               <button
                 onClick={handleSend}
                 disabled={!text.trim() || uploading}
-                className="p-1.5 rounded-md bg-gold-500 text-white hover:bg-gold-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="p-3 rounded-md text-white hover:brightness-110 disabled:opacity-70 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                style={{ backgroundColor: "#393a4e" }}
                 title="Send"
               >
                 <Send className="w-5.5 h-5.5" />

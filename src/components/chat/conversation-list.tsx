@@ -51,16 +51,16 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-3 py-3 border-b border-[var(--border)] dark:bg-black">
+      <div className="px-3 py-3 border-b border-[var(--border)] bg-[var(--card)]">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold text-base">Messages</h3>
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowNewMenu(!showNewMenu)}
-              className="p-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer"
+              className="w-full px-3 py-1.5 rounded-lg bg-gold-500 text-sm font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer hover:bg-gold-600"
               title="New conversation"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
+              New Conversation
             </button>
             {showNewMenu && (
               <div className="absolute right-0 top-full mt-1 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px] z-50">
@@ -80,7 +80,7 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 bg-[var(--background)] dark:!bg-[#38394d] border border-[var(--input)] rounded-lg px-2.5 py-1.5">
+        <div className="flex items-center gap-2 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2.5 py-1.5">
           <Search className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
           <input
             type="text"

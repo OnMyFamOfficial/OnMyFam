@@ -213,8 +213,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     style={
                       isActive
                         ? {
-                            background:
-                              "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))",
+                            background: theme === "dark"
+                              ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                              : "#000000",
                           }
                         : undefined
                     }
@@ -256,7 +257,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               )}
               style={
                 location.pathname === "/admin"
-                  ? { background: "linear-gradient(135deg, hsl(0, 70%, 45%), hsl(25, 90%, 50%))" }
+                  ? { background: theme === "dark" ? "linear-gradient(135deg, hsl(0, 70%, 45%), hsl(25, 90%, 50%))" : "#000000" }
                   : undefined
               }
               title={collapsed ? "God Mode" : undefined}

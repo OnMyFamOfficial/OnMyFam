@@ -112,8 +112,8 @@ export default function EventsPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors cursor-pointer ${
               activeTab === tab.id
-                ? "bg-[var(--accent)] text-[var(--foreground)] border-b-2 border-gold-500"
-                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]"
+                ? "text-gold-500 border-b-2 border-gold-500"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             }`}
           >
             {tab.label}
@@ -138,7 +138,7 @@ export default function EventsPage() {
             className={`w-[150px] flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
               dateFrom
                 ? "border-gold-500 bg-gold-500/10 text-gold-500"
-                : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                : "border-[var(--border)] bg-white/5 dark:bg-white/5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
@@ -212,7 +212,7 @@ export default function EventsPage() {
             className={`w-[150px] flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
               categoryFilter !== "all"
                 ? "border-gold-500 bg-gold-500/10 text-gold-500"
-                : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                : "border-[var(--border)] bg-white/5 dark:bg-white/5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
             }`}
           >
             <Tag className="w-3.5 h-3.5" />
@@ -257,7 +257,7 @@ export default function EventsPage() {
             className={`w-[150px] flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
               statusFilter !== "all"
                 ? "border-gold-500 bg-gold-500/10 text-gold-500"
-                : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+                : "border-[var(--border)] bg-white/5 dark:bg-white/5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
             }`}
           >
             <Users className="w-3.5 h-3.5" />
@@ -351,7 +351,7 @@ export default function EventsPage() {
             <div
               key={event.id}
               onClick={() => navigate(`/events/${event.id}${activeTab === "mine" ? "?edit=true" : ""}`)}
-              className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden cursor-pointer hover:border-gold-500/30 transition-colors relative"
+              className="rounded-lg border border-[var(--border)] overflow-hidden cursor-pointer hover:border-gold-500/30 transition-colors relative shadow-md dark:shadow-black/30 bg-[var(--card)]"
             >
               {activeTab === "mine" && (
                 <div className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-gold-500 text-white">
