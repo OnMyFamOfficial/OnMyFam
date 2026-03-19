@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, MapPin, Users, Plus, Filter, X } from "lucide-react";
+import { Calendar, MapPin, Users, Plus, Tag, X } from "lucide-react";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { EVENT_CATEGORIES } from "@/lib/constants";
 import { format } from "date-fns";
+import { CalendarPicker } from "@/components/shared/calendar-picker";
 import type { FamilyEvent, Profile } from "@/lib/types";
 
 type FullEvent = FamilyEvent & { creator: Profile };
@@ -15,9 +16,24 @@ export default function EventsPage() {
   const [events, setEvents] = useState<FullEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  const [dateFrom, setDateFrom] = useState<Date | null>(null);
+  const [dateTo, setDateTo] = useState<Date | null>(null);
+  const [fromOnly, setFromOnly] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [showTypeModal, setShowTypeModal] = useState(false);
+  const dateModalRef = useRef<HTMLDivElement>(null);
+  const typeModalRef = useRef<HTMLDivElement>(null);
+
+  // Close modals on outside click
+  useEffect(() => {
+    if (!showDateModal && !showTypeModal) return;
+    function handleClick(e: MouseEvent) {
+      if (showDateModal && dateModalRef.current && !dateModalRef.current.contains(e.target as Node)) setShowDateModal(false);
+      if (showTypeModal && typeModalRef.current && !typeModalRef.current.contains(e.target as Node)) setShowTypeModal(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showDateModal, showTypeModal]);
 
   useEffect(() => {
     if (currentFamily) loadEvents();
@@ -77,66 +93,134 @@ export default function EventsPage() {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
-            showFilters || categoryFilter !== "all" || dateFrom || dateTo
-              ? "border-gold-500 bg-gold-500/10 text-gold-500"
-              : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
-          }`}
-        >
-          <Filter className="w-3.5 h-3.5" />
-          Filters
-          {(categoryFilter !== "all" || dateFrom || dateTo) && (
-            <span className="w-1.5 h-1.5 rounded-full bg-gold-500" />
-          )}
-        </button>
+      {/* Filter buttons */}
+      <div className="flex items-center gap-2">
+        {/* Date Range button */}
+        <div className="relative" ref={dateModalRef}>
+          <button
+            onClick={() => { setShowDateModal(!showDateModal); setShowTypeModal(false); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
+              dateFrom
+                ? "border-gold-500 bg-gold-500/10 text-gold-500"
+                : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            {dateFrom
+              ? fromOnly
+                ? format(dateFrom, "MMM d, yyyy")
+                : dateTo
+                  ? `${format(dateFrom, "MMM d")} - ${format(dateTo, "MMM d")}`
+                  : format(dateFrom, "MMM d, yyyy")
+              : "Date Range"}
+          </button>
 
-        {showFilters && (
-          <>
-            <div className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="rounded-lg border border-[var(--input)] bg-[var(--background)] px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-gold-500"
-                title="From date"
-              />
-              <span className="text-xs text-[var(--muted-foreground)]">to</span>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="rounded-lg border border-[var(--input)] bg-[var(--background)] px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-gold-500"
-                title="To date"
-              />
+          {showDateModal && (
+            <div className="absolute left-0 top-full mt-2 z-50 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl p-4">
+              <div className="flex gap-4">
+                {/* From calendar */}
+                <div>
+                  <label className="text-xs text-[var(--muted-foreground)] mb-1 block font-medium">From</label>
+                  <CalendarPicker
+                    selected={dateFrom}
+                    onSelect={(d) => {
+                      setDateFrom(d);
+                      if (fromOnly) setShowDateModal(false);
+                    }}
+                  />
+                </div>
+
+                {/* To calendar */}
+                {!fromOnly && (
+                  <div>
+                    <label className="text-xs text-[var(--muted-foreground)] mb-1 block font-medium">To</label>
+                    <CalendarPicker
+                      selected={dateTo}
+                      onSelect={(d) => { setDateTo(d); setShowDateModal(false); }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* From date only checkbox */}
+              <label className="flex items-center gap-2 mt-3 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={fromOnly}
+                  onChange={(e) => { setFromOnly(e.target.checked); if (e.target.checked) setDateTo(null); }}
+                  className="rounded accent-gold-500"
+                />
+                From date only (no end date)
+              </label>
+
+              {/* Clear + Apply */}
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--border)]">
+                <button
+                  onClick={() => { setDateFrom(null); setDateTo(null); setFromOnly(false); }}
+                  className="text-xs text-red-400 hover:text-red-300 cursor-pointer"
+                >
+                  Clear dates
+                </button>
+                <button
+                  onClick={() => setShowDateModal(false)}
+                  className="px-3 py-1 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
             </div>
+          )}
+        </div>
 
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="rounded-lg border border-[var(--input)] bg-[var(--background)] px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-gold-500 cursor-pointer"
-            >
-              <option value="all">All Types</option>
-              {EVENT_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                </option>
-              ))}
-            </select>
+        {/* Event Type button */}
+        <div className="relative" ref={typeModalRef}>
+          <button
+            onClick={() => { setShowTypeModal(!showTypeModal); setShowDateModal(false); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
+              categoryFilter !== "all"
+                ? "border-gold-500 bg-gold-500/10 text-gold-500"
+                : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+            }`}
+          >
+            <Tag className="w-3.5 h-3.5" />
+            {categoryFilter !== "all"
+              ? categoryFilter.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+              : "Event Type"}
+          </button>
 
-            {(categoryFilter !== "all" || dateFrom || dateTo) && (
+          {showTypeModal && (
+            <div className="absolute left-0 top-full mt-2 z-50 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl py-1 min-w-[180px]">
               <button
-                onClick={() => { setCategoryFilter("all"); setDateFrom(""); setDateTo(""); }}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                onClick={() => { setCategoryFilter("all"); setShowTypeModal(false); }}
+                className={`w-full flex items-center px-4 py-2 text-sm text-left transition-colors cursor-pointer ${
+                  categoryFilter === "all" ? "bg-gold-500/10 text-gold-500 font-medium" : "hover:bg-[var(--accent)]"
+                }`}
               >
-                <X className="w-3 h-3" /> Clear
+                All Types
               </button>
-            )}
-          </>
+              {EVENT_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => { setCategoryFilter(cat); setShowTypeModal(false); }}
+                  className={`w-full flex items-center px-4 py-2 text-sm text-left transition-colors cursor-pointer ${
+                    categoryFilter === cat ? "bg-gold-500/10 text-gold-500 font-medium" : "hover:bg-[var(--accent)]"
+                  }`}
+                >
+                  {cat.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Clear all filters */}
+        {(dateFrom || categoryFilter !== "all") && (
+          <button
+            onClick={() => { setCategoryFilter("all"); setDateFrom(null); setDateTo(null); setFromOnly(false); }}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+          >
+            <X className="w-3 h-3" /> Clear
+          </button>
         )}
       </div>
 
@@ -156,8 +240,17 @@ export default function EventsPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {events.filter((event) => {
             if (categoryFilter !== "all" && event.category !== categoryFilter) return false;
-            if (dateFrom && new Date(event.starts_at) < new Date(dateFrom)) return false;
-            if (dateTo && new Date(event.starts_at) > new Date(dateTo + "T23:59:59")) return false;
+            const eventDate = new Date(event.starts_at);
+            if (dateFrom) {
+              const from = new Date(dateFrom);
+              from.setHours(0, 0, 0, 0);
+              if (eventDate < from) return false;
+            }
+            if (dateTo && !fromOnly) {
+              const to = new Date(dateTo);
+              to.setHours(23, 59, 59, 999);
+              if (eventDate > to) return false;
+            }
             return true;
           }).map((event) => (
             <div
