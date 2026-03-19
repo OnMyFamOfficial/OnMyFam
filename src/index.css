@@ -86,12 +86,13 @@
   border-color: var(--border);
 }
 
-/* Light mode: gold buttons become black */
+/* Light mode: gold buttons become dark fields */
 :root .bg-gold-500 {
-  background-color: #000000 !important;
+  background-color: #181920 !important;
+  border: 1px solid #2a2b3a !important;
 }
 :root .hover\:bg-gold-600:hover {
-  background-color: #1a1a1a !important;
+  background-color: #1e1f2a !important;
 }
 
 /* Dark mode chat gradients */
@@ -140,7 +141,6 @@ button, a, [role="button"], input[type="submit"], input[type="button"], select, 
 
 html {
   height: 100%;
-  height: 100dvh;
 }
 
 body {

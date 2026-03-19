@@ -199,9 +199,18 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
       fetchMessages();
     }, 10000);
 
+    // Refetch when app returns to foreground (mobile tab switch)
+    function handleVisibility() {
+      if (document.visibilityState === "visible") {
+        fetchMessages();
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
       supabase.removeChannel(channel);
       clearInterval(pollInterval);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [conversation.id, markAsRead, fetchMessages]);
 

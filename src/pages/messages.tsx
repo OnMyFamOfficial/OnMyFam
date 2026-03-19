@@ -178,7 +178,7 @@ export default function MessagesPage() {
         </>
       )}
 
-    <div className="h-[calc(100dvh-4rem)] lg:h-screen -m-4 lg:-m-6 flex flex-col overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] lg:h-screen -m-4 lg:-m-6 flex flex-col overflow-hidden">
       {/* Messages header bar */}
       <div className="h-14 bg-[var(--header-background)] border-b border-[var(--border)] flex items-center px-4 lg:px-0 flex-shrink-0">
         {/* Left section: Messages title (aligned with conversation list) */}

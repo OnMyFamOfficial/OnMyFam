@@ -18,8 +18,14 @@ interface SearchResult {
 export default function FamilyPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { currentFamily, members, myMembership, refreshFamilies } = useFamily();
+  const { currentFamily, members, myMembership, refreshFamilies, refreshMembers } = useFamily();
   const [creating, setCreating] = useState(false);
+
+  // Refresh data when page loads
+  useEffect(() => {
+    refreshFamilies();
+    refreshMembers();
+  }, []);
   const [searching, setSearching] = useState(false);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
