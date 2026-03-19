@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
-import { Send, Paperclip, Smile, X, Image, ArrowDown, ChevronDown, FileText, Film, Search } from "lucide-react";
+import { Send, Paperclip, Smile, X, Image, ArrowDown, ChevronDown, FileText, Film, Search, Sticker } from "lucide-react";
+import { EMOJI_CATEGORIES, getRecentEmojis, addRecentEmoji } from "./emoji-data";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-provider";
 import type { Message } from "@/lib/types";
@@ -26,8 +27,14 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
   const { user } = useAuth();
   const [text, setText] = useState("");
   const [showToolbar, setShowToolbar] = useState(false);
-  const [toolbarView, setToolbarView] = useState<"main" | "emoji" | "gifs">("main");
+  const [toolbarView, setToolbarView] = useState<"main" | "emoji" | "gifs" | "stickers">("main");
   const [uploading, setUploading] = useState(false);
+  const [emojiCategory, setEmojiCategory] = useState(0);
+  const [emojiSearch, setEmojiSearch] = useState("");
+  const [stickerSearch, setStickerSearch] = useState("");
+  const [stickers, setStickers] = useState<{ id: string; url: string; preview: string }[]>([]);
+  const [loadingStickers, setLoadingStickers] = useState(false);
+  const stickerSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [gifSearch, setGifSearch] = useState("");
   const [gifs, setGifs] = useState<{ id: string; url: string; preview: string; width: number; height: number }[]>([]);
   const [loadingGifs, setLoadingGifs] = useState(false);
@@ -62,6 +69,33 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
     setGifSearch(value);
     if (gifSearchTimeout.current) clearTimeout(gifSearchTimeout.current);
     gifSearchTimeout.current = setTimeout(() => searchGifs(value), 400);
+  }
+
+  const searchStickers = useCallback(async (query: string) => {
+    setLoadingStickers(true);
+    const endpoint = query.trim()
+      ? `https://api.giphy.com/v1/stickers/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=pg-13`
+      : `https://api.giphy.com/v1/stickers/trending?api_key=${GIPHY_KEY}&limit=20&rating=pg-13`;
+    try {
+      const res = await fetch(endpoint);
+      const json = await res.json();
+      setStickers(
+        (json.data || []).map((g: any) => ({
+          id: g.id,
+          url: g.images.original.url,
+          preview: g.images.fixed_width_small.url,
+        }))
+      );
+    } catch {
+      setStickers([]);
+    }
+    setLoadingStickers(false);
+  }, []);
+
+  function handleStickerSearchChange(value: string) {
+    setStickerSearch(value);
+    if (stickerSearchTimeout.current) clearTimeout(stickerSearchTimeout.current);
+    stickerSearchTimeout.current = setTimeout(() => searchStickers(value), 400);
   }
 
   async function sendGif(gifUrl: string) {
@@ -354,6 +388,14 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                   <span className="text-[9px]">Images</span>
                 </button>
                 <button
+                  onClick={() => { setToolbarView("stickers"); searchStickers(""); }}
+                  className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-green-400 transition-colors cursor-pointer"
+                  title="Stickers"
+                >
+                  <Sticker className="w-6 h-6" />
+                  <span className="text-[9px]">Stickers</span>
+                </button>
+                <button
                   onClick={() => { setToolbarView("gifs"); searchGifs(""); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-purple-400 transition-colors cursor-pointer"
                   title="GIFs"
@@ -379,27 +421,74 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                 </button>
               </div>
             ) : toolbarView === "emoji" ? (
-              <div className="flex items-center gap-1 px-3 py-2.5">
-                {EMOJI_QUICK.map((emoji) => (
+              <div className="flex flex-col" style={{ maxHeight: "280px" }}>
+                {/* Search + back */}
+                <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[var(--border)]">
+                  <div className="flex-1 flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2 py-1">
+                    <Search className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                    <input
+                      type="text"
+                      value={emojiSearch}
+                      onChange={(e) => setEmojiSearch(e.target.value)}
+                      placeholder="Search emojis..."
+                      className="bg-transparent text-sm outline-none w-full"
+                      autoFocus
+                    />
+                  </div>
                   <button
-                    key={emoji}
-                    onClick={() => {
-                      setText((prev) => prev + emoji);
-                      textareaRef.current?.focus();
-                    }}
-                    className="text-2xl hover:scale-125 transition-transform cursor-pointer"
+                    onClick={() => { setToolbarView("main"); setEmojiSearch(""); }}
+                    className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer flex-shrink-0"
                   >
-                    {emoji}
+                    <ChevronDown className="w-5 h-5" />
                   </button>
-                ))}
-                <div className="flex-1" />
-                <button
-                  onClick={() => setToolbarView("main")}
-                  className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer flex-shrink-0"
-                  title="Back"
-                >
-                  <ChevronDown className="w-5 h-5" />
-                </button>
+                </div>
+                {/* Category tabs */}
+                <div className="flex gap-0.5 px-2 py-1 border-b border-[var(--border)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {EMOJI_CATEGORIES.map((cat, i) => (
+                    <button
+                      key={cat.name}
+                      onClick={() => setEmojiCategory(i)}
+                      className={`p-1.5 rounded text-base transition-colors cursor-pointer flex-shrink-0 ${
+                        emojiCategory === i ? "bg-gold-500/20" : "hover:bg-[var(--accent)]"
+                      }`}
+                      title={cat.name}
+                    >
+                      {cat.icon}
+                    </button>
+                  ))}
+                </div>
+                {/* Emoji grid */}
+                <div className="flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="grid grid-cols-8 gap-0.5">
+                    {(() => {
+                      const category = EMOJI_CATEGORIES[emojiCategory];
+                      const emojis = emojiCategory === 0
+                        ? getRecentEmojis()
+                        : emojiSearch
+                          ? EMOJI_CATEGORIES.flatMap((c) => c.emojis).filter(() => true)
+                          : category.emojis;
+                      return emojis.length === 0 ? (
+                        <p className="col-span-8 text-xs text-[var(--muted-foreground)] text-center py-4">
+                          {emojiCategory === 0 ? "No recent emojis" : "No emojis found"}
+                        </p>
+                      ) : (
+                        emojis.map((emoji, idx) => (
+                          <button
+                            key={`${emoji}-${idx}`}
+                            onClick={() => {
+                              setText((prev) => prev + emoji);
+                              addRecentEmoji(emoji);
+                              textareaRef.current?.focus();
+                            }}
+                            className="text-xl hover:scale-110 hover:bg-[var(--accent)] rounded p-0.5 transition-transform cursor-pointer text-center"
+                          >
+                            {emoji}
+                          </button>
+                        ))
+                      );
+                    })()}
+                  </div>
+                </div>
               </div>
             ) : toolbarView === "gifs" ? (
               <div className="flex flex-col" style={{ maxHeight: "280px" }}>
@@ -446,6 +535,50 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                             className="w-full rounded-lg"
                             loading="lazy"
                           />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[8px] text-[var(--muted-foreground)] text-center mt-2">Powered by GIPHY</p>
+                </div>
+              </div>
+            ) : toolbarView === "stickers" ? (
+              <div className="flex flex-col" style={{ maxHeight: "280px" }}>
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)]">
+                  <div className="flex-1 flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2 py-1">
+                    <Search className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                    <input
+                      type="text"
+                      value={stickerSearch}
+                      onChange={(e) => handleStickerSearchChange(e.target.value)}
+                      placeholder="Search stickers..."
+                      className="bg-transparent text-sm outline-none w-full"
+                      autoFocus
+                    />
+                  </div>
+                  <button
+                    onClick={() => { setToolbarView("main"); setStickerSearch(""); setStickers([]); }}
+                    className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer flex-shrink-0"
+                  >
+                    <ChevronDown className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {loadingStickers ? (
+                    <p className="text-xs text-[var(--muted-foreground)] text-center py-4">Loading...</p>
+                  ) : stickers.length === 0 ? (
+                    <p className="text-xs text-[var(--muted-foreground)] text-center py-4">
+                      {stickerSearch ? "No stickers found" : "Trending stickers"}
+                    </p>
+                  ) : (
+                    <div className="columns-3 gap-1">
+                      {stickers.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => sendGif(s.url)}
+                          className="rounded-lg overflow-hidden hover:ring-2 hover:ring-gold-500 transition-all cursor-pointer mb-1 block w-full"
+                        >
+                          <img src={s.preview} alt="Sticker" className="w-full rounded-lg" loading="lazy" />
                         </button>
                       ))}
                     </div>
