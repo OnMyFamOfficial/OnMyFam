@@ -82,7 +82,7 @@ export default function MessagesPage() {
         {/* Center section: conversation info + call buttons */}
         <div className="flex-1 flex items-center h-full">
           {activeConversation && (
-            <div className="flex items-center gap-3 px-4">
+            <div className={`items-center gap-3 px-4 ${!mobileShowChat ? "hidden lg:flex" : "flex"}`}>
               <div
                 className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-gold-500/50 transition-all"
                 onClick={() => {
@@ -151,7 +151,6 @@ export default function MessagesPage() {
                   )}
                 </div>
               </div>
-            </div>
           )}
         </div>
 
