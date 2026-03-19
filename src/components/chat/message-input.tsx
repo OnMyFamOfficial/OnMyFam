@@ -433,17 +433,17 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                       {gifSearch ? "No GIFs found" : "Trending GIFs"}
                     </p>
                   ) : (
-                    <div className="grid grid-cols-3 gap-1">
+                    <div className="columns-3 gap-1">
                       {gifs.map((gif) => (
                         <button
                           key={gif.id}
                           onClick={() => sendGif(gif.url)}
-                          className="rounded-lg overflow-hidden hover:ring-2 hover:ring-gold-500 transition-all cursor-pointer"
+                          className="rounded-lg overflow-hidden hover:ring-2 hover:ring-gold-500 transition-all cursor-pointer mb-1 block w-full"
                         >
                           <img
                             src={gif.preview}
                             alt="GIF"
-                            className="w-full h-20 object-cover"
+                            className="w-full rounded-lg"
                             loading="lazy"
                           />
                         </button>
