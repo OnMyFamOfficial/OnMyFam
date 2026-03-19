@@ -12,11 +12,13 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Crown,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTheme } from "@/components/shared/theme-provider";
 import { useChat } from "@/components/chat/chat-provider";
+import { useFamily } from "@/lib/hooks/use-family";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -41,6 +43,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const { signOut, isGodMode } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { totalUnread } = useChat();
+  const { families, currentFamily, setCurrentFamily } = useFamily();
+  const [showFamilySwitcher, setShowFamilySwitcher] = useState(false);
 
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
@@ -116,6 +120,64 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             )}
           </div>
         </div>
+
+        {/* Family switcher */}
+        {families.length > 1 && (
+          <div className="px-2 pb-2 relative">
+            <button
+              onClick={() => setShowFamilySwitcher(!showFamilySwitcher)}
+              className={cn(
+                "w-full flex items-center py-1.5 rounded-lg transition-colors text-left cursor-pointer hover:bg-black/5 dark:hover:bg-white/5",
+                collapsed ? "justify-center px-2" : "gap-2 px-3"
+              )}
+              title={collapsed ? currentFamily?.name || "Switch family" : undefined}
+            >
+              <div className="w-5 h-5 rounded-md bg-gold-500/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-[9px] font-bold text-gold-500">
+                  {currentFamily?.name?.charAt(0).toUpperCase() || "F"}
+                </span>
+              </div>
+              {!collapsed && (
+                <>
+                  <span className="text-xs truncate flex-1 text-[var(--sidebar-muted)]">
+                    {currentFamily?.name || "Select family"}
+                  </span>
+                  <ChevronDown className={cn("w-3 h-3 text-[var(--sidebar-muted)] transition-transform", showFamilySwitcher && "rotate-180")} />
+                </>
+              )}
+            </button>
+            {showFamilySwitcher && (
+              <div className={cn(
+                "absolute z-50 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-lg py-1 overflow-hidden",
+                collapsed ? "left-full ml-2 top-0 w-48" : "left-2 right-2 top-full mt-1"
+              )}>
+                {families.map((fam) => (
+                  <button
+                    key={fam.id}
+                    onClick={() => {
+                      setCurrentFamily(fam);
+                      setShowFamilySwitcher(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors cursor-pointer",
+                      fam.id === currentFamily?.id
+                        ? "bg-gold-500/10 text-gold-500 font-medium"
+                        : "text-[var(--foreground)] hover:bg-[var(--accent)]"
+                    )}
+                  >
+                    <div className="w-5 h-5 rounded-md bg-gold-500/20 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[9px] font-bold text-gold-500">
+                        {fam.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <span className="truncate">{fam.name}</span>
+                    {fam.id === currentFamily?.id && <span className="text-[10px] text-gold-500 ml-auto">Active</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Nav items */}
         <nav className="p-2 flex-1">

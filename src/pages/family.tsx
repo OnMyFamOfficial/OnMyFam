@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
@@ -150,6 +150,64 @@ export default function FamilyPage() {
 
   const isAdmin = myMembership?.role === "admin" || myMembership?.role === "moderator";
   const [savingPrivacy, setSavingPrivacy] = useState(false);
+
+  // Hierarchy state
+  const [childFamilies, setChildFamilies] = useState<{ id: string; name: string; member_count: number }[]>([]);
+  const [parentFamily, setParentFamily] = useState<{ id: string; name: string } | null>(null);
+  const [showLinkParent, setShowLinkParent] = useState(false);
+  const [parentSearchQuery, setParentSearchQuery] = useState("");
+  const [parentSearchResults, setParentSearchResults] = useState<SearchResult[]>([]);
+  const [parentSearching, setParentSearching] = useState(false);
+  const [showJoinAnother, setShowJoinAnother] = useState(false);
+
+  // Load hierarchy data
+  useEffect(() => {
+    if (!currentFamily) return;
+
+    async function loadHierarchy() {
+      // Load child families
+      const { data: children } = await supabase.rpc("get_child_families", { p_family_id: currentFamily!.id });
+      if (children) setChildFamilies(children as typeof childFamilies);
+
+      // Load parent family
+      if (currentFamily!.parent_family_id) {
+        const { data: parent } = await supabase
+          .from("families")
+          .select("id, name")
+          .eq("id", currentFamily!.parent_family_id)
+          .single();
+        if (parent) setParentFamily(parent);
+      } else {
+        setParentFamily(null);
+      }
+    }
+
+    loadHierarchy();
+  }, [currentFamily]);
+
+  async function handleSearchParent() {
+    if (!parentSearchQuery.trim()) return;
+    setParentSearching(true);
+    const { data } = await supabase.rpc("search_families", { p_query: parentSearchQuery.trim() });
+    setParentSearchResults(((data || []) as SearchResult[]).filter((f) => f.id !== currentFamily?.id));
+    setParentSearching(false);
+  }
+
+  async function handleLinkParent(parentId: string) {
+    if (!currentFamily) return;
+    await supabase.rpc("link_family_to_parent", { p_child_id: currentFamily.id, p_parent_id: parentId });
+    await refreshFamilies();
+    setShowLinkParent(false);
+    setParentSearchQuery("");
+    setParentSearchResults([]);
+  }
+
+  async function handleUnlinkParent() {
+    if (!currentFamily) return;
+    await supabase.rpc("unlink_family_from_parent", { p_child_id: currentFamily.id });
+    setParentFamily(null);
+    await refreshFamilies();
+  }
 
   async function handlePrivacyChange(level: string) {
     if (!currentFamily) return;
@@ -478,6 +536,249 @@ export default function FamilyPage() {
             );
           })}
         </div>
+      </div>
+
+      {/* Family Hierarchy */}
+      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <GitBranch className="w-4 h-4 text-[var(--muted-foreground)]" />
+          <h3 className="font-semibold">Family Tree</h3>
+        </div>
+
+        {/* Parent family */}
+        <div className="mb-3">
+          <label className="text-xs text-[var(--muted-foreground)] mb-1 block">Part of</label>
+          {parentFamily ? (
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-[var(--accent)]">
+              <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center flex-shrink-0">
+                <Users className="w-4 h-4 text-gold-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{parentFamily.name}</p>
+                <p className="text-[10px] text-[var(--muted-foreground)]">Parent family</p>
+              </div>
+              {(isAdmin || currentFamily.created_by === user?.id) && (
+                <button
+                  onClick={handleUnlinkParent}
+                  className="p-1.5 rounded-lg hover:bg-red-500/10 text-[var(--muted-foreground)] hover:text-red-400 transition-colors cursor-pointer"
+                  title="Unlink from parent"
+                >
+                  <Unlink className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <div>
+              {!showLinkParent ? (
+                <button
+                  onClick={() => setShowLinkParent(true)}
+                  className="text-sm text-gold-500 hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  <Link2 className="w-3.5 h-3.5" />
+                  Link under a parent family
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <div className="flex-1 flex items-center gap-2 bg-[var(--background)] border border-[var(--input)] rounded-lg px-3 py-1.5">
+                      <Search className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                      <input
+                        type="text"
+                        value={parentSearchQuery}
+                        onChange={(e) => setParentSearchQuery(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleSearchParent(); }}
+                        placeholder="Search for parent family..."
+                        className="bg-transparent text-sm outline-none w-full"
+                        autoFocus
+                      />
+                    </div>
+                    <button
+                      onClick={handleSearchParent}
+                      disabled={parentSearching}
+                      className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {parentSearching ? "..." : "Search"}
+                    </button>
+                  </div>
+                  {parentSearchResults.map((fam) => (
+                    <button
+                      key={fam.id}
+                      onClick={() => handleLinkParent(fam.id)}
+                      className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+                    >
+                      <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center flex-shrink-0">
+                        <Users className="w-4 h-4 text-gold-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{fam.name}</p>
+                        <p className="text-[10px] text-[var(--muted-foreground)]">{fam.member_count} members</p>
+                      </div>
+                      <Link2 className="w-4 h-4 text-gold-500" />
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => { setShowLinkParent(false); setParentSearchResults([]); }}
+                    className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Child families */}
+        {childFamilies.length > 0 && (
+          <div>
+            <label className="text-xs text-[var(--muted-foreground)] mb-1 block">Families under {currentFamily.name}</label>
+            <div className="space-y-1">
+              {childFamilies.map((child) => (
+                <div key={child.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--accent)] transition-colors">
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                  <div className="w-7 h-7 rounded-md bg-gold-500/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[9px] font-bold text-gold-500">{child.name.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{child.name}</p>
+                    <p className="text-[10px] text-[var(--muted-foreground)]">{child.member_count} members</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Join Another Family */}
+      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold">Join Another Family</h3>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              Connect with more of your family circles
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowJoinAnother(true); setSearching(true); }}
+              className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <Search className="w-3.5 h-3.5" />
+              Find
+            </button>
+            <button
+              onClick={() => { setShowJoinAnother(true); setCreating(true); }}
+              className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Create
+            </button>
+          </div>
+        </div>
+
+        {showJoinAnother && searching && (
+          <div className="mt-4 space-y-3">
+            <div className="flex gap-2">
+              <div className="flex-1 flex items-center gap-2 bg-[var(--background)] border border-[var(--input)] rounded-lg px-3 py-2">
+                <Search className="w-4 h-4 text-[var(--muted-foreground)]" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                  placeholder="Search by family name..."
+                  className="bg-transparent text-sm outline-none w-full"
+                  autoFocus
+                />
+              </div>
+              <button
+                onClick={handleSearch}
+                disabled={searchLoading || !searchQuery.trim()}
+                className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {searchLoading ? "..." : "Search"}
+              </button>
+            </div>
+            {searchResults.length > 0 && (
+              <div className="space-y-1">
+                {searchResults.map((fam) => (
+                  <div key={fam.id} className="flex items-center gap-3 p-2 rounded-lg border border-[var(--border)] hover:border-gold-500/30 transition-colors">
+                    <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center flex-shrink-0">
+                      <Users className="w-4 h-4 text-gold-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{fam.name}</p>
+                      <p className="text-[10px] text-[var(--muted-foreground)]">{fam.member_count} members</p>
+                    </div>
+                    {joinSuccess === fam.id ? (
+                      <span className="text-xs text-green-400 font-medium flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Joined!</span>
+                    ) : fam.privacy_level === "public" ? (
+                      <button
+                        onClick={() => handleJoinFamily(fam.id)}
+                        disabled={joining === fam.id}
+                        className="px-3 py-1 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1"
+                      >
+                        <UserPlus className="w-3 h-3" />
+                        {joining === fam.id ? "..." : "Join"}
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-[var(--muted-foreground)]">Need invite</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {searchQuery && !searchLoading && searchResults.length === 0 && (
+              <p className="text-sm text-[var(--muted-foreground)] text-center py-2">No families found</p>
+            )}
+            <button
+              onClick={() => { setShowJoinAnother(false); setSearching(false); setSearchResults([]); setSearchQuery(""); }}
+              className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {showJoinAnother && creating && (
+          <div className="mt-4 space-y-3">
+            <div>
+              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Family Name *</label>
+              <input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                placeholder="Family name"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Description</label>
+              <input
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                placeholder="Short description"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCreateFamily}
+                disabled={saving || !form.name.trim()}
+                className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {saving ? "Creating..." : "Create"}
+              </button>
+              <button
+                onClick={() => { setShowJoinAnother(false); setCreating(false); setForm({ name: "", description: "", established_year: "" }); }}
+                className="px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

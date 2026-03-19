@@ -60,6 +60,7 @@ export interface Family {
   cover_url: string | null;
   established_year: number | null;
   privacy_level: "private" | "invite_only" | "public";
+  parent_family_id: string | null;
   member_count: number;
   created_by: string;
   created_at: string;
