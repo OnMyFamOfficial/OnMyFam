@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Send, Paperclip, Smile, X, Image, ArrowDown, ChevronDown, FileText, Film } from "lucide-react";
+import { Send, Paperclip, Smile, X, Image, ArrowDown, ChevronDown, FileText, Film, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-provider";
 import type { Message } from "@/lib/types";
@@ -26,8 +26,59 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
   const { user } = useAuth();
   const [text, setText] = useState("");
   const [showToolbar, setShowToolbar] = useState(false);
-  const [toolbarView, setToolbarView] = useState<"main" | "emoji">("main");
+  const [toolbarView, setToolbarView] = useState<"main" | "emoji" | "gifs">("main");
   const [uploading, setUploading] = useState(false);
+  const [gifSearch, setGifSearch] = useState("");
+  const [gifs, setGifs] = useState<{ id: string; url: string; preview: string; width: number; height: number }[]>([]);
+  const [loadingGifs, setLoadingGifs] = useState(false);
+  const gifSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const GIPHY_KEY = "ZGVuN9nUN1jlHftCOiYxWS5BhVQ9no3B";
+
+  const searchGifs = useCallback(async (query: string) => {
+    setLoadingGifs(true);
+    const endpoint = query.trim()
+      ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=pg-13`
+      : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_KEY}&limit=20&rating=pg-13`;
+    try {
+      const res = await fetch(endpoint);
+      const json = await res.json();
+      setGifs(
+        (json.data || []).map((g: any) => ({
+          id: g.id,
+          url: g.images.original.url,
+          preview: g.images.fixed_width_small.url,
+          width: parseInt(g.images.fixed_width_small.width),
+          height: parseInt(g.images.fixed_width_small.height),
+        }))
+      );
+    } catch {
+      setGifs([]);
+    }
+    setLoadingGifs(false);
+  }, []);
+
+  function handleGifSearchChange(value: string) {
+    setGifSearch(value);
+    if (gifSearchTimeout.current) clearTimeout(gifSearchTimeout.current);
+    gifSearchTimeout.current = setTimeout(() => searchGifs(value), 400);
+  }
+
+  async function sendGif(gifUrl: string) {
+    if (!user) return;
+    await supabase.from("messages").insert({
+      conversation_id: conversationId,
+      sender_id: user.id,
+      content: null,
+      message_type: "image",
+      media_url: gifUrl,
+      media_metadata: { filename: "gif", mime_type: "image/gif" },
+    });
+    setShowToolbar(false);
+    setToolbarView("main");
+    setGifSearch("");
+    setGifs([]);
+  }
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
   const [caption, setCaption] = useState("");
   const [showModalEmoji, setShowModalEmoji] = useState(false);
@@ -303,9 +354,9 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                   <span className="text-[9px]">Images</span>
                 </button>
                 <button
-                  onClick={() => { fileInputRef.current?.setAttribute("accept", "video/*"); fileInputRef.current?.click(); }}
+                  onClick={() => { setToolbarView("gifs"); searchGifs(""); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-purple-400 transition-colors cursor-pointer"
-                  title="GIFs & Video"
+                  title="GIFs"
                 >
                   <Film className="w-6 h-6" />
                   <span className="text-[9px]">GIFs</span>
@@ -349,6 +400,58 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                 >
                   <ChevronDown className="w-5 h-5" />
                 </button>
+              </div>
+            ) : toolbarView === "gifs" ? (
+              <div className="flex flex-col" style={{ maxHeight: "280px" }}>
+                {/* Search bar + back */}
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)]">
+                  <div className="flex-1 flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2 py-1">
+                    <Search className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                    <input
+                      type="text"
+                      value={gifSearch}
+                      onChange={(e) => handleGifSearchChange(e.target.value)}
+                      placeholder="Search GIFs..."
+                      className="bg-transparent text-sm outline-none w-full"
+                      autoFocus
+                    />
+                  </div>
+                  <button
+                    onClick={() => { setToolbarView("main"); setGifSearch(""); setGifs([]); }}
+                    className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer flex-shrink-0"
+                    title="Back"
+                  >
+                    <ChevronDown className="w-5 h-5" />
+                  </button>
+                </div>
+                {/* GIF grid */}
+                <div className="flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {loadingGifs ? (
+                    <p className="text-xs text-[var(--muted-foreground)] text-center py-4">Loading...</p>
+                  ) : gifs.length === 0 ? (
+                    <p className="text-xs text-[var(--muted-foreground)] text-center py-4">
+                      {gifSearch ? "No GIFs found" : "Trending GIFs"}
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-1">
+                      {gifs.map((gif) => (
+                        <button
+                          key={gif.id}
+                          onClick={() => sendGif(gif.url)}
+                          className="rounded-lg overflow-hidden hover:ring-2 hover:ring-gold-500 transition-all cursor-pointer"
+                        >
+                          <img
+                            src={gif.preview}
+                            alt="GIF"
+                            className="w-full h-20 object-cover"
+                            loading="lazy"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[8px] text-[var(--muted-foreground)] text-center mt-2">Powered by GIPHY</p>
+                </div>
               </div>
             ) : null}
           </div>
