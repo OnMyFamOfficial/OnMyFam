@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useOutletContext } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { MobileNav } from "./mobile-nav";
@@ -21,7 +21,7 @@ export function AppLayout() {
         />
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <Outlet />
+          <Outlet context={{ onMenuClick: () => setSidebarOpen(true) }} />
         </main>
 
         <MobileNav />

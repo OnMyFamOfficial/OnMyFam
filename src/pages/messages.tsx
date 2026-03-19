@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Phone, Video, MoreVertical, Bell, Menu, Trash2, LogOut } from "lucide-react";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { Phone, Video, MoreVertical, Bell, Menu, ArrowLeft, Trash2, LogOut } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useChat } from "@/components/chat/chat-provider";
 import { useVideoCall } from "@/components/video/video-call-provider";
@@ -11,6 +11,7 @@ import { ChatWindow } from "@/components/chat/chat-window";
 export default function MessagesPage() {
   const { conversationId: paramConvoId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
+  const { onMenuClick } = useOutletContext<{ onMenuClick: () => void }>();
   const { user, profile } = useAuth();
   const { conversations, activeConversationId, setActiveConversationId, refreshConversations } = useChat();
   const { startCall } = useVideoCall();
@@ -62,14 +63,19 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* Mobile: hamburger or title */}
+        {/* Mobile: hamburger + title or back arrow + conversation info */}
         <div className="lg:hidden flex items-center gap-2">
           {mobileShowChat && activeConversation ? (
-            <button onClick={handleBack} className="p-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors">
-              <Menu className="w-5 h-5" />
+            <button onClick={handleBack} className="p-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer">
+              <ArrowLeft className="w-5 h-5" />
             </button>
           ) : (
-            <h1 className="text-base font-bold">Messages</h1>
+            <>
+              <button onClick={onMenuClick} className="p-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer">
+                <Menu className="w-5 h-5" />
+              </button>
+              <h1 className="text-base font-bold">Messages</h1>
+            </>
           )}
         </div>
 
