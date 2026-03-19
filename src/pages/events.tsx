@@ -99,19 +99,9 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <button
-          onClick={() => navigate("/events/create")}
-          className="px-4 py-2 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Create Event
-        </button>
-      </div>
-
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-[var(--border)] pb-px">
+    <div className="space-y-4">
+      {/* Tab bar + Create button */}
+      <div className="flex items-center gap-1 border-b border-[var(--border)] pb-px">
         {([
           { id: "upcoming" as const, label: "Upcoming" },
           { id: "past" as const, label: "Past Events" },
@@ -129,6 +119,14 @@ export default function EventsPage() {
             {tab.label}
           </button>
         ))}
+        <div className="flex-1" />
+        <button
+          onClick={() => navigate("/events/create")}
+          className="px-3 py-1.5 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-1.5 cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Create Event
+        </button>
       </div>
 
       {/* Filter buttons */}
