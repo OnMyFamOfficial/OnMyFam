@@ -82,7 +82,7 @@ export default function MessagesPage() {
         {/* Center section: conversation info + call buttons */}
         <div className="flex-1 flex items-center h-full">
           {activeConversation && (
-            <div className={`items-center gap-3 px-4 ${!mobileShowChat ? "hidden lg:flex" : "flex"}`}>
+            <div className={`items-center gap-3 px-4 w-full ${!mobileShowChat ? "hidden lg:flex" : "flex"}`}>
               <div
                 className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-gold-500/50 transition-all"
                 onClick={() => {
@@ -104,8 +104,9 @@ export default function MessagesPage() {
                 <p className="text-[10px] text-[var(--muted-foreground)]">{activeConversation.participants.length} Fam in Chat</p>
               </div>
 
-              {/* Call buttons + more - right next to conversation name */}
-              <div className="flex items-center gap-0.5 ml-6">
+              <div className="flex-1" />
+              {/* Call buttons + more */}
+              <div className="flex items-center gap-0.5 flex-shrink-0">
                 <button
                   onClick={() => startCall(activeConversation.id, "audio")}
                   className="p-1.5 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"

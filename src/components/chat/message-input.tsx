@@ -329,13 +329,6 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
               </div>
             ) : toolbarView === "emoji" ? (
               <div className="flex items-center gap-1 px-3 py-2.5">
-                <button
-                  onClick={() => setToolbarView("main")}
-                  className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer flex-shrink-0"
-                  title="Back"
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </button>
                 {EMOJI_QUICK.map((emoji) => (
                   <button
                     key={emoji}
@@ -348,6 +341,14 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                     {emoji}
                   </button>
                 ))}
+                <div className="flex-1" />
+                <button
+                  onClick={() => setToolbarView("main")}
+                  className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer flex-shrink-0"
+                  title="Back"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </button>
               </div>
             ) : null}
           </div>

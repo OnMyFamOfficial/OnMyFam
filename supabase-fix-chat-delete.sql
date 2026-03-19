@@ -5,5 +5,5 @@ create policy "Delete own conversations" on public.conversations
   for delete using (
     created_by = auth.uid()
     or is_god_mode()
-    
+
   );
