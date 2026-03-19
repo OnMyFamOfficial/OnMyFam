@@ -67,7 +67,9 @@ export default function EventCreatePage() {
       const ext = coverFile.name.split(".").pop();
       const path = `events/${user.id}/${Date.now()}.${ext}`;
       const { error: uploadErr } = await supabase.storage.from("events").upload(path, coverFile);
-      if (!uploadErr) {
+      if (uploadErr) {
+        console.error("Cover upload error:", uploadErr);
+      } else {
         const { data: urlData } = supabase.storage.from("events").getPublicUrl(path);
         coverUrl = urlData.publicUrl;
       }

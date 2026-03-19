@@ -163,7 +163,7 @@ export default function EventsPage() {
           {showDateModal && (
             <>
               <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowDateModal(false)} />
-              <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
+              <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl p-8 max-h-[90vh] overflow-y-auto">
                 <h3 className="font-semibold text-sm mb-3">Date Range</h3>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div>
@@ -233,7 +233,7 @@ export default function EventsPage() {
           {showTypeModal && (
             <>
               <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowTypeModal(false)} />
-              <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl py-2 min-w-[220px]">
+              <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl py-4 px-2 min-w-[260px]">
                 <h3 className="font-semibold text-sm px-4 pb-2 border-b border-[var(--border)] mb-1">Event Type</h3>
                 <button
                   onClick={() => { setCategoryFilter("all"); setShowTypeModal(false); }}
@@ -278,7 +278,7 @@ export default function EventsPage() {
           {showStatusModal && (
             <>
               <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowStatusModal(false)} />
-              <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl py-2 min-w-[220px]">
+              <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl py-4 px-2 min-w-[260px]">
                 <h3 className="font-semibold text-sm px-4 pb-2 border-b border-[var(--border)] mb-1">RSVP Status</h3>
                 {[
                   { value: "all", label: "All Statuses" },
@@ -325,7 +325,7 @@ export default function EventsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {events.filter((event) => {
             const now = new Date();
             const eventDate = new Date(event.starts_at);
@@ -378,7 +378,7 @@ export default function EventsPage() {
                   <Calendar className="w-10 h-10 text-gold-500/50" />
                 </div>
               )}
-              <div className="p-4">
+              <div className="p-6">
                 <div className="flex items-center gap-2 text-xs text-gold-500 font-medium uppercase">
                   <span className="px-2 py-0.5 bg-gold-500/10 rounded-full">
                     {event.category}
