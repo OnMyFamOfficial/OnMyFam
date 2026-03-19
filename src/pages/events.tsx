@@ -45,7 +45,7 @@ export default function EventsPage() {
 
   if (!currentFamily) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-16">
+      <div className="text-center py-16">
         <h1 className="text-2xl font-bold">Events</h1>
         <p className="text-[var(--muted-foreground)] mt-2">
           Create or join a family first.
@@ -55,7 +55,7 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Events</h1>
@@ -85,7 +85,7 @@ export default function EventsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {events.map((event) => (
             <div
               key={event.id}
