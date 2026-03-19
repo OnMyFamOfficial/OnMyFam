@@ -276,9 +276,9 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full overflow-hidden min-h-0">
       {/* Main chat column */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-x-hidden">
+      <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-x-hidden">
         {!hideHeader && <ChatHeader
           conversation={conversation}
           onBack={onBack}
