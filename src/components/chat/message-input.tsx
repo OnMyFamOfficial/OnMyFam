@@ -65,7 +65,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
     const trimmed = text.trim();
     if (!trimmed) return;
     setText("");
-    setShowEmoji(false);
+    setShowToolbar(false);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     await sendMessage(trimmed);
     textareaRef.current?.focus();
