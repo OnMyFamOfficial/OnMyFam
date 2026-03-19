@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, MapPin, Users, Plus, Tag, X } from "lucide-react";
+import { Calendar, MapPin, Users, Plus, Tag, Pencil, X } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { EVENT_CATEGORIES } from "@/lib/constants";
@@ -12,6 +13,7 @@ type FullEvent = FamilyEvent & { creator: Profile };
 
 export default function EventsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { currentFamily } = useFamily();
   const [events, setEvents] = useState<FullEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,19 +23,24 @@ export default function EventsPage() {
   const [fromOnly, setFromOnly] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<"upcoming" | "past" | "mine">("upcoming");
+  const statusModalRef = useRef<HTMLDivElement>(null);
   const dateModalRef = useRef<HTMLDivElement>(null);
   const typeModalRef = useRef<HTMLDivElement>(null);
 
   // Close modals on outside click
   useEffect(() => {
-    if (!showDateModal && !showTypeModal) return;
+    if (!showDateModal && !showTypeModal && !showStatusModal) return;
     function handleClick(e: MouseEvent) {
       if (showDateModal && dateModalRef.current && !dateModalRef.current.contains(e.target as Node)) setShowDateModal(false);
       if (showTypeModal && typeModalRef.current && !typeModalRef.current.contains(e.target as Node)) setShowTypeModal(false);
+      if (showStatusModal && statusModalRef.current && !statusModalRef.current.contains(e.target as Node)) setShowStatusModal(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [showDateModal, showTypeModal]);
+  }, [showDateModal, showTypeModal, showStatusModal]);
 
   useEffect(() => {
     if (currentFamily) loadEvents();
@@ -55,12 +62,29 @@ export default function EventsPage() {
       return;
     }
 
+    const eventIds = data.map((e) => e.id);
     const creatorIds = [...new Set(data.map((e) => e.created_by))];
-    const { data: profiles } = await supabase.from("profiles").select("*").in("id", creatorIds);
-    const profileMap = new Map<string, any>();
-    for (const p of profiles || []) profileMap.set(p.id, p);
 
-    setEvents(data.map((e) => ({ ...e, creator: profileMap.get(e.created_by) || { display_name: "Unknown" } })) as FullEvent[]);
+    const [profilesRes, rsvpsRes] = await Promise.all([
+      supabase.from("profiles").select("*").in("id", creatorIds),
+      supabase.from("event_rsvps").select("*").in("event_id", eventIds),
+    ]);
+
+    const profileMap = new Map<string, any>();
+    for (const p of profilesRes.data || []) profileMap.set(p.id, p);
+
+    const rsvpsByEvent = new Map<string, any[]>();
+    for (const r of rsvpsRes.data || []) {
+      const list = rsvpsByEvent.get(r.event_id) || [];
+      list.push(r);
+      rsvpsByEvent.set(r.event_id, list);
+    }
+
+    setEvents(data.map((e) => ({
+      ...e,
+      creator: profileMap.get(e.created_by) || { display_name: "Unknown" },
+      rsvps: rsvpsByEvent.get(e.id) || [],
+    })) as FullEvent[]);
     setLoading(false);
   }
 
@@ -86,11 +110,32 @@ export default function EventsPage() {
         </div>
         <button
           onClick={() => navigate("/events/create")}
-          className="px-4 py-2 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2"
+          className="px-4 py-2 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           Create Event
         </button>
+      </div>
+
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-[var(--border)] pb-px">
+        {([
+          { id: "upcoming" as const, label: "Upcoming" },
+          { id: "past" as const, label: "Past Events" },
+          { id: "mine" as const, label: "My Events" },
+        ]).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors cursor-pointer ${
+              activeTab === tab.id
+                ? "bg-[var(--accent)] text-[var(--foreground)] border-b-2 border-gold-500"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Filter buttons */}
@@ -213,10 +258,48 @@ export default function EventsPage() {
           )}
         </div>
 
-        {/* Clear all filters */}
-        {(dateFrom || categoryFilter !== "all") && (
+        {/* Status filter button */}
+        <div className="relative" ref={statusModalRef}>
           <button
-            onClick={() => { setCategoryFilter("all"); setDateFrom(null); setDateTo(null); setFromOnly(false); }}
+            onClick={() => { setShowStatusModal(!showStatusModal); setShowDateModal(false); setShowTypeModal(false); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
+              statusFilter !== "all"
+                ? "border-gold-500 bg-gold-500/10 text-gold-500"
+                : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            {statusFilter !== "all"
+              ? statusFilter === "going" ? "Going" : statusFilter === "maybe" ? "Interested" : "Not Going"
+              : "Status"}
+          </button>
+
+          {showStatusModal && (
+            <div className="absolute left-0 top-full mt-2 z-50 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl py-1 min-w-[160px]">
+              {[
+                { value: "all", label: "All Statuses" },
+                { value: "going", label: "Going" },
+                { value: "maybe", label: "Interested" },
+                { value: "cant_make_it", label: "Not Going" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => { setStatusFilter(opt.value); setShowStatusModal(false); }}
+                  className={`w-full flex items-center px-4 py-2 text-sm text-left transition-colors cursor-pointer ${
+                    statusFilter === opt.value ? "bg-gold-500/10 text-gold-500 font-medium" : "hover:bg-[var(--accent)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Clear all filters */}
+        {(dateFrom || categoryFilter !== "all" || statusFilter !== "all") && (
+          <button
+            onClick={() => { setCategoryFilter("all"); setStatusFilter("all"); setDateFrom(null); setDateTo(null); setFromOnly(false); }}
             className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
           >
             <X className="w-3 h-3" /> Clear
@@ -239,8 +322,21 @@ export default function EventsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {events.filter((event) => {
-            if (categoryFilter !== "all" && event.category !== categoryFilter) return false;
+            const now = new Date();
             const eventDate = new Date(event.starts_at);
+            // Tab filter
+            if (activeTab === "upcoming" && eventDate < now) return false;
+            if (activeTab === "past" && eventDate >= now) return false;
+            if (activeTab === "mine" && event.created_by !== user?.id) return false;
+            // Category filter
+            if (categoryFilter !== "all" && event.category !== categoryFilter) return false;
+            // Status filter
+            if (statusFilter !== "all") {
+              const myRsvp = event.rsvps?.find((r: any) => r.user_id === user?.id);
+              if (!myRsvp && statusFilter !== "cant_make_it") return false;
+              if (myRsvp && myRsvp.status !== statusFilter) return false;
+            }
+            // Date range filter
             if (dateFrom) {
               const from = new Date(dateFrom);
               from.setHours(0, 0, 0, 0);
@@ -255,9 +351,14 @@ export default function EventsPage() {
           }).map((event) => (
             <div
               key={event.id}
-              onClick={() => navigate(`/events/${event.id}`)}
-              className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden cursor-pointer hover:border-gold-500/30 transition-colors"
+              onClick={() => navigate(`/events/${event.id}${activeTab === "mine" ? "?edit=true" : ""}`)}
+              className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden cursor-pointer hover:border-gold-500/30 transition-colors relative"
             >
+              {activeTab === "mine" && (
+                <div className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-gold-500 text-white">
+                  <Pencil className="w-3.5 h-3.5" />
+                </div>
+              )}
               {event.cover_url ? (
                 <img
                   src={event.cover_url}

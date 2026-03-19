@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Calendar, MapPin, Users, Send } from "lucide-react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Calendar, MapPin, Users, Send, Pencil, Save, X } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { supabase } from "@/lib/supabase";
+import { EVENT_CATEGORIES } from "@/lib/constants";
 import { format, formatDistanceToNow } from "date-fns";
 import type { FamilyEvent, EventRsvp, EventChatMessage, Profile } from "@/lib/types";
 
@@ -13,11 +14,15 @@ type FullEvent = FamilyEvent & {
 
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [event, setEvent] = useState<FullEvent | null>(null);
   const [messages, setMessages] = useState<(EventChatMessage & { user: Profile })[]>([]);
   const [chatText, setChatText] = useState("");
+  const [editing, setEditing] = useState(searchParams.get("edit") === "true");
+  const [editForm, setEditForm] = useState({ title: "", description: "", location: "", category: "" });
+  const [editSaving, setEditSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -88,7 +93,27 @@ export default function EventDetailPage() {
         user: profileMap.get(r.user_id) || { display_name: "Unknown" },
       })),
     } as FullEvent);
+    setEditForm({
+      title: eventData.title || "",
+      description: eventData.description || "",
+      location: eventData.location || "",
+      category: eventData.category || "other",
+    });
     setLoading(false);
+  }
+
+  async function handleEditSave() {
+    if (!id || !editForm.title.trim()) return;
+    setEditSaving(true);
+    await supabase.from("events").update({
+      title: editForm.title.trim(),
+      description: editForm.description.trim() || null,
+      location: editForm.location.trim() || null,
+      category: editForm.category,
+    }).eq("id", id);
+    await loadEvent();
+    setEditing(false);
+    setEditSaving(false);
   }
 
   async function loadMessages() {
@@ -193,14 +218,78 @@ export default function EventDetailPage() {
           </div>
         )}
         <div className="p-6">
-          <span className="text-xs font-medium uppercase text-gold-500 px-2 py-0.5 bg-gold-500/10 rounded-full">
-            {event.category}
-          </span>
-          <h1 className="mt-2 text-2xl font-bold">{event.title}</h1>
-          {event.description && (
-            <p className="mt-2 text-[var(--muted-foreground)]">
-              {event.description}
-            </p>
+          {editing ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Title *</label>
+                <input
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Description</label>
+                <textarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  rows={3}
+                  className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50 resize-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-[var(--muted-foreground)] mb-1">Category</label>
+                  <select
+                    value={editForm.category}
+                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                    className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                  >
+                    {EVENT_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>{cat.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--muted-foreground)] mb-1">Location</label>
+                  <input
+                    value={editForm.location}
+                    onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                    className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleEditSave} disabled={editSaving || !editForm.title.trim()} className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 cursor-pointer flex items-center gap-1">
+                  <Save className="w-3.5 h-3.5" /> {editSaving ? "Saving..." : "Save"}
+                </button>
+                <button onClick={() => setEditing(false)} className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] cursor-pointer flex items-center gap-1">
+                  <X className="w-3.5 h-3.5" /> Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium uppercase text-gold-500 px-2 py-0.5 bg-gold-500/10 rounded-full">
+                  {event.category}
+                </span>
+                {event.created_by === user?.id && (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)] transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Edit
+                  </button>
+                )}
+              </div>
+              <h1 className="mt-2 text-2xl font-bold">{event.title}</h1>
+              {event.description && (
+                <p className="mt-2 text-[var(--muted-foreground)]">
+                  {event.description}
+                </p>
+              )}
+            </>
           )}
           <div className="mt-4 space-y-2 text-sm text-[var(--muted-foreground)]">
             <p className="flex items-center gap-2">
