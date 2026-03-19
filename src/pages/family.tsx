@@ -226,12 +226,6 @@ export default function FamilyPage() {
   if (!currentFamily) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Family</h1>
-          <p className="text-[var(--muted-foreground)]">
-            Create or join a family circle
-          </p>
-        </div>
 
         {!creating && !searching ? (
           <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-12 text-center">

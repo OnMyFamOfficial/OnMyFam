@@ -91,8 +91,7 @@ export default function EventsPage() {
   if (!currentFamily) {
     return (
       <div className="text-center py-16">
-        <h1 className="text-2xl font-bold">Events</h1>
-        <p className="text-[var(--muted-foreground)] mt-2">
+        <p className="text-[var(--muted-foreground)]">
           Create or join a family first.
         </p>
       </div>
@@ -101,13 +100,7 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Events</h1>
-          <p className="text-[var(--muted-foreground)]">
-            Family gatherings and celebrations
-          </p>
-        </div>
+      <div className="flex justify-end">
         <button
           onClick={() => navigate("/events/create")}
           className="px-4 py-2 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2 cursor-pointer"

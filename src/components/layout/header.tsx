@@ -1,4 +1,5 @@
-import { Bell, Menu, Search, Users } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { Bell, Menu, Users } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 
 interface HeaderProps {
@@ -6,12 +7,29 @@ interface HeaderProps {
   onRightMenuClick?: () => void;
 }
 
+const PAGE_INFO: Record<string, { title: string; subtitle: string }> = {
+  "/feed": { title: "Feed", subtitle: "What's happening with the family" },
+  "/family": { title: "Family", subtitle: "Your family circle" },
+  "/events": { title: "Events", subtitle: "Family gatherings and celebrations" },
+  "/events/create": { title: "Create Event", subtitle: "Plan a family gathering" },
+  "/photos": { title: "Photos", subtitle: "Shared family memories" },
+  "/discussions": { title: "Discussions", subtitle: "Family conversations and topics" },
+  "/messages": { title: "Messages", subtitle: "Chat with your family" },
+  "/profile": { title: "Profile", subtitle: "Your profile" },
+  "/settings": { title: "Settings", subtitle: "App preferences" },
+  "/admin": { title: "God Mode", subtitle: "Admin dashboard" },
+};
+
 export function Header({ onMenuClick, onRightMenuClick }: HeaderProps) {
   const { profile } = useAuth();
+  const location = useLocation();
+  // Try exact path first, then base path
+  const basePath = "/" + (location.pathname.split("/")[1] || "feed");
+  const pageInfo = PAGE_INFO[location.pathname] || PAGE_INFO[basePath] || { title: "On My Fam", subtitle: "Where Family Stays Connected" };
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-[var(--header-background)] border-b border-[var(--border)] flex items-center justify-between px-4 lg:px-6">
-      {/* Left: hamburger + search */}
+      {/* Left: hamburger + page title */}
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuClick}
@@ -20,13 +38,9 @@ export function Header({ onMenuClick, onRightMenuClick }: HeaderProps) {
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="hidden sm:flex items-center gap-2 bg-[var(--background)] border border-[var(--input)] rounded-lg px-3 py-1.5 w-64">
-          <Search className="w-4 h-4 text-[var(--muted-foreground)]" />
-          <input
-            type="text"
-            placeholder="Search family..."
-            className="bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none w-full"
-          />
+        <div>
+          <h1 className="text-lg font-bold text-[var(--foreground)] leading-tight">{pageInfo.title}</h1>
+          <p className="text-[10px] text-[var(--muted-foreground)] leading-tight">{pageInfo.subtitle}</p>
         </div>
       </div>
 

@@ -223,8 +223,7 @@ export default function FeedPage() {
   if (!currentFamily) {
     return (
       <div className="max-w-2xl mx-auto text-center py-16">
-        <h1 className="text-2xl font-bold">Family Feed</h1>
-        <p className="text-[var(--muted-foreground)] mt-2">
+        <p className="text-[var(--muted-foreground)]">
           Create or join a family first to see the feed.
         </p>
       </div>
@@ -233,8 +232,6 @@ export default function FeedPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Family Feed</h1>
-
       {/* Composer trigger bar + inline modal */}
       <div className="relative">
         <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">

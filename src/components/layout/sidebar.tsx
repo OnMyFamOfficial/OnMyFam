@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ChevronDown,
   Crown,
+  Search,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTheme } from "@/components/shared/theme-provider";
@@ -118,6 +119,18 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 On My Fam
               </h2>
             )}
+          </div>
+        </div>
+
+        {/* Search bar */}
+        <div className={cn("px-2 pb-2", collapsed && "hidden")}>
+          <div className="flex items-center gap-2 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2.5 py-1.5">
+            <Search className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+            <input
+              type="text"
+              placeholder="Search family..."
+              className="bg-transparent text-xs text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none w-full"
+            />
           </div>
         </div>
 

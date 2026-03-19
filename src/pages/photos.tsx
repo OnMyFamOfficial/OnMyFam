@@ -60,23 +60,14 @@ export default function PhotosPage() {
   if (!currentFamily) {
     return (
       <div className="max-w-4xl mx-auto text-center py-16">
-        <h1 className="text-2xl font-bold">Photos</h1>
-        <p className="text-[var(--muted-foreground)] mt-2">
-          Create or join a family first.
-        </p>
+        <p className="text-[var(--muted-foreground)]">Create or join a family first.</p>
       </div>
     );
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Photos</h1>
-          <p className="text-[var(--muted-foreground)]">
-            Family albums and shared memories
-          </p>
-        </div>
+      <div className="flex justify-end">
         <button
           onClick={() => setCreating(true)}
           className="px-4 py-2 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2"

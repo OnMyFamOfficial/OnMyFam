@@ -7,12 +7,6 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-[var(--muted-foreground)]">
-          Manage your account and preferences
-        </p>
-      </div>
 
       {/* Appearance */}
       <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-6">
