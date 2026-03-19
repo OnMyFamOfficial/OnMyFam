@@ -299,7 +299,8 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
                 scrollToMessage(currentPin.id);
                 setCurrentPinIndex((prev) => (prev + 1) % pinnedMessages.length);
               }}
-              className="w-full flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] bg-gold-500/5 hover:bg-gold-500/10 transition-colors cursor-pointer text-left overflow-hidden"
+              className="w-full flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] hover:brightness-110 transition-colors cursor-pointer text-left overflow-hidden"
+              style={{ backgroundColor: "#292b39" }}
             >
               <Pin className="w-3.5 h-3.5 text-gold-500 rotate-45 flex-shrink-0" />
               <div className="flex-1 overflow-hidden" style={{ minWidth: 0 }}>
@@ -429,6 +430,7 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
           replyTo={replyTo}
           onClearReply={() => setReplyTo(null)}
           onTyping={handleTyping}
+          onScrollToBottom={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
         />
       </div>
 

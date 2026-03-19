@@ -35,9 +35,10 @@ export function ConversationItem({ conversation, isActive, unreadCount, onClick 
       className={cn(
         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left cursor-pointer",
         isActive
-          ? "bg-gold-500/15 text-[var(--foreground)]"
+          ? "text-[var(--foreground)]"
           : "hover:bg-[var(--accent)]"
       )}
+      style={isActive ? { backgroundColor: "#292b39" } : undefined}
     >
       {/* Avatar */}
       <div className="relative flex-shrink-0">

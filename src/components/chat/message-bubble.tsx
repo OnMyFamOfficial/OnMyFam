@@ -114,7 +114,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
   const hasReactions = reactions && Object.entries(reactions).some(([, users]) => users.size > 0);
 
   return (
-    <div className={cn("flex gap-1 mb-1 group items-start", isMine ? "flex-row-reverse" : "flex-row")}>
+    <div className={cn("flex gap-1 group items-start", showAvatar ? "mb-1" : "mb-px", isMine ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
       <div className="flex-shrink-0 w-7">
         {showAvatar ? (

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Send, Paperclip, Smile, X, Image } from "lucide-react";
+import { Send, Paperclip, Smile, X, Image, ArrowDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-provider";
 import type { Message } from "@/lib/types";
@@ -10,6 +10,7 @@ interface MessageInputProps {
   replyTo: Message | null;
   onClearReply: () => void;
   onTyping: () => void;
+  onScrollToBottom?: () => void;
 }
 
 const EMOJI_QUICK = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F62E}", "\u{1F622}", "\u{1F64F}", "\u{1F389}", "\u{1F525}"];
@@ -21,7 +22,7 @@ interface PendingFile {
   isVideo: boolean;
 }
 
-export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }: MessageInputProps) {
+export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, onScrollToBottom }: MessageInputProps) {
   const { user } = useAuth();
   const [text, setText] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
@@ -355,8 +356,8 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
               style={{ minHeight: "42px", maxHeight: "160px", fontSize: "16px", lineHeight: "1.5", paddingTop: "5px", paddingBottom: "5px", overflowY: text.split("\n").length > 8 ? "auto" : "hidden" }}
             />
 
-            {/* Send button inside */}
-            <div className="flex items-center flex-shrink-0" style={{ padding: "2.5px 2.5px 2.5px 0" }}>
+            {/* Send + scroll buttons inside */}
+            <div className="flex items-center gap-0.5 flex-shrink-0" style={{ padding: "2.5px 2.5px 2.5px 0" }}>
               <button
                 onClick={handleSend}
                 disabled={!text.trim() || uploading}
@@ -365,6 +366,14 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping }
                 title="Send"
               >
                 <Send className="w-5.5 h-5.5" />
+              </button>
+              <button
+                onClick={onScrollToBottom}
+                className="p-3 rounded-md text-white hover:brightness-110 transition-colors cursor-pointer"
+                style={{ backgroundColor: "#393a4e" }}
+                title="Scroll to bottom"
+              >
+                <ArrowDown className="w-5.5 h-5.5" />
               </button>
             </div>
           </div>
