@@ -15,15 +15,30 @@ export default function EventCreatePage() {
     description: "",
     category: "other" as string,
     location: "",
-    starts_at: "",
-    ends_at: "",
+    start_date: "",
+    start_time: "",
+    end_date: "",
+    end_time: "",
     is_all_day: false,
   });
 
+  function buildDateTime(date: string, time: string, allDay: boolean): string | null {
+    if (!date) return null;
+    if (allDay || !time) {
+      return new Date(`${date}T00:00:00`).toISOString();
+    }
+    return new Date(`${date}T${time}`).toISOString();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !currentFamily || !form.title.trim() || !form.starts_at) return;
+    if (!user || !currentFamily || !form.title.trim() || !form.start_date) return;
     setSaving(true);
+
+    const startsAt = buildDateTime(form.start_date, form.start_time, form.is_all_day);
+    const endsAt = form.end_date ? buildDateTime(form.end_date, form.end_time, form.is_all_day) : null;
+
+    if (!startsAt) { setSaving(false); return; }
 
     const { data, error } = await supabase
       .from("events")
@@ -34,8 +49,8 @@ export default function EventCreatePage() {
         description: form.description.trim() || null,
         category: form.category,
         location: form.location.trim() || null,
-        starts_at: new Date(form.starts_at).toISOString(),
-        ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
+        starts_at: startsAt,
+        ends_at: endsAt,
         is_all_day: form.is_all_day,
       })
       .select()
@@ -112,32 +127,6 @@ export default function EventCreatePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Start Date & Time *
-            </label>
-            <input
-              type="datetime-local"
-              value={form.starts_at}
-              onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
-              required
-              className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              End Date & Time
-            </label>
-            <input
-              type="datetime-local"
-              value={form.ends_at}
-              onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
-              className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-            />
-          </div>
-        </div>
-
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -148,10 +137,54 @@ export default function EventCreatePage() {
           All day event
         </label>
 
+        <div className={`grid gap-4 ${form.is_all_day ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
+          <div>
+            <label className="block text-sm font-medium mb-1">Start Date *</label>
+            <input
+              type="date"
+              value={form.start_date}
+              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+              required
+              className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+            />
+          </div>
+          {!form.is_all_day && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Start Time</label>
+              <input
+                type="time"
+                value={form.start_time}
+                onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+                className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+              />
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium mb-1">End Date</label>
+            <input
+              type="date"
+              value={form.end_date}
+              onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+              className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+            />
+          </div>
+          {!form.is_all_day && (
+            <div>
+              <label className="block text-sm font-medium mb-1">End Time</label>
+              <input
+                type="time"
+                value={form.end_time}
+                onChange={(e) => setForm({ ...form, end_time: e.target.value })}
+                className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+              />
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-2 pt-2">
           <button
             type="submit"
-            disabled={saving || !form.title.trim() || !form.starts_at}
+            disabled={saving || !form.title.trim() || !form.start_date}
             className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50"
           >
             {saving ? "Creating..." : "Create Event"}
