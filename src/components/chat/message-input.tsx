@@ -362,9 +362,9 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
             accept="image/*,video/*,.pdf,.doc,.docx,.txt"
             onChange={handleFileSelect}
           />
-          <div className="flex items-end gap-0.5">
-            {/* Attach button - left side */}
-            <div className="flex-shrink-0" style={{ padding: "0 0 0 0" }}>
+          <div className="flex items-end bg-[var(--background)] border border-[var(--input)] rounded-lg overflow-hidden">
+            {/* Attach button - left inside */}
+            <div className="flex items-center flex-shrink-0" style={{ padding: "2.5px 0 2.5px 2.5px" }}>
               <button
                 onClick={() => { setShowToolbar(!showToolbar); setToolbarView("main"); }}
                 className={cn(
@@ -378,28 +378,26 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
               </button>
             </div>
 
-            {/* Text input */}
-            <div className="flex-1 flex items-end bg-[var(--background)] border border-[var(--input)] rounded-lg overflow-hidden">
-              <textarea
-                ref={textareaRef}
-                value={text}
-                onChange={(e) => {
-                  setText(e.target.value);
-                  const el = e.target;
-                  el.style.height = "auto";
-                  el.style.height = Math.min(el.scrollHeight, 160) + "px";
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder={uploading ? "Uploading..." : "Type a message..."}
-                disabled={uploading}
-                rows={1}
-                className="flex-1 resize-none bg-transparent px-3 outline-none overflow-hidden disabled:opacity-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                style={{ minHeight: "42px", maxHeight: "160px", fontSize: "16px", lineHeight: "1.5", paddingTop: "5px", paddingBottom: "5px", overflowY: text.split("\n").length > 8 ? "auto" : "hidden" }}
-              />
-            </div>
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                const el = e.target;
+                el.style.height = "auto";
+                el.style.height = Math.min(el.scrollHeight, 160) + "px";
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={uploading ? "Uploading..." : "Type a message..."}
+              disabled={uploading}
+              rows={1}
+              className="flex-1 resize-none bg-transparent px-3 outline-none overflow-hidden disabled:opacity-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              style={{ minHeight: "42px", maxHeight: "160px", fontSize: "16px", lineHeight: "1.5", paddingTop: "5px", paddingBottom: "5px", overflowY: text.split("\n").length > 8 ? "auto" : "hidden" }}
+            />
 
-            {/* Send + scroll buttons - right side */}
-            <div className="flex items-center gap-0.5 flex-shrink-0">
+            {/* Send + scroll buttons - right inside */}
+            <div className="flex items-center gap-0.5 flex-shrink-0" style={{ padding: "2.5px 2.5px 2.5px 0" }}>
               <button
                 onClick={handleSend}
                 disabled={!text.trim() || uploading}
