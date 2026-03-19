@@ -56,7 +56,14 @@ export default function EventCreatePage() {
       .select()
       .single();
 
-    if (!error && data) {
+    if (error) {
+      console.error("Event create error:", error);
+      alert("Failed to create event: " + error.message);
+      setSaving(false);
+      return;
+    }
+
+    if (data) {
       // Auto-RSVP creator as going
       await supabase.from("event_rsvps").insert({
         event_id: data.id,

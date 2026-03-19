@@ -46,15 +46,47 @@ export default function EventDetailPage() {
 
   async function loadEvent() {
     if (!id) return;
-    const { data } = await supabase
+
+    const { data: eventData, error } = await supabase
       .from("events")
-      .select(
-        "*, creator:profiles!events_created_by_fkey(*), rsvps:event_rsvps(*, user:profiles!event_rsvps_user_id_fkey(*))"
-      )
+      .select("*")
       .eq("id", id)
       .single();
 
-    setEvent(data as FullEvent);
+    if (error || !eventData) {
+      console.error("Event load error:", error);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch RSVPs
+    const { data: rsvpData } = await supabase
+      .from("event_rsvps")
+      .select("*")
+      .eq("event_id", id);
+
+    // Collect all user IDs
+    const userIds = new Set<string>();
+    userIds.add(eventData.created_by);
+    for (const r of rsvpData || []) userIds.add(r.user_id);
+
+    // Fetch profiles
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("id", [...userIds]);
+
+    const profileMap = new Map<string, Profile>();
+    for (const p of (profiles || []) as Profile[]) profileMap.set(p.id, p);
+
+    setEvent({
+      ...eventData,
+      creator: profileMap.get(eventData.created_by) || { display_name: "Unknown" },
+      rsvps: (rsvpData || []).map((r: EventRsvp) => ({
+        ...r,
+        user: profileMap.get(r.user_id) || { display_name: "Unknown" },
+      })),
+    } as FullEvent);
     setLoading(false);
   }
 
@@ -62,11 +94,26 @@ export default function EventDetailPage() {
     if (!id) return;
     const { data } = await supabase
       .from("event_chat_messages")
-      .select("*, user:profiles!event_chat_messages_user_id_fkey(*)")
+      .select("*")
       .eq("event_id", id)
       .order("created_at", { ascending: true });
 
-    setMessages((data as (EventChatMessage & { user: Profile })[]) || []);
+    if (!data || data.length === 0) {
+      setMessages([]);
+      return;
+    }
+
+    const userIds = [...new Set(data.map((m) => m.user_id))];
+    const { data: profiles } = await supabase.from("profiles").select("*").in("id", userIds);
+    const profileMap = new Map<string, Profile>();
+    for (const p of (profiles || []) as Profile[]) profileMap.set(p.id, p);
+
+    setMessages(
+      data.map((m) => ({
+        ...m,
+        user: profileMap.get(m.user_id) || { display_name: "Unknown" },
+      })) as (EventChatMessage & { user: Profile })[]
+    );
   }
 
   async function handleRsvp(status: "going" | "maybe" | "cant_make_it") {

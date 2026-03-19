@@ -24,11 +24,22 @@ export default function EventsPage() {
 
     const { data } = await supabase
       .from("events")
-      .select("*, creator:profiles!events_created_by_fkey(*)")
+      .select("*")
       .eq("family_id", currentFamily.id)
       .order("starts_at", { ascending: true });
 
-    setEvents((data as FullEvent[]) || []);
+    if (!data || data.length === 0) {
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
+
+    const creatorIds = [...new Set(data.map((e) => e.created_by))];
+    const { data: profiles } = await supabase.from("profiles").select("*").in("id", creatorIds);
+    const profileMap = new Map<string, any>();
+    for (const p of profiles || []) profileMap.set(p.id, p);
+
+    setEvents(data.map((e) => ({ ...e, creator: profileMap.get(e.created_by) || { display_name: "Unknown" } })) as FullEvent[]);
     setLoading(false);
   }
 

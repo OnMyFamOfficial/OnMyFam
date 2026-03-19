@@ -113,14 +113,35 @@ export default function FeedPage() {
 
     const { data } = await supabase
       .from("posts")
-      .select(
-        "*, author:profiles!posts_author_id_fkey(*), media:post_media(*), reactions:post_reactions(*, user:profiles!post_reactions_user_id_fkey(*)), comments:comments(*, author:profiles!comments_author_id_fkey(*))"
-      )
+      .select("*, media:post_media(*), reactions:post_reactions(*), comments:comments(*)")
       .eq("family_id", currentFamily.id)
       .order("created_at", { ascending: false })
       .limit(50);
 
-    setPosts((data as FullPost[]) || []);
+    if (!data || data.length === 0) {
+      setPosts([]);
+      setLoading(false);
+      return;
+    }
+
+    // Collect all user IDs from posts, reactions, comments
+    const userIds = new Set<string>();
+    for (const post of data) {
+      userIds.add(post.author_id);
+      for (const r of post.reactions || []) userIds.add(r.user_id);
+      for (const c of post.comments || []) userIds.add(c.author_id);
+    }
+
+    const { data: profiles } = await supabase.from("profiles").select("*").in("id", [...userIds]);
+    const pm = new Map<string, any>();
+    for (const p of profiles || []) pm.set(p.id, p);
+
+    setPosts(data.map((post) => ({
+      ...post,
+      author: pm.get(post.author_id) || { display_name: "Unknown" },
+      reactions: (post.reactions || []).map((r: any) => ({ ...r, user: pm.get(r.user_id) })),
+      comments: (post.comments || []).map((c: any) => ({ ...c, author: pm.get(c.author_id) })),
+    })) as FullPost[]);
     setLoading(false);
   }
 
