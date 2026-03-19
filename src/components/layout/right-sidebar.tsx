@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Circle, UserPlus, Check, X, ExternalLink, Send, Cake, Heart, CalendarCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFamily } from "@/lib/hooks/use-family";
@@ -27,6 +28,7 @@ interface RightSidebarProps {
 }
 
 export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebarProps) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { currentFamily, members } = useFamily();
   const { openDirectMessage } = useChat();
@@ -183,7 +185,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
                     <X className="w-4 h-4" /> Rescind Request
                   </button>
                 )}
-                <button onClick={() => setProfileModal(null)} className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer">
+                <button onClick={() => { navigate(`/profile/${profileModal.id}`); setProfileModal(null); }} className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer">
                   <ExternalLink className="w-4 h-4" /> View Profile
                 </button>
                 <button onClick={() => { if (profileModal) { openDirectMessage(profileModal.id); setProfileModal(null); } }} className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer">
@@ -209,7 +211,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
       {/* Mobile slide-in panel */}
       <aside
         className={cn(
-          "fixed inset-y-0 right-0 z-50 w-72 bg-[var(--sidebar-background)] border-l border-[var(--border)] transform transition-transform duration-300 ease-in-out lg:hidden overflow-y-auto [scrollbar-width:thin] flex flex-col",
+          "fixed inset-y-0 right-0 z-50 w-72 bg-[var(--sidebar-background)] border-l border-[var(--border)] transform transition-transform duration-300 ease-in-out lg:hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex flex-col",
           mobileOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
@@ -306,7 +308,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
           {familyExpanded && (
             <div className="pb-1">
               {familyMembers.map((member) => (
-                <div key={member.id} className="flex items-center gap-3 px-4 py-2 hover:bg-[var(--accent)] transition-colors cursor-pointer" onClick={() => { if (!member.isMe) openDirectMessage(member.id); }}>
+                <div key={member.id} className="flex items-center gap-3 px-4 py-2 hover:bg-[var(--accent)] transition-colors cursor-pointer" onClick={() => navigate(`/profile/${member.id}`)}>
                   <div className="relative flex-shrink-0">
                     <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
                       {member.profile.avatar_url ? (
@@ -382,7 +384,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
 
         {/* Expandable content panel */}
         <aside className={cn(
-          "h-full bg-[var(--sidebar-background)] border-l border-[var(--border)] overflow-y-auto [scrollbar-width:thin] transition-all duration-300 flex flex-col",
+          "h-full bg-[var(--sidebar-background)] border-l border-[var(--border)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-all duration-300 flex flex-col",
           collapsed ? "w-0 opacity-0 overflow-hidden" : "w-[276px] opacity-100"
         )}>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
@@ -15,6 +16,7 @@ interface SearchResult {
 }
 
 export default function FamilyPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { currentFamily, members, myMembership, refreshFamilies } = useFamily();
   const [creating, setCreating] = useState(false);
@@ -387,7 +389,7 @@ export default function FamilyPage() {
 
   // Has family
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Family header */}
       <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden">
         <div className="h-32 bg-gradient-to-r from-gold-700 via-gold-500 to-gold-400" />
@@ -409,6 +411,50 @@ export default function FamilyPage() {
           </div>
         </div>
       </div>
+
+      {/* Two-column layout: members left, content right */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left: Members */}
+        <div className="lg:w-64 flex-shrink-0">
+          <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4 lg:sticky lg:top-20">
+            <h3 className="font-semibold mb-3">
+              Members ({members.length})
+            </h3>
+            <div className="space-y-2">
+              {members.map((member) => {
+                const p: Profile = member.profile;
+                return (
+                  <div
+                    key={member.id}
+                    onClick={() => navigate(`/profile/${member.user_id}`)}
+                    className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {p.avatar_url ? (
+                        <img src={p.avatar_url} alt={p.display_name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs font-medium text-gold-500">
+                          {p.display_name?.charAt(0).toUpperCase() || "?"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{p.display_name}</p>
+                      {member.relation_label && (
+                        <p className="text-[10px] text-[var(--muted-foreground)]">{member.relation_label}</p>
+                      )}
+                    </div>
+                    {member.role === "admin" && <Crown className="w-3 h-3 text-gold-500 flex-shrink-0" />}
+                    {member.role === "moderator" && <Shield className="w-3 h-3 text-blue-400 flex-shrink-0" />}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Content */}
+        <div className="flex-1 space-y-6">
 
       {/* Invite section - visible to all members */}
       <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
@@ -488,55 +534,6 @@ export default function FamilyPage() {
           </div>
         </div>
       )}
-
-      {/* Members list */}
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
-        <h3 className="font-semibold mb-4">
-          Members ({members.length})
-        </h3>
-        <div className="space-y-3">
-          {members.map((member) => {
-            const p: Profile = member.profile;
-            return (
-              <div
-                key={member.id}
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--accent)] transition-colors"
-              >
-                <div className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
-                  {p.avatar_url ? (
-                    <img
-                      src={p.avatar_url}
-                      alt={p.display_name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-sm font-medium text-gold-500">
-                      {p.display_name?.charAt(0).toUpperCase() || "?"}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{p.display_name}</p>
-                  {member.relation_label && (
-                    <p className="text-xs text-[var(--muted-foreground)]">
-                      {member.relation_label}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
-                  {member.role === "admin" && (
-                    <Crown className="w-3.5 h-3.5 text-gold-500" />
-                  )}
-                  {member.role === "moderator" && (
-                    <Shield className="w-3.5 h-3.5 text-blue-400" />
-                  )}
-                  <span className="capitalize">{member.role}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Family Hierarchy */}
       <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
@@ -780,6 +777,9 @@ export default function FamilyPage() {
           </div>
         )}
       </div>
+
+        </div>{/* end right content */}
+      </div>{/* end two-column flex */}
     </div>
   );
 }

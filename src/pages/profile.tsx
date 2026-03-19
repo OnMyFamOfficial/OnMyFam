@@ -1,10 +1,36 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { Camera, MapPin, Phone, ImagePlus } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { supabase } from "@/lib/supabase";
 import { uploadAvatar, uploadCover } from "@/services/storage";
+import type { Profile } from "@/lib/types";
 
 export default function ProfilePage() {
-  const { user, profile, updateProfile } = useAuth();
+  const { userId } = useParams<{ userId?: string }>();
+  const { user, profile: myProfile, updateProfile } = useAuth();
+  const [viewingProfile, setViewingProfile] = useState<Profile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  // If viewing someone else's profile
+  const isOwnProfile = !userId || userId === user?.id;
+  const profile = isOwnProfile ? myProfile : viewingProfile;
+
+  useEffect(() => {
+    if (userId && userId !== user?.id) {
+      setLoadingProfile(true);
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single()
+        .then(({ data }) => {
+          setViewingProfile(data as Profile | null);
+          setLoadingProfile(false);
+        });
+    }
+  }, [userId, user?.id]);
+
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -72,6 +98,14 @@ export default function ProfilePage() {
   const displayCover =
     coverPreview || (profile as any)?.cover_url || null;
 
+  if (loadingProfile) {
+    return <div className="flex items-center justify-center h-64 text-[var(--muted-foreground)]">Loading profile...</div>;
+  }
+
+  if (!profile) {
+    return <div className="flex items-center justify-center h-64 text-[var(--muted-foreground)]">Profile not found</div>;
+  }
+
   return (
     <div className="space-y-6">
       {/* Profile header — full width */}
@@ -88,7 +122,7 @@ export default function ProfilePage() {
             ) : (
               <div className="w-full h-full bg-gradient-to-r from-gold-700 via-gold-500 to-gold-400" />
             )}
-            {editing && (
+            {isOwnProfile && editing && (
               <button
                 onClick={() => coverRef.current?.click()}
                 className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -123,7 +157,7 @@ export default function ProfilePage() {
                     </span>
                   )}
                 </div>
-                {editing && (
+                {isOwnProfile && editing && (
                   <button
                     onClick={() => avatarRef.current?.click()}
                     className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -147,7 +181,7 @@ export default function ProfilePage() {
         {/* Profile info */}
         <div className="pb-6">
           {/* Name + Edit button row — tops aligned */}
-          {!editing && (
+          {!editing && !loadingProfile && (
             <div className="flex items-start pt-3 px-6 lg:px-8">
               <div className="ml-[calc(21px-24px)] sm:ml-[calc(37px-24px)] lg:ml-[calc(53px-32px)] w-[270px] text-center">
                 <h1 className="text-3xl font-bold">
@@ -173,18 +207,20 @@ export default function ProfilePage() {
                   )}
                 </div>
               </div>
-              <div className="ml-auto">
-                <button
-                  onClick={startEditing}
-                  className="px-5 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] transition-colors"
-                >
-                  Edit Profile
-                </button>
-              </div>
+              {isOwnProfile && (
+                <div className="ml-auto">
+                  <button
+                    onClick={startEditing}
+                    className="px-5 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] transition-colors"
+                  >
+                    Edit Profile
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
-          {editing && (
+          {isOwnProfile && editing && (
             <div className="mt-4 space-y-4 max-w-xl px-6 lg:px-8">
               <div>
                 <label className="block text-sm font-medium mb-1.5">
