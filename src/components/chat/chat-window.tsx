@@ -453,23 +453,6 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
           scrollToMessage(pinned[newIndex].id);
         }}
         onTogglePinFilter={() => setShowPinnedOnly((prev) => !prev)}
-        onPinEvent={async (_eventId, title) => {
-          if (!user) return;
-          const { data } = await supabase.from("messages").insert({
-            conversation_id: conversation.id,
-            sender_id: user.id,
-            content: `📌 Event: ${title}`,
-            message_type: "system",
-          }).select().single();
-          if (data) {
-            // Auto-pin the event message
-            await supabase.from("messages").update({ pinned_at: new Date().toISOString() }).eq("id", data.id);
-            setPinnedIds((prev) => new Set([...prev, data.id]));
-            if (channelRef.current) {
-              channelRef.current.send({ type: "broadcast", event: "new-message", payload: data });
-            }
-          }
-        }}
       />}
     </div>
   );

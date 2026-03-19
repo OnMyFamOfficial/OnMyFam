@@ -14,6 +14,7 @@ import {
   X,
   ExternalLink,
   MapPin,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -26,7 +27,6 @@ interface ChatShortcutsProps {
   onPinUp?: () => void;
   onPinDown?: () => void;
   onTogglePinFilter?: () => void;
-  onPinEvent?: (eventId: string, title: string) => void;
 }
 
 interface EventItem {
@@ -39,12 +39,24 @@ interface EventItem {
   cover_url: string | null;
 }
 
-export function ChatShortcuts({ pinnedCount = 0, showPinnedOnly = false, onPinUp, onPinDown, onTogglePinFilter, onPinEvent }: ChatShortcutsProps) {
+export function ChatShortcuts({ pinnedCount = 0, showPinnedOnly = false, onPinUp, onPinDown, onTogglePinFilter }: ChatShortcutsProps) {
   const navigate = useNavigate();
   const { currentFamily } = useFamily();
-  const [showEventsModal, setShowEventsModal] = useState(false);
+  const [showEventPicker, setShowEventPicker] = useState(false);
+  const [showEventDetail, setShowEventDetail] = useState<EventItem | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [pinnedEvents, setPinnedEvents] = useState<EventItem[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("omf-pinned-events");
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("omf-pinned-events", JSON.stringify(pinnedEvents));
+  }, [pinnedEvents]);
 
   async function loadEvents() {
     if (!currentFamily) return;
@@ -61,11 +73,22 @@ export function ChatShortcuts({ pinnedCount = 0, showPinnedOnly = false, onPinUp
   }
 
   useEffect(() => {
-    if (showEventsModal) loadEvents();
-  }, [showEventsModal]);
+    if (showEventPicker) loadEvents();
+  }, [showEventPicker]);
+
+  function pinEvent(event: EventItem) {
+    if (!pinnedEvents.find((e) => e.id === event.id)) {
+      setPinnedEvents((prev) => [...prev, event]);
+    }
+    setShowEventPicker(false);
+  }
+
+  function unpinEvent(eventId: string) {
+    setPinnedEvents((prev) => prev.filter((e) => e.id !== eventId));
+  }
 
   const shortcuts = [
-    { id: "events", label: "Events", icon: Calendar, color: "text-orange-400", action: () => setShowEventsModal(true) },
+    { id: "events", label: "Events", icon: Calendar, color: "text-orange-400", action: () => setShowEventPicker(true) },
     { id: "feed", label: "Feed", icon: Home, color: "text-blue-400", action: () => navigate("/feed") },
     { id: "photos", label: "Photos", icon: Camera, color: "text-pink-400", action: () => navigate("/photos") },
     { id: "discussions", label: "Discussions", icon: MessageSquare, color: "text-purple-400", action: () => navigate("/discussions") },
@@ -75,87 +98,113 @@ export function ChatShortcuts({ pinnedCount = 0, showPinnedOnly = false, onPinUp
 
   return (
     <>
-      {/* Events modal */}
-      {showEventsModal && (
+      {/* Event picker modal - list of events to pin */}
+      {showEventPicker && (
         <>
-          <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowEventsModal(false)} />
-          <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
+          <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowEventPicker(false)} />
+          <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-sm max-h-[70vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-orange-400" />
-                <h3 className="font-semibold text-sm">Pin Event to Chat</h3>
+                <h3 className="font-semibold text-sm">Pin Event to Sidebar</h3>
               </div>
-              <button
-                onClick={() => setShowEventsModal(false)}
-                className="p-1 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer"
-              >
+              <button onClick={() => setShowEventPicker(false)} className="p-1 rounded-lg hover:bg-[var(--accent)] cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
-
-            {/* Events list */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {loadingEvents ? (
-                <p className="text-sm text-[var(--muted-foreground)] text-center py-8">Loading events...</p>
+                <p className="text-sm text-[var(--muted-foreground)] text-center py-8">Loading...</p>
               ) : events.length === 0 ? (
                 <p className="text-sm text-[var(--muted-foreground)] text-center py-8">No upcoming events</p>
               ) : (
-                events.map((event) => (
-                  <div key={event.id} className="bg-[var(--background)] rounded-lg border border-[var(--border)] overflow-hidden">
-                    {event.cover_url ? (
-                      <img src={event.cover_url} alt="" className="w-full h-24 object-cover" />
-                    ) : (
-                      <div className="w-full h-16 bg-gradient-to-r from-gold-600/30 to-gold-400/30 flex items-center justify-center">
-                        <Calendar className="w-8 h-8 text-gold-500/30" />
-                      </div>
-                    )}
-                    <div className="p-3">
-                      <span className="text-[10px] font-medium uppercase text-gold-500 px-1.5 py-0.5 bg-gold-500/10 rounded-full">
-                        {event.category.replace(/_/g, " ")}
-                      </span>
-                      <h4 className="mt-1 font-semibold text-sm">{event.title}</h4>
-                      <div className="mt-1 space-y-0.5 text-xs text-[var(--muted-foreground)]">
-                        <p className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
+                events.map((event) => {
+                  const alreadyPinned = pinnedEvents.some((e) => e.id === event.id);
+                  return (
+                    <button
+                      key={event.id}
+                      onClick={() => !alreadyPinned && pinEvent(event)}
+                      disabled={alreadyPinned}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
+                        alreadyPinned ? "opacity-50" : "hover:bg-[var(--accent)] cursor-pointer"
+                      )}
+                    >
+                      <Calendar className="w-4 h-4 text-orange-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{event.title}</p>
+                        <p className="text-[10px] text-[var(--muted-foreground)]">
                           {event.is_all_day
-                            ? format(new Date(event.starts_at), "MMM d, yyyy") + " (All Day)"
-                            : format(new Date(event.starts_at), "MMM d, yyyy 'at' h:mm a")}
+                            ? format(new Date(event.starts_at), "MMM d, yyyy")
+                            : format(new Date(event.starts_at), "MMM d 'at' h:mm a")}
                         </p>
-                        {event.location && (
-                          <p className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {event.location}
-                          </p>
-                        )}
                       </div>
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          onClick={() => {
-                            onPinEvent?.(event.id, event.title);
-                            setShowEventsModal(false);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
-                          style={{ backgroundColor: "#393a4e" }}
-                        >
-                          <Pin className="w-3 h-3 rotate-45" />
-                          Pin to Chat
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowEventsModal(false);
-                            navigate(`/events/${event.id}`);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-gold-500 text-xs font-medium transition-colors cursor-pointer hover:bg-gold-600"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          View Event
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
+                      {alreadyPinned ? (
+                        <span className="text-[10px] text-gold-500">Pinned</span>
+                      ) : (
+                        <Plus className="w-4 h-4 text-[var(--muted-foreground)]" />
+                      )}
+                    </button>
+                  );
+                })
               )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Event detail modal */}
+      {showEventDetail && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowEventDetail(null)} />
+          <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            {showEventDetail.cover_url ? (
+              <img src={showEventDetail.cover_url} alt="" className="w-full h-36 object-cover" />
+            ) : (
+              <div className="w-full h-24 bg-gradient-to-r from-gold-600/30 to-gold-400/30 flex items-center justify-center">
+                <Calendar className="w-10 h-10 text-gold-500/30" />
+              </div>
+            )}
+            <div className="p-5">
+              <span className="text-[10px] font-medium uppercase text-gold-500 px-1.5 py-0.5 bg-gold-500/10 rounded-full">
+                {showEventDetail.category.replace(/_/g, " ")}
+              </span>
+              <h3 className="mt-2 text-lg font-bold">{showEventDetail.title}</h3>
+              <div className="mt-2 space-y-1 text-sm text-[var(--muted-foreground)]">
+                <p className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  {showEventDetail.is_all_day
+                    ? format(new Date(showEventDetail.starts_at), "EEEE, MMMM d, yyyy") + " (All Day)"
+                    : format(new Date(showEventDetail.starts_at), "EEEE, MMMM d, yyyy 'at' h:mm a")}
+                </p>
+                {showEventDetail.location && (
+                  <p className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" />
+                    {showEventDetail.location}
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => { navigate(`/events/${showEventDetail.id}`); setShowEventDetail(null); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-gold-500 text-sm font-medium hover:bg-gold-600 transition-colors cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  View Event
+                </button>
+                <button
+                  onClick={() => { unpinEvent(showEventDetail.id); setShowEventDetail(null); }}
+                  className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                >
+                  Unpin
+                </button>
+                <button
+                  onClick={() => setShowEventDetail(null)}
+                  className="px-3 py-2 rounded-lg border border-[var(--border)] text-sm hover:bg-[var(--accent)] transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </>
@@ -202,6 +251,23 @@ export function ChatShortcuts({ pinnedCount = 0, showPinnedOnly = false, onPinUp
             </>
           )}
         </div>
+
+        {/* Pinned event mini cards */}
+        {pinnedEvents.length > 0 && (
+          <div className="w-full px-2 pb-2 mb-1 border-b border-[var(--border)] space-y-1">
+            {pinnedEvents.map((event) => (
+              <button
+                key={event.id}
+                onClick={() => setShowEventDetail(event)}
+                className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+                title={event.title}
+              >
+                <Calendar className="w-3 h-3 text-orange-400 flex-shrink-0" />
+                <span className="text-[10px] truncate flex-1">{event.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Navigation shortcuts */}
         {shortcuts.map((item) => (
