@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Send, Paperclip, Smile, X, Image, ArrowDown } from "lucide-react";
+import { Send, Paperclip, Smile, X, Image, ArrowDown, ChevronDown, FileText, Film } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-provider";
 import type { Message } from "@/lib/types";
@@ -25,7 +25,8 @@ interface PendingFile {
 export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, onScrollToBottom }: MessageInputProps) {
   const { user } = useAuth();
   const [text, setText] = useState("");
-  const [showEmoji, setShowEmoji] = useState(false);
+  const [showToolbar, setShowToolbar] = useState(false);
+  const [toolbarView, setToolbarView] = useState<"main" | "emoji">("main");
   const [uploading, setUploading] = useState(false);
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
   const [caption, setCaption] = useState("");
@@ -280,33 +281,79 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
           </div>
         )}
 
-        {/* Emoji picker */}
-        {showEmoji && (
-          <div className="flex items-center gap-1 px-3 py-2 border-b border-[var(--border)] border-t dark:border-t-[var(--background)]" style={{ boxShadow: "0 -4px 12px rgba(0, 0, 0, 0.3)" }}>
-            {EMOJI_QUICK.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => {
-                  setText((prev) => prev + emoji);
-                  textareaRef.current?.focus();
-                }}
-                className="text-2xl hover:scale-125 transition-transform cursor-pointer"
-              >
-                {emoji}
-              </button>
-            ))}
-            <div className="flex-1" />
-            <button
-              onClick={() => setShowEmoji(false)}
-              className="p-0.5 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer flex-shrink-0"
-              title="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
+        {/* Toolbar */}
+        {showToolbar && (
+          <div className="border-t border-[var(--border)]" style={{ boxShadow: "0 -4px 12px rgba(0, 0, 0, 0.3)" }}>
+            {toolbarView === "main" ? (
+              <div className="flex items-center gap-3 px-4 py-2.5">
+                <button
+                  onClick={() => setToolbarView("emoji")}
+                  className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-gold-500 transition-colors cursor-pointer"
+                  title="Emojis"
+                >
+                  <Smile className="w-6 h-6" />
+                  <span className="text-[9px]">Emojis</span>
+                </button>
+                <button
+                  onClick={() => { fileInputRef.current?.setAttribute("accept", "image/*"); fileInputRef.current?.click(); }}
+                  className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-pink-400 transition-colors cursor-pointer"
+                  title="Images"
+                >
+                  <Image className="w-6 h-6" />
+                  <span className="text-[9px]">Images</span>
+                </button>
+                <button
+                  onClick={() => { fileInputRef.current?.setAttribute("accept", "video/*"); fileInputRef.current?.click(); }}
+                  className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-purple-400 transition-colors cursor-pointer"
+                  title="GIFs & Video"
+                >
+                  <Film className="w-6 h-6" />
+                  <span className="text-[9px]">GIFs</span>
+                </button>
+                <button
+                  onClick={() => { fileInputRef.current?.setAttribute("accept", ".pdf,.doc,.docx,.txt,.xls,.xlsx,.csv"); fileInputRef.current?.click(); }}
+                  className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-blue-400 transition-colors cursor-pointer"
+                  title="Documents"
+                >
+                  <FileText className="w-6 h-6" />
+                  <span className="text-[9px]">Docs</span>
+                </button>
+                <div className="flex-1" />
+                <button
+                  onClick={() => setShowToolbar(false)}
+                  className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+                  title="Close"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </button>
+              </div>
+            ) : toolbarView === "emoji" ? (
+              <div className="flex items-center gap-1 px-3 py-2.5">
+                <button
+                  onClick={() => setToolbarView("main")}
+                  className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer flex-shrink-0"
+                  title="Back"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                {EMOJI_QUICK.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => {
+                      setText((prev) => prev + emoji);
+                      textareaRef.current?.focus();
+                    }}
+                    className="text-2xl hover:scale-125 transition-transform cursor-pointer"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         )}
 
-        {/* Input row - icons inside the input box */}
+        {/* Input row */}
         <div className="p-2">
           <input
             ref={fileInputRef}
@@ -315,49 +362,44 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
             accept="image/*,video/*,.pdf,.doc,.docx,.txt"
             onChange={handleFileSelect}
           />
-          <div className="flex items-end bg-[var(--background)] border border-[var(--input)] rounded-lg overflow-hidden">
-            {/* Left icons */}
-            <div className="flex items-center flex-shrink-0 pl-2.5 pb-2.5">
+          <div className="flex items-end gap-0.5">
+            {/* Attach button - left side */}
+            <div className="flex-shrink-0" style={{ padding: "0 0 0 0" }}>
               <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="p-1.5 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer disabled:opacity-50"
-                title="Attach file"
+                onClick={() => { setShowToolbar(!showToolbar); setToolbarView("main"); }}
+                className={cn(
+                  "p-3 rounded-md text-white hover:brightness-110 transition-colors cursor-pointer",
+                  showToolbar ? "brightness-125" : ""
+                )}
+                style={{ backgroundColor: "#393a4e" }}
+                title="Attach"
               >
                 <Paperclip className="w-5.5 h-5.5" />
               </button>
-              <button
-                onClick={() => setShowEmoji(!showEmoji)}
-                className={cn(
-                  "p-1.5 rounded hover:bg-[var(--accent)] transition-colors cursor-pointer",
-                  showEmoji ? "text-gold-500" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                )}
-                title="Emoji"
-              >
-                <Smile className="w-5.5 h-5.5" />
-              </button>
             </div>
 
-            {/* Textarea */}
-            <textarea
-              ref={textareaRef}
-              value={text}
-              onChange={(e) => {
-                setText(e.target.value);
-                const el = e.target;
-                el.style.height = "auto";
-                el.style.height = Math.min(el.scrollHeight, 160) + "px";
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder={uploading ? "Uploading..." : "Type a message..."}
-              disabled={uploading}
-              rows={1}
-              className="flex-1 resize-none bg-transparent px-2 outline-none overflow-hidden disabled:opacity-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              style={{ minHeight: "42px", maxHeight: "160px", fontSize: "16px", lineHeight: "1.5", paddingTop: "5px", paddingBottom: "5px", overflowY: text.split("\n").length > 8 ? "auto" : "hidden" }}
-            />
+            {/* Text input */}
+            <div className="flex-1 flex items-end bg-[var(--background)] border border-[var(--input)] rounded-lg overflow-hidden">
+              <textarea
+                ref={textareaRef}
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  const el = e.target;
+                  el.style.height = "auto";
+                  el.style.height = Math.min(el.scrollHeight, 160) + "px";
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder={uploading ? "Uploading..." : "Type a message..."}
+                disabled={uploading}
+                rows={1}
+                className="flex-1 resize-none bg-transparent px-3 outline-none overflow-hidden disabled:opacity-50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                style={{ minHeight: "42px", maxHeight: "160px", fontSize: "16px", lineHeight: "1.5", paddingTop: "5px", paddingBottom: "5px", overflowY: text.split("\n").length > 8 ? "auto" : "hidden" }}
+              />
+            </div>
 
-            {/* Send + scroll buttons inside */}
-            <div className="flex items-center gap-0.5 flex-shrink-0" style={{ padding: "2.5px 2.5px 2.5px 0" }}>
+            {/* Send + scroll buttons - right side */}
+            <div className="flex items-center gap-0.5 flex-shrink-0">
               <button
                 onClick={handleSend}
                 disabled={!text.trim() || uploading}
