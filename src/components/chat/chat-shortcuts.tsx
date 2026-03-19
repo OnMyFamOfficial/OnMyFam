@@ -210,9 +210,9 @@ export function ChatShortcuts({ pinnedCount = 0, showPinnedOnly = false, onPinUp
         </>
       )}
 
-      <div className="hidden md:flex flex-col items-center w-[200px] flex-shrink-0 border-l border-[var(--border)] bg-transparent py-2 gap-1">
+      <div className="hidden md:flex flex-col items-start w-[200px] flex-shrink-0 border-l border-[var(--border)] bg-transparent py-2 gap-2 px-2">
         {/* Pin section */}
-        <div className="flex flex-col items-center gap-0.5 mb-2 pb-2 border-b border-[var(--border)] w-full px-2">
+        <div className="flex flex-col items-start gap-0.5 mb-2 pb-2 border-b border-[var(--border)] w-full">
           <div className="p-1">
             <Pin className="w-4 h-4 text-gold-500 rotate-45" />
           </div>
@@ -221,7 +221,7 @@ export function ChatShortcuts({ pinnedCount = 0, showPinnedOnly = false, onPinUp
             <>
               <button
                 onClick={onPinUp}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-sm"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-sm"
                 title="Previous pin"
               >
                 <ChevronUp className="w-4 h-4 flex-shrink-0" />
@@ -229,7 +229,7 @@ export function ChatShortcuts({ pinnedCount = 0, showPinnedOnly = false, onPinUp
               </button>
               <button
                 onClick={onPinDown}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-sm"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-sm"
                 title="Next pin"
               >
                 <ChevronDown className="w-4 h-4 flex-shrink-0" />
@@ -238,7 +238,7 @@ export function ChatShortcuts({ pinnedCount = 0, showPinnedOnly = false, onPinUp
               <button
                 onClick={onTogglePinFilter}
                 className={cn(
-                  "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors cursor-pointer text-sm",
+                  "w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors cursor-pointer text-sm",
                   showPinnedOnly
                     ? "bg-gold-500/20 text-gold-500"
                     : "hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
