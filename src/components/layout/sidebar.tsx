@@ -15,6 +15,8 @@ import {
   ChevronDown,
   Crown,
   Search,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTheme } from "@/components/shared/theme-provider";
@@ -281,7 +283,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             )}
             title={collapsed ? (theme === "dark" ? "Light mode" : "Dark mode") : undefined}
           >
-            <span className="text-lg flex-shrink-0 leading-none">{theme === "dark" ? "\u{1F31E}" : "\u{1F31C}"}</span>
+            {theme === "dark" ? <Sun className="w-5 h-5 flex-shrink-0" /> : <Moon className="w-5 h-5 flex-shrink-0" />}
             {!collapsed && (
               <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
             )}
