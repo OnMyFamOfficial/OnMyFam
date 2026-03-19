@@ -144,7 +144,7 @@ export default function EventsPage() {
         <div className="relative" ref={dateModalRef}>
           <button
             onClick={() => { setShowDateModal(!showDateModal); setShowTypeModal(false); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
+            className={`w-[150px] flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
               dateFrom
                 ? "border-gold-500 bg-gold-500/10 text-gold-500"
                 : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
@@ -161,59 +161,56 @@ export default function EventsPage() {
           </button>
 
           {showDateModal && (
-            <div className="absolute left-0 top-full mt-2 z-50 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl p-4">
-              <div className="flex gap-4">
-                {/* From calendar */}
-                <div>
-                  <label className="text-xs text-[var(--muted-foreground)] mb-1 block font-medium">From</label>
-                  <CalendarPicker
-                    selected={dateFrom}
-                    onSelect={(d) => {
-                      setDateFrom(d);
-                      if (fromOnly) setShowDateModal(false);
-                    }}
-                  />
-                </div>
-
-                {/* To calendar */}
-                {!fromOnly && (
+            <>
+              <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowDateModal(false)} />
+              <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
+                <h3 className="font-semibold text-sm mb-3">Date Range</h3>
+                <div className="flex flex-col sm:flex-row gap-4">
                   <div>
-                    <label className="text-xs text-[var(--muted-foreground)] mb-1 block font-medium">To</label>
+                    <label className="text-xs text-[var(--muted-foreground)] mb-1 block font-medium">From</label>
                     <CalendarPicker
-                      selected={dateTo}
-                      onSelect={(d) => { setDateTo(d); setShowDateModal(false); }}
+                      selected={dateFrom}
+                      onSelect={(d) => {
+                        setDateFrom(d);
+                        if (fromOnly) setShowDateModal(false);
+                      }}
                     />
                   </div>
-                )}
+                  {!fromOnly && (
+                    <div>
+                      <label className="text-xs text-[var(--muted-foreground)] mb-1 block font-medium">To</label>
+                      <CalendarPicker
+                        selected={dateTo}
+                        onSelect={(d) => { setDateTo(d); setShowDateModal(false); }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <label className="flex items-center gap-2 mt-3 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={fromOnly}
+                    onChange={(e) => { setFromOnly(e.target.checked); if (e.target.checked) setDateTo(null); }}
+                    className="rounded accent-gold-500"
+                  />
+                  From date only (no end date)
+                </label>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--border)]">
+                  <button
+                    onClick={() => { setDateFrom(null); setDateTo(null); setFromOnly(false); }}
+                    className="text-xs text-red-400 hover:text-red-300 cursor-pointer"
+                  >
+                    Clear dates
+                  </button>
+                  <button
+                    onClick={() => setShowDateModal(false)}
+                    className="px-3 py-1 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
-
-              {/* From date only checkbox */}
-              <label className="flex items-center gap-2 mt-3 text-xs cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={fromOnly}
-                  onChange={(e) => { setFromOnly(e.target.checked); if (e.target.checked) setDateTo(null); }}
-                  className="rounded accent-gold-500"
-                />
-                From date only (no end date)
-              </label>
-
-              {/* Clear + Apply */}
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--border)]">
-                <button
-                  onClick={() => { setDateFrom(null); setDateTo(null); setFromOnly(false); }}
-                  className="text-xs text-red-400 hover:text-red-300 cursor-pointer"
-                >
-                  Clear dates
-                </button>
-                <button
-                  onClick={() => setShowDateModal(false)}
-                  className="px-3 py-1 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 cursor-pointer"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
+            </>
           )}
         </div>
 
@@ -221,7 +218,7 @@ export default function EventsPage() {
         <div className="relative" ref={typeModalRef}>
           <button
             onClick={() => { setShowTypeModal(!showTypeModal); setShowDateModal(false); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
+            className={`w-[150px] flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
               categoryFilter !== "all"
                 ? "border-gold-500 bg-gold-500/10 text-gold-500"
                 : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
@@ -234,27 +231,31 @@ export default function EventsPage() {
           </button>
 
           {showTypeModal && (
-            <div className="absolute left-0 top-full mt-2 z-50 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl py-1 min-w-[180px]">
-              <button
-                onClick={() => { setCategoryFilter("all"); setShowTypeModal(false); }}
-                className={`w-full flex items-center px-4 py-2 text-sm text-left transition-colors cursor-pointer ${
-                  categoryFilter === "all" ? "bg-gold-500/10 text-gold-500 font-medium" : "hover:bg-[var(--accent)]"
-                }`}
-              >
-                All Types
-              </button>
-              {EVENT_CATEGORIES.map((cat) => (
+            <>
+              <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowTypeModal(false)} />
+              <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl py-2 min-w-[220px]">
+                <h3 className="font-semibold text-sm px-4 pb-2 border-b border-[var(--border)] mb-1">Event Type</h3>
                 <button
-                  key={cat}
-                  onClick={() => { setCategoryFilter(cat); setShowTypeModal(false); }}
+                  onClick={() => { setCategoryFilter("all"); setShowTypeModal(false); }}
                   className={`w-full flex items-center px-4 py-2 text-sm text-left transition-colors cursor-pointer ${
-                    categoryFilter === cat ? "bg-gold-500/10 text-gold-500 font-medium" : "hover:bg-[var(--accent)]"
+                    categoryFilter === "all" ? "bg-gold-500/10 text-gold-500 font-medium" : "hover:bg-[var(--accent)]"
                   }`}
                 >
-                  {cat.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  All Types
                 </button>
-              ))}
-            </div>
+                {EVENT_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => { setCategoryFilter(cat); setShowTypeModal(false); }}
+                    className={`w-full flex items-center px-4 py-2 text-sm text-left transition-colors cursor-pointer ${
+                      categoryFilter === cat ? "bg-gold-500/10 text-gold-500 font-medium" : "hover:bg-[var(--accent)]"
+                    }`}
+                  >
+                    {cat.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
@@ -262,7 +263,7 @@ export default function EventsPage() {
         <div className="relative" ref={statusModalRef}>
           <button
             onClick={() => { setShowStatusModal(!showStatusModal); setShowDateModal(false); setShowTypeModal(false); }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
+            className={`w-[150px] flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors cursor-pointer ${
               statusFilter !== "all"
                 ? "border-gold-500 bg-gold-500/10 text-gold-500"
                 : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)]"
@@ -275,24 +276,28 @@ export default function EventsPage() {
           </button>
 
           {showStatusModal && (
-            <div className="absolute left-0 top-full mt-2 z-50 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl py-1 min-w-[160px]">
-              {[
-                { value: "all", label: "All Statuses" },
-                { value: "going", label: "Going" },
-                { value: "maybe", label: "Interested" },
-                { value: "cant_make_it", label: "Not Going" },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => { setStatusFilter(opt.value); setShowStatusModal(false); }}
-                  className={`w-full flex items-center px-4 py-2 text-sm text-left transition-colors cursor-pointer ${
-                    statusFilter === opt.value ? "bg-gold-500/10 text-gold-500 font-medium" : "hover:bg-[var(--accent)]"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            <>
+              <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowStatusModal(false)} />
+              <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl py-2 min-w-[220px]">
+                <h3 className="font-semibold text-sm px-4 pb-2 border-b border-[var(--border)] mb-1">RSVP Status</h3>
+                {[
+                  { value: "all", label: "All Statuses" },
+                  { value: "going", label: "Going" },
+                  { value: "maybe", label: "Interested" },
+                  { value: "cant_make_it", label: "Not Going" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => { setStatusFilter(opt.value); setShowStatusModal(false); }}
+                    className={`w-full flex items-center px-4 py-2 text-sm text-left transition-colors cursor-pointer ${
+                      statusFilter === opt.value ? "bg-gold-500/10 text-gold-500 font-medium" : "hover:bg-[var(--accent)]"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
