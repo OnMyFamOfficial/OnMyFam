@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { Calendar, MapPin, Users, Send } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Calendar, MapPin, Users, Send } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { supabase } from "@/lib/supabase";
 import { format, formatDistanceToNow } from "date-fns";
@@ -13,6 +13,7 @@ type FullEvent = FamilyEvent & {
 
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [event, setEvent] = useState<FullEvent | null>(null);
   const [messages, setMessages] = useState<(EventChatMessage & { user: Profile })[]>([]);
@@ -169,6 +170,15 @@ export default function EventDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {/* Back button */}
+      <button
+        onClick={() => navigate("/events")}
+        className="flex items-center gap-1.5 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Events
+      </button>
+
       {/* Header */}
       <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden">
         {event.cover_url ? (
