@@ -23,6 +23,33 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Handle notification messages from the app
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    self.registration.showNotification(event.data.title, {
+      body: event.data.body || '',
+      icon: '/icons/icon-192.svg',
+      badge: '/icons/icon-192.svg',
+      tag: event.data.tag || 'omf-notification',
+      renotify: true,
+    });
+  }
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      if (clients.length > 0) {
+        clients[0].focus();
+      } else {
+        self.clients.openWindow('/');
+      }
+    })
+  );
+});
+
 // Fetch: network first, fall back to cache
 self.addEventListener('fetch', (event) => {
   // Skip non-GET and API/Supabase requests

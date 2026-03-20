@@ -55,6 +55,40 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     loadNotifications();
   }, [loadNotifications]);
 
+  // Request notification permission on first load
+  useEffect(() => {
+    if (!user) return;
+    if ("Notification" in window && window.Notification.permission === "default") {
+      window.Notification.requestPermission();
+    }
+  }, [user]);
+
+  // Show browser/device notification
+  function showDeviceNotification(n: Notification) {
+    if (!("Notification" in window) || window.Notification.permission !== "granted") return;
+    try {
+      const notif = new window.Notification(n.title, {
+        body: n.body || undefined,
+        icon: "/icons/icon-192.svg",
+        tag: n.id,
+      } as NotificationOptions);
+      notif.onclick = () => {
+        window.focus();
+        notif.close();
+      };
+    } catch {
+      // Service worker notification fallback
+      if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: "SHOW_NOTIFICATION",
+          title: n.title,
+          body: n.body,
+          tag: n.id,
+        });
+      }
+    }
+  }
+
   // Realtime subscription
   useEffect(() => {
     if (!user) return;
@@ -70,7 +104,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          setNotifications((prev) => [payload.new as Notification, ...prev]);
+          const newNotif = payload.new as Notification;
+          setNotifications((prev) => [newNotif, ...prev]);
+          // Show device notification
+          showDeviceNotification(newNotif);
         }
       )
       .subscribe();
