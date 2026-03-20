@@ -368,11 +368,16 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
 
         {/* Toolbar */}
         {showToolbar && (
-          <div className="border-t border-[var(--border)]" style={{ boxShadow: "0 -4px 12px rgba(0, 0, 0, 0.3)" }}>
+          <div
+            className="border-t border-[var(--border)]"
+            style={{ boxShadow: "0 -4px 12px rgba(0, 0, 0, 0.3)" }}
+            onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={() => textareaRef.current?.blur()}
+          >
             {toolbarView === "main" ? (
               <div className="flex items-center gap-3 px-4 py-2.5">
                 <button
-                  onClick={() => setToolbarView("emoji")}
+                  onClick={() => { textareaRef.current?.blur(); setToolbarView("emoji"); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-gold-500 transition-colors cursor-pointer"
                   title="Emojis"
                 >
@@ -388,7 +393,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                   <span className="text-[9px]">Images</span>
                 </button>
                 <button
-                  onClick={() => { setToolbarView("stickers"); searchStickers(""); }}
+                  onClick={() => { textareaRef.current?.blur(); setToolbarView("stickers"); searchStickers(""); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-green-400 transition-colors cursor-pointer"
                   title="Stickers"
                 >
@@ -396,7 +401,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                   <span className="text-[9px]">Stickers</span>
                 </button>
                 <button
-                  onClick={() => { setToolbarView("gifs"); searchGifs(""); }}
+                  onClick={() => { textareaRef.current?.blur(); setToolbarView("gifs"); searchGifs(""); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-purple-400 transition-colors cursor-pointer"
                   title="GIFs"
                 >
@@ -481,7 +486,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                             onClick={() => {
                               setText((prev) => prev + emoji);
                               addRecentEmoji(emoji);
-                              textareaRef.current?.focus();
+                              // Don't refocus textarea on mobile to keep keyboard hidden
                             }}
                             className="text-xl hover:scale-110 hover:bg-[var(--accent)] rounded p-0.5 transition-transform cursor-pointer text-center"
                           >
@@ -606,7 +611,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
             {/* Attach button - left inside */}
             <div className="flex items-center flex-shrink-0" style={{ padding: "2.5px 0 2.5px 2.5px" }}>
               <button
-                onClick={() => { setShowToolbar(!showToolbar); setToolbarView("main"); }}
+                onClick={() => { textareaRef.current?.blur(); setShowToolbar(!showToolbar); setToolbarView("main"); }}
                 className={cn(
                   "p-3 rounded-md text-white hover:brightness-110 transition-colors cursor-pointer",
                   showToolbar ? "brightness-125" : ""
