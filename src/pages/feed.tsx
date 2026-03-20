@@ -54,6 +54,7 @@ export default function FeedPage() {
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [showReactions, setShowReactions] = useState<string | null>(null);
+  const [showReactionDetails, setShowReactionDetails] = useState<string | null>(null);
 
   // Composer modal state
   const [composerOpen, setComposerOpen] = useState(false);
@@ -570,20 +571,52 @@ export default function FeedPage() {
               {(post.reaction_count > 0 || post.comment_count > 0) && (
                 <div className="px-4 py-2 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
                   <div className="flex items-center gap-1">
-                    {post.reaction_count > 0 && (() => {
-                      const reactionsByType: Record<string, number> = {};
-                      for (const r of post.reactions || []) {
-                        const emoji = REACTIONS.find((rx) => rx.type === r.reaction_type)?.emoji || "\u{1F44D}";
-                        reactionsByType[emoji] = (reactionsByType[emoji] || 0) + 1;
-                      }
-                      return Object.entries(reactionsByType).map(([emoji, count]) => (
-                        <span key={emoji} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--accent)] border border-[var(--border)]">
-                          <span className="text-sm">{emoji}</span>
-                          <span className="text-[10px]">{count}</span>
-                        </span>
-                      ));
-                    })()}
+                    {post.reaction_count > 0 && (
+                      <>
+                        <button
+                          onClick={() => setShowReactionDetails(showReactionDetails === post.id ? null : post.id)}
+                          className="w-5 h-5 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-gold-500/50 transition-colors cursor-pointer text-xs"
+                          title="See who reacted"
+                        >
+                          +
+                        </button>
+                        {(() => {
+                          const reactionsByType: Record<string, number> = {};
+                          for (const r of post.reactions || []) {
+                            const emoji = REACTIONS.find((rx) => rx.type === r.reaction_type)?.emoji || "\u{1F44D}";
+                            reactionsByType[emoji] = (reactionsByType[emoji] || 0) + 1;
+                          }
+                          return Object.entries(reactionsByType).map(([emoji, count]) => (
+                            <span key={emoji} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--accent)] border border-[var(--border)]">
+                              <span className="text-xl">{emoji}</span>
+                              <span className="text-[10px]">{count}</span>
+                            </span>
+                          ));
+                        })()}
+                      </>
+                    )}
                   </div>
+                  {/* Reaction details dropdown */}
+                  {showReactionDetails === post.id && post.reactions.length > 0 && (
+                    <div className="mt-1 bg-[var(--background)] border border-[var(--border)] rounded-lg p-2 space-y-1">
+                      {post.reactions.map((r: any) => {
+                        const emoji = REACTIONS.find((rx) => rx.type === r.reaction_type)?.emoji || "\u{1F44D}";
+                        return (
+                          <div key={r.id} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-[var(--accent)] transition-colors">
+                            <span className="text-base">{emoji}</span>
+                            <div className="w-5 h-5 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                              {r.user?.avatar_url ? (
+                                <img src={r.user.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-[8px] font-medium text-gold-500">{r.user?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                              )}
+                            </div>
+                            <span className="text-xs">{r.user?.display_name || "Unknown"}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )
                   <span>
                     {post.comment_count > 0 &&
                       `${post.comment_count} comment${post.comment_count !== 1 ? "s" : ""}`}
