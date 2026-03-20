@@ -1108,10 +1108,22 @@ export default function FamilyPage() {
                       <button
                         onClick={async () => {
                           if (!confirm(`Remove relationship with ${memberProfile.display_name}?`)) return;
+                          // Delete both directions
                           await supabase.from("relation_requests").delete()
                             .eq("family_id", currentFamily!.id)
-                            .or(`and(from_user_id.eq.${user!.id},to_user_id.eq.${selectedMember.user_id}),and(from_user_id.eq.${selectedMember.user_id},to_user_id.eq.${user!.id})`)
-                            .eq("status", "approved");
+                            .eq("from_user_id", user!.id)
+                            .eq("to_user_id", selectedMember.user_id);
+                          await supabase.from("relation_requests").delete()
+                            .eq("family_id", currentFamily!.id)
+                            .eq("from_user_id", selectedMember.user_id)
+                            .eq("to_user_id", user!.id);
+                          // Also clear the old family_members relation_label
+                          await supabase.from("family_members").update({ relation_label: null })
+                            .eq("family_id", currentFamily!.id)
+                            .eq("user_id", user!.id);
+                          await supabase.from("family_members").update({ relation_label: null })
+                            .eq("family_id", currentFamily!.id)
+                            .eq("user_id", selectedMember.user_id);
                           setApprovedRelations((prev) => { const next = new Map(prev); next.delete(selectedMember.user_id); return next; });
                         }}
                         className="text-xs text-red-400 hover:text-red-300 mt-2 cursor-pointer"
