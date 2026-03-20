@@ -332,7 +332,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
 
       {/* Desktop: Right Sidebar Container */}
       <div className={cn(
-        "hidden lg:flex fixed inset-y-0 right-0 z-40 transition-all duration-300 ease-in-out",
+        "hidden lg:flex flex-shrink-0 transition-all duration-300 ease-in-out",
         collapsed ? "w-9" : "w-[312px]"
       )}>
         {/* Vertical Bar - always visible, acts as toggle */}

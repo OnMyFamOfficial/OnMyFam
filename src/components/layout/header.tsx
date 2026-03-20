@@ -31,7 +31,7 @@ export function Header({ onMenuClick, onRightMenuClick }: HeaderProps) {
   if (isMessages) return null;
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-[var(--header-background)] border-b border-[var(--border)] flex items-center justify-between px-4 lg:pl-52 lg:pr-16">
+    <header className="sticky top-0 z-30 h-16 bg-[var(--header-background)] border-b border-[var(--border)] flex items-center justify-between px-4 lg:px-6">
       {/* Left: hamburger + page title */}
       <div className="flex items-center gap-3">
         <button
