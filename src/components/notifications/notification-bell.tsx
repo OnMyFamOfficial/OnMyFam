@@ -61,7 +61,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl z-[100] flex flex-col overflow-hidden" style={{ maxHeight: "70vh" }}>
+        <div className="fixed inset-x-2 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl z-[100] flex flex-col overflow-hidden" style={{ maxHeight: "70vh" }}>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
             <h3 className="font-semibold text-sm">Notifications</h3>
