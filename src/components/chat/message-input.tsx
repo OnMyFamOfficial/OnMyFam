@@ -371,12 +371,11 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
           <div
             className="border-t border-[var(--border)]"
             style={{ boxShadow: "0 -4px 12px rgba(0, 0, 0, 0.3)" }}
-            onMouseDown={(e) => e.preventDefault()}
           >
             {toolbarView === "main" ? (
               <div className="flex items-center gap-3 px-4 py-2.5">
                 <button
-                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchStart={() => textareaRef.current?.blur()}
                   onClick={() => setToolbarView("emoji")}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-gold-500 transition-colors cursor-pointer"
                   title="Emojis"
@@ -385,7 +384,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                   <span className="text-[9px]">Emojis</span>
                 </button>
                 <button
-                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchStart={() => textareaRef.current?.blur()}
                   onClick={() => { fileInputRef.current?.setAttribute("accept", "image/*"); fileInputRef.current?.click(); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-pink-400 transition-colors cursor-pointer"
                   title="Images"
@@ -394,7 +393,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                   <span className="text-[9px]">Images</span>
                 </button>
                 <button
-                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchStart={() => textareaRef.current?.blur()}
                   onClick={() => { setToolbarView("stickers"); searchStickers(""); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-green-400 transition-colors cursor-pointer"
                   title="Stickers"
@@ -403,7 +402,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                   <span className="text-[9px]">Stickers</span>
                 </button>
                 <button
-                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchStart={() => textareaRef.current?.blur()}
                   onClick={() => { setToolbarView("gifs"); searchGifs(""); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-purple-400 transition-colors cursor-pointer"
                   title="GIFs"
@@ -412,7 +411,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                   <span className="text-[9px]">GIFs</span>
                 </button>
                 <button
-                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchStart={() => textareaRef.current?.blur()}
                   onClick={() => { fileInputRef.current?.setAttribute("accept", ".pdf,.doc,.docx,.txt,.xls,.xlsx,.csv"); fileInputRef.current?.click(); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-blue-400 transition-colors cursor-pointer"
                   title="Documents"
@@ -631,8 +630,6 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
             <textarea
               ref={textareaRef}
               value={text}
-              readOnly={showToolbar && toolbarView !== "main"}
-              onFocus={() => { if (showToolbar && toolbarView !== "main") textareaRef.current?.blur(); }}
               onChange={(e) => {
                 setText(e.target.value);
                 const el = e.target;
