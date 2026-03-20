@@ -29,6 +29,26 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [reactionsMap, setReactionsMap] = useState<Record<string, Record<string, Set<string>>>>({});
+
+  // Load reactions from DB when conversation changes
+  useEffect(() => {
+    if (!conversation?.id) return;
+    async function loadReactions() {
+      const { data } = await supabase
+        .from("message_reactions")
+        .select("*")
+        .in("message_id", messages.map((m) => m.id));
+      if (!data) return;
+      const map: Record<string, Record<string, Set<string>>> = {};
+      for (const r of data) {
+        if (!map[r.message_id]) map[r.message_id] = {};
+        if (!map[r.message_id][r.emoji]) map[r.message_id][r.emoji] = new Set();
+        map[r.message_id][r.emoji].add(r.user_id);
+      }
+      setReactionsMap(map);
+    }
+    if (messages.length > 0) loadReactions();
+  }, [conversation?.id, messages.length]);
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const [currentPinIndex, setCurrentPinIndex] = useState(0);
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
@@ -393,27 +413,33 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
                       });
                     }}
                     currentUserId={user?.id}
-                    onReact={(messageId, emoji, userId) => {
+                    onReact={async (messageId, emoji, userId) => {
+                      const isRemoving = reactionsMap[messageId]?.[emoji]?.has(userId);
+                      // Optimistic update
                       setReactionsMap((prev) => {
                         const msgReactions: Record<string, Set<string>> = {};
-                        // Copy existing
                         Object.entries(prev[messageId] || {}).forEach(([e, s]) => {
                           msgReactions[e] = new Set(s);
                         });
-                        // Check if user already reacted with this emoji (toggle off)
                         if (msgReactions[emoji]?.has(userId)) {
                           msgReactions[emoji].delete(userId);
                         } else {
-                          // Remove from any other emoji first
                           Object.values(msgReactions).forEach((s) => s.delete(userId));
-                          // Add to this emoji
                           if (!msgReactions[emoji]) msgReactions[emoji] = new Set();
                           msgReactions[emoji].add(userId);
                         }
                         return { ...prev, [messageId]: msgReactions };
                       });
+                      // Persist to DB
+                      if (isRemoving) {
+                        await supabase.from("message_reactions").delete().eq("message_id", messageId).eq("user_id", userId).eq("emoji", emoji);
+                      } else {
+                        // Remove old reactions from this user on this message
+                        await supabase.from("message_reactions").delete().eq("message_id", messageId).eq("user_id", userId);
+                        await supabase.from("message_reactions").insert({ message_id: messageId, user_id: userId, emoji });
+                      }
+                      // Broadcast for realtime
                       if (channelRef.current) {
-                        const isRemoving = reactionsMap[messageId]?.[emoji]?.has(userId);
                         channelRef.current.send({
                           type: "broadcast",
                           event: "reaction",

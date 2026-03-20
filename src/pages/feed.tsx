@@ -306,6 +306,19 @@ export default function FeedPage() {
       }
     }
 
+    // Notify other family members about the new post
+    const otherMembers = members.filter((m) => m.user_id !== user.id);
+    if (otherMembers.length > 0) {
+      const notifications = otherMembers.map((m) => ({
+        user_id: m.user_id,
+        type: "post",
+        title: `${profile?.display_name || "Someone"} posted in ${currentFamily.name}`,
+        body: postText.trim().slice(0, 100) || "Shared a photo",
+        data: { post_id: post.id, family_id: currentFamily.id },
+      }));
+      await supabase.from("notifications").insert(notifications);
+    }
+
     setPostText("");
     setPostFiles([]);
     setPosting(false);
