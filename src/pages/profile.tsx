@@ -1,10 +1,244 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Camera, MapPin, Phone, ImagePlus } from "lucide-react";
+import { Camera, MapPin, Phone, ImagePlus, Calendar, Shield, User, Users } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { uploadAvatar, uploadCover } from "@/services/storage";
+import { MapContainer, TileLayer, Marker, Popup, Tooltip } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-markercluster";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import type { Profile } from "@/lib/types";
+
+// Fix Leaflet default marker icon issue with bundlers
+const defaultIcon = L.icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+const goldIcon = L.icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
+  const { members } = useFamily();
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [showFamily, setShowFamily] = useState(false);
+  const [familyMarkers, setFamilyMarkers] = useState<{ name: string; avatar: string | null; lat: number; lon: number }[]>([]);
+  const [hiddenMembers, setHiddenMembers] = useState<Set<string>>(new Set());
+
+  // Geocode the profile location
+  useEffect(() => {
+    if (!p.location) return;
+    let cancelled = false;
+    async function geocode() {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(p.location!)}&limit=1`);
+        const data = await res.json();
+        if (!cancelled && data.length > 0) {
+          setCoords({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
+        }
+      } catch { /* silent */ }
+    }
+    geocode();
+    return () => { cancelled = true; };
+  }, [p.location]);
+
+  // Geocode family members when toggle is on
+  useEffect(() => {
+    if (!showFamily || members.length === 0) { setFamilyMarkers([]); return; }
+    let cancelled = false;
+    async function geocodeFamily() {
+      // Get profiles for all members
+      const userIds = members.map((m) => m.user_id).filter((id) => id !== p.id);
+      if (userIds.length === 0) return;
+      const { data: profiles } = await supabase.from("profiles").select("*").in("id", userIds);
+      if (!profiles || cancelled) return;
+
+      const withLocation = profiles.filter((pr) => pr.location);
+      const results: { name: string; avatar: string | null; lat: number; lon: number }[] = [];
+
+      for (const pr of withLocation) {
+        try {
+          // Rate limit: Nominatim requires 1 req/sec
+          await new Promise((r) => setTimeout(r, 1100));
+          if (cancelled) return;
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(pr.location)}&limit=1`);
+          const data = await res.json();
+          if (data.length > 0) {
+            results.push({ name: pr.display_name, avatar: pr.avatar_url, lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
+          }
+        } catch { /* skip */ }
+      }
+      if (!cancelled) setFamilyMarkers(results);
+    }
+    geocodeFamily();
+    return () => { cancelled = true; };
+  }, [showFamily, members, p.id]);
+
+  const details = [
+    p.display_name && { icon: User, label: "Name", value: p.display_name },
+    p.location && { icon: MapPin, label: "Location", value: p.location },
+    p.phone && { icon: Phone, label: "Phone", value: p.phone },
+    p.date_of_birth && { icon: Calendar, label: "Birthday", value: new Date(p.date_of_birth).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }) },
+    p.privacy_level && { icon: Shield, label: "Privacy", value: p.privacy_level.charAt(0).toUpperCase() + p.privacy_level.slice(1) },
+    { icon: Calendar, label: "Joined", value: new Date(p.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" }) },
+  ].filter(Boolean) as { icon: any; label: string; value: string }[];
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Details card */}
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--border)]">
+          <span className="font-semibold text-sm">About</span>
+        </div>
+        <div className="p-4 space-y-3">
+          {p.bio && (
+            <p className="text-sm text-[var(--muted-foreground)] italic mb-4">{p.bio}</p>
+          )}
+          {details.map((d) => (
+            <div key={d.label} className="flex items-center gap-3">
+              <d.icon className="w-4 h-4 text-gold-500 flex-shrink-0" />
+              <div>
+                <p className="text-[11px] text-[var(--muted-foreground)]">{d.label}</p>
+                <p className="text-sm font-medium">{d.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Map card */}
+      {coords && (
+        <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-gold-500" />
+              <span className="font-semibold text-sm">{p.location}</span>
+            </div>
+            <button
+              onClick={() => setShowFamily(!showFamily)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                showFamily ? "bg-gold-500 text-white" : "bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              Family Map
+            </button>
+          </div>
+          <div style={{ height: 360 }}>
+            <MapContainer
+              center={[coords.lat, coords.lon]}
+              zoom={showFamily && familyMarkers.length > 0 ? 5 : 12}
+              style={{ height: "100%", width: "100%" }}
+              scrollWheelZoom={true}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <MarkerClusterGroup
+                showCoverageOnHover={false}
+                maxClusterRadius={40}
+                spiderfyOnMaxZoom={true}
+                iconCreateFunction={(cluster: any) => {
+                  const count = cluster.getChildCount();
+                  return L.divIcon({
+                    html: `<div style="background:linear-gradient(135deg,#b8860b,#daa520);color:white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.4);border:2px solid white;">${count}</div>`,
+                    className: "",
+                    iconSize: L.point(36, 36),
+                    iconAnchor: L.point(18, 18),
+                  });
+                }}
+              >
+                {/* Profile owner marker */}
+                {!hiddenMembers.has(p.display_name) && (
+                  <Marker position={[coords.lat, coords.lon]} icon={goldIcon}>
+                    <Tooltip direction="top" offset={[0, -35]} permanent className="leaflet-name-tooltip">
+                      {p.display_name}
+                    </Tooltip>
+                    <Popup>
+                      <div className="text-center">
+                        <strong>{p.display_name}</strong>
+                        <br />
+                        <span className="text-xs">{p.location}</span>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )}
+                {/* Family member markers */}
+                {showFamily && familyMarkers.filter((fm) => !hiddenMembers.has(fm.name)).map((fm, i) => (
+                  <Marker key={i} position={[fm.lat, fm.lon]} icon={defaultIcon}>
+                    <Tooltip direction="top" offset={[0, -35]} permanent className="leaflet-name-tooltip">
+                      {fm.name}
+                    </Tooltip>
+                    <Popup>
+                      <div className="text-center">
+                        <strong>{fm.name}</strong>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MarkerClusterGroup>
+            </MapContainer>
+          </div>
+          {showFamily && familyMarkers.length === 0 && members.length > 1 && (
+            <div className="px-4 py-2 text-xs text-[var(--muted-foreground)] text-center">
+              Loading family locations...
+            </div>
+          )}
+          {showFamily && familyMarkers.length > 0 && (
+            <div className="px-4 py-3 border-t border-[var(--border)]">
+              <p className="text-[11px] text-[var(--muted-foreground)] mb-2">Family members on map:</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setHiddenMembers((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(p.display_name)) next.delete(p.display_name); else next.add(p.display_name);
+                    return next;
+                  })}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium cursor-pointer transition-opacity ${
+                    hiddenMembers.has(p.display_name) ? "opacity-40 bg-gold-500/10 text-gold-500/50" : "bg-gold-500/20 text-gold-500"
+                  }`}
+                >
+                  <MapPin className="w-3 h-3" /> {p.display_name} (You)
+                </button>
+                {familyMarkers.map((fm, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setHiddenMembers((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(fm.name)) next.delete(fm.name); else next.add(fm.name);
+                      return next;
+                    })}
+                    className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium cursor-pointer transition-opacity ${
+                      hiddenMembers.has(fm.name) ? "opacity-40 bg-sky-500/10 text-sky-400/50" : "bg-sky-500/20 text-sky-400"
+                    }`}
+                  >
+                    <MapPin className="w-3 h-3" /> {fm.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProfilePage() {
   const { userId } = useParams<{ userId?: string }>();
@@ -111,7 +345,7 @@ export default function ProfilePage() {
       {/* Profile header — full width */}
       <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)]">
         {/* Cover photo with black surround */}
-        <div className="p-3 rounded-t-2xl bg-[var(--cover-surround)]">
+        <div className="p-3 rounded-t-2xl bg-[var(--card)]">
           <div className="relative h-72 sm:h-80 lg:h-88 group rounded-2xl overflow-hidden">
             {displayCover ? (
               <img
@@ -183,7 +417,7 @@ export default function ProfilePage() {
           {/* Name + Edit button row — tops aligned */}
           {!editing && !loadingProfile && (
             <div className="flex items-start pt-3 px-6 lg:px-8">
-              <div className="ml-[calc(21px-24px)] sm:ml-[calc(37px-24px)] lg:ml-[calc(53px-32px)] w-[270px] text-center">
+              <div className="ml-[calc(21px-24px)] sm:ml-[calc(37px-24px)] lg:ml-[calc(53px-32px)] w-[270px] text-left">
                 <h1 className="text-3xl font-bold">
                   {profile?.display_name || "Family Member"}
                 </h1>
@@ -192,7 +426,7 @@ export default function ProfilePage() {
                     {profile.bio}
                   </p>
                 )}
-                <div className="mt-2 flex flex-wrap justify-center items-center gap-3 text-sm text-[var(--muted-foreground)]">
+                <div className="mt-2 flex flex-wrap justify-start items-center gap-3 text-sm text-[var(--muted-foreground)]">
                   {profile?.location && (
                     <span className="flex items-center gap-1.5">
                       <MapPin className="w-4 h-4" />
@@ -291,6 +525,9 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Details & Map */}
+      {profile && <ProfileMapAndDetails profile={profile} />}
     </div>
   );
 }
