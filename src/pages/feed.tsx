@@ -72,6 +72,10 @@ export default function FeedPage() {
   const [replyingTo, setReplyingTo] = useState<{ postId: string; commentId: string; authorName: string } | null>(null);
   const [commentLikes, setCommentLikes] = useState<Map<string, Map<string, string>>>(new Map()); // commentId -> (userId -> reactionType)
   const [commentReactionPicker, setCommentReactionPicker] = useState<string | null>(null);
+  const [collapsedReplies, setCollapsedReplies] = useState<Set<string>>(new Set());
+  const [editingComment, setEditingComment] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState("");
+  const [deletingComment, setDeletingComment] = useState<{ commentId: string; postId: string } | null>(null);
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const [activePostMode, setActivePostMode] = useState<"full" | "comments">("full");
   const postMenuRef = useRef<HTMLDivElement>(null);
@@ -403,6 +407,32 @@ export default function FeedPage() {
     if (!isSameReaction) {
       await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: user.id, reaction_type: reactionType });
     }
+  }
+
+  async function handleEditComment(commentId: string) {
+    if (!editCommentText.trim()) return;
+    await supabase.from("comments").update({ content: editCommentText.trim() }).eq("id", commentId);
+    setPosts((prev) => prev.map((p) => ({
+      ...p,
+      comments: p.comments.map((c) => c.id === commentId ? { ...c, content: editCommentText.trim() } : c),
+    }) as FullPost));
+    setEditingComment(null);
+    setEditCommentText("");
+  }
+
+  async function handleDeleteComment(commentId: string, postId: string) {
+    // Optimistic update
+    setPosts((prev) => prev.map((p) => {
+      if (p.id !== postId) return p;
+      return {
+        ...p,
+        comments: p.comments.filter((c) => c.id !== commentId && c.parent_id !== commentId),
+        comment_count: Math.max(0, p.comment_count - 1 - p.comments.filter((c) => c.parent_id === commentId).length),
+      } as FullPost;
+    }));
+    // Delete replies first, then the comment
+    await supabase.from("comments").delete().eq("parent_id", commentId);
+    await supabase.from("comments").delete().eq("id", commentId);
   }
 
   function removeFile(index: number) {
@@ -1036,10 +1066,36 @@ export default function FeedPage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
+                          {editingComment === comment.id ? (
+                            <div className="bg-[var(--accent)] rounded-lg px-3 py-2">
+                              <textarea
+                                value={editCommentText}
+                                onChange={(e) => setEditCommentText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleEditComment(comment.id); }
+                                  if (e.key === "Escape") { setEditingComment(null); setEditCommentText(""); }
+                                }}
+                                className="w-full bg-[var(--background)] border border-gold-500/50 rounded-lg px-2 py-1 text-sm focus:outline-none resize-none"
+                                rows={2}
+                                autoFocus
+                              />
+                              <div className="flex items-center gap-2 mt-1">
+                                <button onClick={() => handleEditComment(comment.id)} disabled={!editCommentText.trim()} className="text-[10px] text-gold-500 font-semibold cursor-pointer disabled:opacity-50">Save</button>
+                                <button onClick={() => { setEditingComment(null); setEditCommentText(""); }} className="text-[10px] text-[var(--muted-foreground)] cursor-pointer">Cancel</button>
+                              </div>
+                            </div>
+                          ) : (
                           <div className="bg-[var(--accent)] rounded-lg px-3 py-2">
-                            <p className="text-xs font-medium">{comment.author?.display_name}</p>
+                            <p className="text-xs font-medium text-gold-500">{comment.author?.display_name}</p>
                             <p className="text-sm mt-0.5">{comment.content}</p>
+                            {comment.author_id === user?.id && (
+                              <div className="flex items-center gap-2 mt-1 justify-end">
+                                <button onClick={() => { setEditingComment(comment.id); setEditCommentText(comment.content); }} className="text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">Edit</button>
+                                <button onClick={() => setDeletingComment({ commentId: comment.id, postId: post.id })} className="text-[10px] text-red-400 hover:text-red-300 cursor-pointer">Delete</button>
+                              </div>
+                            )}
                           </div>
+                          )}
                           {/* Reaction pills */}
                           {cReactionCount > 0 && (
                             <div className="flex flex-wrap items-center gap-1 mt-0.5 px-1">
@@ -1085,7 +1141,23 @@ export default function FeedPage() {
                         </div>
                       </div>
                       {replies.length > 0 && (
-                        <div className="ml-10 mt-1 border-l-2 border-[var(--border)] pl-3">
+                        <div className="ml-10 mt-1">
+                          <button
+                            onClick={() => setCollapsedReplies((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(comment.id)) next.delete(comment.id);
+                              else next.add(comment.id);
+                              return next;
+                            })}
+                            className="text-[11px] font-semibold text-gold-500 hover:text-gold-400 cursor-pointer mb-1 flex items-center gap-1"
+                          >
+                            {collapsedReplies.has(comment.id)
+                              ? `Show ${replies.length} ${replies.length === 1 ? "reply" : "replies"}`
+                              : `Hide ${replies.length} ${replies.length === 1 ? "reply" : "replies"}`
+                            }
+                          </button>
+                          {!collapsedReplies.has(comment.id) && (
+                          <div className="border-l-2 border-[var(--border)] pl-3">
                           {replies.map((reply) => {
                             const rReactions = commentLikes.get(reply.id);
                             const rReactionCount = rReactions?.size || 0;
@@ -1103,10 +1175,40 @@ export default function FeedPage() {
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
+                                  {editingComment === reply.id ? (
+                                    <div className="bg-[var(--accent)] rounded-lg px-2.5 py-1.5">
+                                      <textarea
+                                        value={editCommentText}
+                                        onChange={(e) => setEditCommentText(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleEditComment(reply.id); }
+                                          if (e.key === "Escape") { setEditingComment(null); setEditCommentText(""); }
+                                        }}
+                                        className="w-full bg-[var(--background)] border border-gold-500/50 rounded-lg px-2 py-1 text-xs focus:outline-none resize-none"
+                                        rows={2}
+                                        autoFocus
+                                      />
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <button onClick={() => handleEditComment(reply.id)} disabled={!editCommentText.trim()} className="text-[10px] text-gold-500 font-semibold cursor-pointer disabled:opacity-50">Save</button>
+                                        <button onClick={() => { setEditingComment(null); setEditCommentText(""); }} className="text-[10px] text-[var(--muted-foreground)] cursor-pointer">Cancel</button>
+                                      </div>
+                                    </div>
+                                  ) : (
                                   <div className="bg-[var(--accent)] rounded-lg px-2.5 py-1.5">
-                                    <p className="text-[11px] font-medium">{reply.author?.display_name}</p>
+                                    <p className="text-[11px] font-medium">
+                                      <span className="text-gold-500">{reply.author?.display_name}</span>
+                                      <span className="text-[var(--muted-foreground)] mx-2">&gt;</span>
+                                      <span className="text-sky-400">@{comment.author?.display_name}</span>
+                                    </p>
                                     <p className="text-xs mt-0.5">{reply.content}</p>
+                                    {reply.author_id === user?.id && (
+                                      <div className="flex items-center gap-2 mt-1 justify-end">
+                                        <button onClick={() => { setEditingComment(reply.id); setEditCommentText(reply.content); }} className="text-[9px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">Edit</button>
+                                        <button onClick={() => setDeletingComment({ commentId: reply.id, postId: post.id })} className="text-[9px] text-red-400 hover:text-red-300 cursor-pointer">Delete</button>
+                                      </div>
+                                    )}
                                   </div>
+                                  )}
                                   {rReactionCount > 0 && (
                                     <div className="flex flex-wrap items-center gap-1 mt-0.5 px-1">
                                       {(() => {
@@ -1152,6 +1254,8 @@ export default function FeedPage() {
                               </div>
                             );
                           })}
+                          </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1202,10 +1306,324 @@ export default function FeedPage() {
           </div>
         );
 
+        // Mobile single-column layout with image on top
+        const mobileModal = (
+          <div className="fixed z-[70] inset-0 bg-[var(--card)] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Close button */}
+            <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
+              <button onClick={() => { setActivePostId(null); setEditingPost(null); setReplyingTo(null); }} className="p-1.5 rounded-lg hover:bg-[var(--accent)] cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
+                  {post.author?.avatar_url ? (
+                    <img src={post.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-medium text-gold-500">{post.author?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                  )}
+                </div>
+                <span className="text-sm font-medium">{post.author?.display_name}</span>
+              </div>
+              <div className="w-8" />
+            </div>
+
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {/* Media */}
+              {hasMedia && activePostMode === "full" && (
+                <div className="bg-black">
+                  {post.media.map((m) =>
+                    m.media_type === "video" ? (
+                      <video key={m.id} src={m.media_url} controls className="w-full max-h-[60vh] object-contain" />
+                    ) : (
+                      <img key={m.id} src={m.media_url} alt="" className="w-full max-h-[60vh] object-contain" />
+                    )
+                  )}
+                </div>
+              )}
+
+              {/* Post content */}
+              {post.content && (
+                <div className="px-4 py-2">
+                  <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+                </div>
+              )}
+
+              {/* Reaction counts */}
+              {(post.reaction_count > 0 || post.comment_count > 0) && (
+                <div className="px-4 py-1.5 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+                  <div className="flex items-center gap-1">
+                    {post.reaction_count > 0 && (() => {
+                      const reactionsByType: Record<string, number> = {};
+                      for (const r of post.reactions || []) {
+                        const emoji = REACTIONS.find((rx) => rx.type === r.reaction_type)?.emoji || "\u{1F44D}";
+                        reactionsByType[emoji] = (reactionsByType[emoji] || 0) + 1;
+                      }
+                      return Object.entries(reactionsByType).map(([emoji, count]) => (
+                        <span key={emoji} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--accent)] border border-[var(--border)]">
+                          <span className="text-lg">{emoji}</span>
+                          <span className="text-[10px]">{count}</span>
+                        </span>
+                      ));
+                    })()}
+                  </div>
+                  <span>{post.comment_count > 0 && `${post.comment_count} comment${post.comment_count !== 1 ? "s" : ""}`}</span>
+                </div>
+              )}
+
+              {/* Like / Share */}
+              <div className="px-4 py-1.5 border-y border-[var(--border)] flex items-center gap-1">
+                <div className="relative">
+                  <button
+                    onClick={() => myReaction ? toggleReaction(post.id, myReaction.reaction_type) : setShowReactions(showReactions === post.id ? null : post.id)}
+                    className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-colors ${myReaction ? "text-gold-500 bg-gold-500/10" : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"}`}
+                  >
+                    {myReaction ? (
+                      <span className="text-base">{REACTIONS.find((r) => r.type === myReaction.reaction_type)?.emoji || "\u{1F44D}"}</span>
+                    ) : (
+                      <ThumbsUp className="w-4 h-4" />
+                    )}
+                    {myReaction ? "Liked" : "Like"}
+                  </button>
+                  {showReactions === post.id && (
+                    <div className="absolute bottom-full left-0 mb-1 flex gap-1 bg-[var(--card)] border border-[var(--border)] rounded-full px-2 py-1 shadow-lg z-10">
+                      {REACTIONS.map((r) => (
+                        <button key={r.type} onClick={() => toggleReaction(post.id, r.type)} className="text-lg hover:scale-125 transition-transform p-1" title={r.type}>{r.emoji}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => handleSharePost(post.id)} className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors">
+                  <Share2 className="w-4 h-4" /> Share
+                </button>
+              </div>
+
+              {/* Comments */}
+              <div className="px-4 pb-3">
+                {post.comments
+                  .filter((c) => !c.parent_id)
+                  .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                  .map((comment) => {
+                    const cReactions = commentLikes.get(comment.id);
+                    const cReactionCount = cReactions?.size || 0;
+                    const myCommentReaction = cReactions?.get(user?.id || "");
+                    const replies = post.comments
+                      .filter((c) => c.parent_id === comment.id)
+                      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+                    return (
+                      <div key={comment.id} className="mt-3">
+                        <div className="flex gap-2">
+                          <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                            {comment.author?.avatar_url ? (
+                              <img src={comment.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-medium text-gold-500">{comment.author?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            {editingComment === comment.id ? (
+                              <div className="bg-[var(--accent)] rounded-lg px-3 py-2">
+                                <textarea
+                                  value={editCommentText}
+                                  onChange={(e) => setEditCommentText(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleEditComment(comment.id); }
+                                    if (e.key === "Escape") { setEditingComment(null); setEditCommentText(""); }
+                                  }}
+                                  className="w-full bg-[var(--background)] border border-gold-500/50 rounded-lg px-2 py-1 text-sm focus:outline-none resize-none"
+                                  rows={2}
+                                  autoFocus
+                                />
+                                <div className="flex items-center gap-2 mt-1">
+                                  <button onClick={() => handleEditComment(comment.id)} disabled={!editCommentText.trim()} className="text-[10px] text-gold-500 font-semibold cursor-pointer disabled:opacity-50">Save</button>
+                                  <button onClick={() => { setEditingComment(null); setEditCommentText(""); }} className="text-[10px] text-[var(--muted-foreground)] cursor-pointer">Cancel</button>
+                                </div>
+                              </div>
+                            ) : (
+                            <div className="bg-[var(--accent)] rounded-lg px-3 py-2">
+                              <p className="text-xs font-medium text-gold-500">{comment.author?.display_name}</p>
+                              <p className="text-sm mt-0.5">{comment.content}</p>
+                              {comment.author_id === user?.id && (
+                                <div className="flex items-center gap-2 mt-1 justify-end">
+                                  <button onClick={() => { setEditingComment(comment.id); setEditCommentText(comment.content); }} className="text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">Edit</button>
+                                  <button onClick={() => setDeletingComment({ commentId: comment.id, postId: post.id })} className="text-[10px] text-red-400 hover:text-red-300 cursor-pointer">Delete</button>
+                                </div>
+                              )}
+                            </div>
+                            )}
+                            {cReactionCount > 0 && (
+                              <div className="flex flex-wrap items-center gap-1 mt-0.5 px-1">
+                                {(() => {
+                                  const byType: Record<string, number> = {};
+                                  for (const [, type] of cReactions!) { byType[type] = (byType[type] || 0) + 1; }
+                                  return Object.entries(byType).map(([type, count]) => {
+                                    const emoji = REACTIONS.find((r) => r.type === type)?.emoji || "\u{1F44D}";
+                                    return (
+                                      <span key={type} className="flex items-center gap-0.5 px-1 py-0.5 rounded-full bg-[var(--accent)] border border-[var(--border)] text-xs">
+                                        <span>{emoji}</span><span className="text-[9px] text-[var(--muted-foreground)]">{count}</span>
+                                      </span>
+                                    );
+                                  });
+                                })()}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-3 mt-0.5 px-1 relative">
+                              <span className="text-[10px] text-[var(--muted-foreground)]">{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</span>
+                              <button
+                                onTouchStart={(e) => { e.stopPropagation(); }}
+                                onClick={() => myCommentReaction ? toggleCommentReaction(comment.id, myCommentReaction) : setCommentReactionPicker(commentReactionPicker === comment.id ? null : comment.id)}
+                                className={`text-[11px] font-semibold transition-colors cursor-pointer ${myCommentReaction ? "text-gold-500" : "text-[var(--muted-foreground)]"}`}
+                              >
+                                {myCommentReaction ? (REACTIONS.find((r) => r.type === myCommentReaction)?.emoji || "\u{1F44D}") : "Like"}
+                              </button>
+                              {commentReactionPicker === comment.id && (
+                                <div className="absolute bottom-full left-8 mb-1 flex gap-1 bg-[var(--card)] border border-[var(--border)] rounded-full px-2 py-1 shadow-lg z-10">
+                                  {REACTIONS.map((r) => (<button key={r.type} onClick={() => toggleCommentReaction(comment.id, r.type)} className="text-base hover:scale-125 transition-transform p-0.5">{r.emoji}</button>))}
+                                </div>
+                              )}
+                              <button
+                                onClick={() => { setReplyingTo({ postId: post.id, commentId: comment.id, authorName: comment.author?.display_name || "Unknown" }); setTimeout(() => commentInputRef.current?.focus(), 100); }}
+                                className="text-[11px] font-semibold text-[var(--muted-foreground)] cursor-pointer"
+                              >Reply</button>
+                            </div>
+                          </div>
+                        </div>
+                        {replies.length > 0 && (
+                          <div className="ml-10 mt-1">
+                            <button
+                              onClick={() => setCollapsedReplies((prev) => { const next = new Set(prev); if (next.has(comment.id)) next.delete(comment.id); else next.add(comment.id); return next; })}
+                              className="text-[11px] font-semibold text-gold-500 cursor-pointer mb-1"
+                            >
+                              {collapsedReplies.has(comment.id) ? `Show ${replies.length} ${replies.length === 1 ? "reply" : "replies"}` : `Hide ${replies.length} ${replies.length === 1 ? "reply" : "replies"}`}
+                            </button>
+                            {!collapsedReplies.has(comment.id) && (
+                              <div className="border-l-2 border-[var(--border)] pl-3">
+                                {replies.map((reply) => {
+                                  const rReactions = commentLikes.get(reply.id);
+                                  const myReplyReaction = rReactions?.get(user?.id || "");
+                                  return (
+                                    <div key={reply.id} className="flex gap-2 mt-2">
+                                      <div className="w-6 h-6 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                        {reply.author?.avatar_url ? (
+                                          <img src={reply.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                          <span className="text-[9px] font-medium text-gold-500">{reply.author?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                                        )}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        {editingComment === reply.id ? (
+                                          <div className="bg-[var(--accent)] rounded-lg px-2.5 py-1.5">
+                                            <textarea
+                                              value={editCommentText}
+                                              onChange={(e) => setEditCommentText(e.target.value)}
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleEditComment(reply.id); }
+                                                if (e.key === "Escape") { setEditingComment(null); setEditCommentText(""); }
+                                              }}
+                                              className="w-full bg-[var(--background)] border border-gold-500/50 rounded-lg px-2 py-1 text-xs focus:outline-none resize-none"
+                                              rows={2}
+                                              autoFocus
+                                            />
+                                            <div className="flex items-center gap-2 mt-1">
+                                              <button onClick={() => handleEditComment(reply.id)} disabled={!editCommentText.trim()} className="text-[10px] text-gold-500 font-semibold cursor-pointer disabled:opacity-50">Save</button>
+                                              <button onClick={() => { setEditingComment(null); setEditCommentText(""); }} className="text-[10px] text-[var(--muted-foreground)] cursor-pointer">Cancel</button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                        <div className="bg-[var(--accent)] rounded-lg px-2.5 py-1.5">
+                                          <p className="text-[11px] font-medium">
+                                            <span className="text-gold-500">{reply.author?.display_name}</span>
+                                            <span className="text-[var(--muted-foreground)] mx-2">&gt;</span>
+                                            <span className="text-sky-400">@{comment.author?.display_name}</span>
+                                          </p>
+                                          <p className="text-xs mt-0.5">{reply.content}</p>
+                                          {reply.author_id === user?.id && (
+                                            <div className="flex items-center gap-2 mt-1 justify-end">
+                                              <button onClick={() => { setEditingComment(reply.id); setEditCommentText(reply.content); }} className="text-[9px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">Edit</button>
+                                              <button onClick={() => setDeletingComment({ commentId: reply.id, postId: post.id })} className="text-[9px] text-red-400 hover:text-red-300 cursor-pointer">Delete</button>
+                                            </div>
+                                          )}
+                                        </div>
+                                        )}
+                                        <div className="flex items-center gap-3 mt-0.5 px-1 relative">
+                                          <span className="text-[10px] text-[var(--muted-foreground)]">{formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}</span>
+                                          <button
+                                            onClick={() => myReplyReaction ? toggleCommentReaction(reply.id, myReplyReaction) : setCommentReactionPicker(commentReactionPicker === reply.id ? null : reply.id)}
+                                            className={`text-[10px] font-semibold cursor-pointer ${myReplyReaction ? "text-gold-500" : "text-[var(--muted-foreground)]"}`}
+                                          >
+                                            {myReplyReaction ? (REACTIONS.find((r) => r.type === myReplyReaction)?.emoji || "\u{1F44D}") : "Like"}
+                                          </button>
+                                          {commentReactionPicker === reply.id && (
+                                            <div className="absolute bottom-full left-8 mb-1 flex gap-1 bg-[var(--card)] border border-[var(--border)] rounded-full px-2 py-1 shadow-lg z-10">
+                                              {REACTIONS.map((r) => (<button key={r.type} onClick={() => toggleCommentReaction(reply.id, r.type)} className="text-sm hover:scale-125 transition-transform p-0.5">{r.emoji}</button>))}
+                                            </div>
+                                          )}
+                                          <button
+                                            onClick={() => { setReplyingTo({ postId: post.id, commentId: comment.id, authorName: reply.author?.display_name || "Unknown" }); setTimeout(() => commentInputRef.current?.focus(), 100); }}
+                                            className="text-[10px] font-semibold text-[var(--muted-foreground)] cursor-pointer"
+                                          >Reply</button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Fixed input - uses sticky so keyboard pushes it up naturally */}
+            <div className="flex-shrink-0 border-t border-[var(--border)] bg-[var(--card)]">
+              {replyingTo && replyingTo.postId === post.id && (
+                <div className="flex items-center gap-2 px-4 pt-2 text-xs text-gold-500">
+                  <Reply className="w-3 h-3" />
+                  <span>Replying to {replyingTo.authorName}</span>
+                  <button onClick={() => setReplyingTo(null)} className="text-[var(--muted-foreground)] cursor-pointer"><X className="w-3 h-3" /></button>
+                </div>
+              )}
+              <div className="flex gap-2 px-4 py-2">
+                <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-medium text-gold-500">{profile?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                  )}
+                </div>
+                <div className="flex-1 flex gap-2">
+                  <input
+                    ref={commentInputRef}
+                    value={commentTexts[post.id] || ""}
+                    onChange={(e) => setCommentTexts({ ...commentTexts, [post.id]: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitComment(post.id); } }}
+                    placeholder={replyingTo?.postId === post.id ? `Reply to ${replyingTo.authorName}...` : "Write a comment..."}
+                    className="flex-1 rounded-full border border-[var(--input)] bg-[var(--background)] px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                  />
+                  <button onClick={() => submitComment(post.id)} disabled={!commentTexts[post.id]?.trim()} className="p-1.5 rounded-full text-gold-500 hover:bg-gold-500/10 disabled:opacity-30 transition-colors">
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
         return (
           <>
             <div className="fixed z-[60] bg-black/60" style={{ top: 0, left: 0, right: 0, bottom: 0, height: "100vh", width: "100vw" }} onClick={() => { setActivePostId(null); setEditingPost(null); setReplyingTo(null); }} />
 
+            {/* Mobile: full-screen single column */}
+            <div className="lg:hidden">
+              {mobileModal}
+            </div>
+
+            {/* Desktop */}
+            <div className="hidden lg:block">
             {activePostMode === "full" && hasMedia ? (
               /* ---- Two-column layout: Image left, info+comments right ---- */
               <div className="fixed z-[70] inset-0 flex items-stretch justify-center p-4" onClick={() => { setActivePostId(null); setEditingPost(null); setReplyingTo(null); }}>
@@ -1232,6 +1650,7 @@ export default function FeedPage() {
                 {commentsPanel}
               </div>
             )}
+            </div>
 
             {/* Reaction details modal */}
             {showReactionDetails === post.id && post.reactions.length > 0 && (
@@ -1298,6 +1717,34 @@ export default function FeedPage() {
               </button>
               <button
                 onClick={() => handleDeletePost(deletingPost)}
+                className="px-5 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Delete comment confirmation modal */}
+      {deletingComment && (
+        <>
+          <div className="fixed inset-0 z-[80] bg-black/50" onClick={() => setDeletingComment(null)} />
+          <div className="fixed z-[90] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl p-6 w-full max-w-xs text-center">
+            <Trash2 className="w-8 h-8 text-red-400 mx-auto mb-3" />
+            <h3 className="font-semibold">Delete comment?</h3>
+            <p className="text-sm text-[var(--muted-foreground)] mt-2">
+              This will permanently delete the comment and any replies. This cannot be undone.
+            </p>
+            <div className="flex gap-3 mt-5 justify-center">
+              <button
+                onClick={() => setDeletingComment(null)}
+                className="px-5 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { handleDeleteComment(deletingComment.commentId, deletingComment.postId); setDeletingComment(null); }}
                 className="px-5 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors cursor-pointer"
               >
                 Delete
