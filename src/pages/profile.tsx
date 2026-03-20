@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Camera, MapPin, Phone, ImagePlus, Calendar, Shield, User, Users } from "lucide-react";
+import { Camera, MapPin, Phone, ImagePlus, Calendar, Shield, User, Users, Heart } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
@@ -280,6 +280,26 @@ export default function ProfilePage() {
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
 
+  // Incoming relation requests (only on own profile)
+  const [profileRelationRequests, setProfileRelationRequests] = useState<any[]>([]);
+  useEffect(() => {
+    if (!user || !isOwnProfile) return;
+    async function loadRequests() {
+      const { data } = await supabase
+        .from("relation_requests")
+        .select("*")
+        .eq("to_user_id", user!.id)
+        .eq("status", "pending");
+      if (!data || data.length === 0) { setProfileRelationRequests([]); return; }
+      const senderIds = data.map((r) => r.from_user_id);
+      const { data: profiles } = await supabase.from("profiles").select("*").in("id", senderIds);
+      const pm = new Map<string, any>();
+      for (const p of profiles || []) pm.set(p.id, p);
+      setProfileRelationRequests(data.map((r) => ({ ...r, sender: pm.get(r.from_user_id) })));
+    }
+    loadRequests();
+  }, [user, isOwnProfile]);
+
   function startEditing() {
     setForm({
       display_name: profile?.display_name || "",
@@ -525,6 +545,56 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Incoming relation requests */}
+      {isOwnProfile && profileRelationRequests.length > 0 && (
+        <div className="bg-[var(--card)] rounded-2xl border border-gold-500/30 p-4">
+          <h3 className="font-semibold text-sm flex items-center gap-2 mb-3">
+            <Heart className="w-4 h-4 text-gold-500" />
+            Pending Relation Requests ({profileRelationRequests.length})
+          </h3>
+          <div className="space-y-2">
+            {profileRelationRequests.map((req) => (
+              <div key={req.id} className="flex items-center gap-3 p-2 rounded-lg bg-[var(--accent)]">
+                <div className="w-9 h-9 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {req.sender?.avatar_url ? (
+                    <img src={req.sender.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-medium text-gold-500">{req.sender?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm">
+                    <span className="font-medium">{req.sender?.display_name}</span>
+                    {" "}wants to label you as their{" "}
+                    <span className="text-gold-500 font-medium">{req.relation_label}</span>
+                  </p>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={async () => {
+                      await supabase.rpc("approve_relation_request", { request_id: req.id });
+                      setProfileRelationRequests((prev) => prev.filter((r) => r.id !== req.id));
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors cursor-pointer"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await supabase.from("relation_requests").update({ status: "rejected" }).eq("id", req.id);
+                      setProfileRelationRequests((prev) => prev.filter((r) => r.id !== req.id));
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Details & Map */}
       {profile && <ProfileMapAndDetails profile={profile} />}

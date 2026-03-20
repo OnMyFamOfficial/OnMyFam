@@ -1,10 +1,32 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight } from "lucide-react";
+import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, X, MapPin, Phone, Calendar, Heart, Send } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
+import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import type { Profile } from "@/lib/types";
+
+const goldIcon = L.icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+const RELATION_OPTIONS = [
+  "Mother", "Father", "Sister", "Brother", "Daughter", "Son",
+  "Grandmother", "Grandfather", "Granddaughter", "Grandson",
+  "Aunt", "Uncle", "Niece", "Nephew", "Cousin",
+  "Wife", "Husband", "Partner", "Fiancée", "Fiancé",
+  "Mother-in-law", "Father-in-law", "Sister-in-law", "Brother-in-law",
+  "Daughter-in-law", "Son-in-law", "Stepmom", "Stepdad",
+  "Stepdaughter", "Stepson", "Godmother", "Godfather",
+];
 
 interface SearchResult {
   id: string;
@@ -42,6 +64,95 @@ export default function FamilyPage() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [joining, setJoining] = useState<string | null>(null);
   const [joinSuccess, setJoinSuccess] = useState<string | null>(null);
+
+  // Member modal state
+  const [selectedMember, setSelectedMember] = useState<any | null>(null);
+  const [memberProfile, setMemberProfile] = useState<Profile | null>(null);
+  const [memberCoords, setMemberCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [relationPicker, setRelationPicker] = useState(false);
+  const [selectedRelation, setSelectedRelation] = useState("");
+  const [relationSending, setRelationSending] = useState(false);
+  const [relationSent, setRelationSent] = useState(false);
+  const [pendingRelations, setPendingRelations] = useState<any[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
+
+  // Load incoming relation requests on page load
+  useEffect(() => {
+    if (!user || !currentFamily) return;
+    async function loadIncoming() {
+      const { data } = await supabase
+        .from("relation_requests")
+        .select("*")
+        .eq("family_id", currentFamily!.id)
+        .eq("to_user_id", user!.id)
+        .eq("status", "pending");
+      if (!data || data.length === 0) { setIncomingRequests([]); return; }
+      // Get sender profiles
+      const senderIds = data.map((r) => r.from_user_id);
+      const { data: profiles } = await supabase.from("profiles").select("*").in("id", senderIds);
+      const pm = new Map<string, any>();
+      for (const p of profiles || []) pm.set(p.id, p);
+      setIncomingRequests(data.map((r) => ({ ...r, sender: pm.get(r.from_user_id) })));
+    }
+    loadIncoming();
+  }, [user, currentFamily]);
+
+  async function approveRequest(requestId: string) {
+    await supabase.rpc("approve_relation_request", { request_id: requestId });
+    setIncomingRequests((prev) => prev.filter((r) => r.id !== requestId));
+    refreshMembers();
+  }
+
+  async function declineRequest(requestId: string) {
+    await supabase.from("relation_requests").update({ status: "rejected" }).eq("id", requestId);
+    setIncomingRequests((prev) => prev.filter((r) => r.id !== requestId));
+  }
+
+  // Load member profile when modal opens
+  useEffect(() => {
+    if (!selectedMember) {
+      setMemberProfile(null);
+      setMemberCoords(null);
+      setRelationPicker(false);
+      setSelectedRelation("");
+      setRelationSent(false);
+      return;
+    }
+    setMemberProfile(selectedMember.profile);
+    // Geocode their location
+    if (selectedMember.profile?.location) {
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(selectedMember.profile.location)}&limit=1`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.length > 0) setMemberCoords({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
+        })
+        .catch(() => {});
+    }
+    // Check for pending relation requests
+    if (user && currentFamily) {
+      supabase
+        .from("relation_requests")
+        .select("*")
+        .eq("family_id", currentFamily.id)
+        .or(`from_user_id.eq.${user.id},to_user_id.eq.${user.id}`)
+        .eq("status", "pending")
+        .then(({ data }) => setPendingRelations(data || []));
+    }
+  }, [selectedMember]);
+
+  async function sendRelationRequest(toUserId: string, label: string) {
+    if (!user || !currentFamily) return;
+    setRelationSending(true);
+    await supabase.from("relation_requests").insert({
+      family_id: currentFamily.id,
+      from_user_id: user.id,
+      to_user_id: toUserId,
+      relation_label: label,
+    });
+    setRelationSending(false);
+    setRelationSent(true);
+    setRelationPicker(false);
+  }
 
   async function handleCreateFamily() {
     if (!user || !form.name.trim()) return;
@@ -412,6 +523,50 @@ export default function FamilyPage() {
         </div>
       </div>
 
+      {/* Incoming relation requests */}
+      {incomingRequests.length > 0 && (
+        <div className="bg-[var(--card)] rounded-lg border border-gold-500/30 p-4">
+          <h3 className="font-semibold text-sm flex items-center gap-2 mb-3">
+            <Heart className="w-4 h-4 text-gold-500" />
+            Pending Relation Requests ({incomingRequests.length})
+          </h3>
+          <div className="space-y-2">
+            {incomingRequests.map((req) => (
+              <div key={req.id} className="flex items-center gap-3 p-2 rounded-lg bg-[var(--accent)]">
+                <div className="w-9 h-9 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {req.sender?.avatar_url ? (
+                    <img src={req.sender.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-medium text-gold-500">{req.sender?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm">
+                    <span className="font-medium">{req.sender?.display_name}</span>
+                    {" "}wants to label you as their{" "}
+                    <span className="text-gold-500 font-medium">{req.relation_label}</span>
+                  </p>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => approveRequest(req.id)}
+                    className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors cursor-pointer"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => declineRequest(req.id)}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Two-column layout: members left, content right */}
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left: Members */}
@@ -426,7 +581,7 @@ export default function FamilyPage() {
                 return (
                   <div
                     key={member.id}
-                    onClick={() => navigate(`/profile/${member.user_id}`)}
+                    onClick={() => setSelectedMember(member)}
                     className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer"
                   >
                     <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -780,6 +935,227 @@ export default function FamilyPage() {
 
         </div>{/* end right content */}
       </div>{/* end two-column flex */}
+
+      {/* ===== Member Profile Modal ===== */}
+      {selectedMember && memberProfile && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/60" onClick={() => setSelectedMember(null)} />
+          <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden" style={{ maxHeight: "85vh" }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-gold-500/20 flex items-center justify-center overflow-hidden">
+                  {memberProfile.avatar_url ? (
+                    <img src={memberProfile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-lg font-bold text-gold-500">{memberProfile.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-semibold">{memberProfile.display_name}</h3>
+                  {selectedMember.relation_label && (
+                    <p className="text-xs text-gold-500">{selectedMember.relation_label}</p>
+                  )}
+                  {selectedMember.role !== "member" && (
+                    <p className="text-[10px] text-[var(--muted-foreground)] flex items-center gap-1">
+                      {selectedMember.role === "admin" ? <Crown className="w-3 h-3 text-gold-500" /> : <Shield className="w-3 h-3 text-blue-400" />}
+                      {selectedMember.role}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setSelectedMember(null); navigate(`/profile/${selectedMember.user_id}`); }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium border border-[var(--border)] hover:bg-[var(--accent)] transition-colors cursor-pointer"
+                >
+                  Full Profile
+                </button>
+                <button onClick={() => setSelectedMember(null)} className="p-1.5 rounded-lg hover:bg-[var(--accent)] cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {/* About section */}
+              <div className="p-4 space-y-3">
+                {memberProfile.bio && (
+                  <p className="text-sm text-[var(--muted-foreground)] italic">{memberProfile.bio}</p>
+                )}
+                {memberProfile.location && (
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-4 h-4 text-gold-500 flex-shrink-0" />
+                    <div>
+                      <p className="text-[11px] text-[var(--muted-foreground)]">Location</p>
+                      <p className="text-sm font-medium">{memberProfile.location}</p>
+                    </div>
+                  </div>
+                )}
+                {memberProfile.phone && (
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-4 h-4 text-gold-500 flex-shrink-0" />
+                    <div>
+                      <p className="text-[11px] text-[var(--muted-foreground)]">Phone</p>
+                      <p className="text-sm font-medium">{memberProfile.phone}</p>
+                    </div>
+                  </div>
+                )}
+                {memberProfile.date_of_birth && (
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-4 h-4 text-gold-500 flex-shrink-0" />
+                    <div>
+                      <p className="text-[11px] text-[var(--muted-foreground)]">Birthday</p>
+                      <p className="text-sm font-medium">{new Date(memberProfile.date_of_birth).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-4 h-4 text-gold-500 flex-shrink-0" />
+                  <div>
+                    <p className="text-[11px] text-[var(--muted-foreground)]">Joined</p>
+                    <p className="text-sm font-medium">{new Date(memberProfile.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" })}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Map */}
+              {memberCoords && (
+                <div className="mx-4 mb-4 rounded-lg overflow-hidden border border-[var(--border)]">
+                  <div style={{ height: 200 }}>
+                    <MapContainer
+                      center={[memberCoords.lat, memberCoords.lon]}
+                      zoom={12}
+                      style={{ height: "100%", width: "100%" }}
+                      scrollWheelZoom={false}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <Marker position={[memberCoords.lat, memberCoords.lon]} icon={goldIcon}>
+                        <Tooltip direction="top" offset={[0, -35]} permanent className="leaflet-name-tooltip">
+                          {memberProfile.display_name}
+                        </Tooltip>
+                      </Marker>
+                    </MapContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Relation section */}
+              {selectedMember.user_id !== user?.id && (
+                <div className="mx-4 mb-4 p-3 rounded-lg border border-[var(--border)] bg-[var(--accent)]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Heart className="w-4 h-4 text-gold-500" />
+                    <span className="text-sm font-semibold">Relationship</span>
+                  </div>
+
+                  {selectedMember.relation_label ? (
+                    <p className="text-sm text-[var(--muted-foreground)]">
+                      {memberProfile.display_name} is labeled as your <span className="text-gold-500 font-medium">{selectedMember.relation_label}</span>
+                    </p>
+                  ) : relationSent ? (
+                    <p className="text-sm text-green-400 flex items-center gap-1.5">
+                      <Check className="w-4 h-4" /> Relation request sent! Waiting for {memberProfile.display_name} to approve.
+                    </p>
+                  ) : (() => {
+                    const existingRequest = pendingRelations.find(
+                      (r) => r.from_user_id === user?.id && r.to_user_id === selectedMember.user_id
+                    );
+                    if (existingRequest) {
+                      return (
+                        <p className="text-sm text-[var(--muted-foreground)]">
+                          You already sent a request: <span className="text-gold-500 font-medium">{existingRequest.relation_label}</span> (pending approval)
+                        </p>
+                      );
+                    }
+                    const incomingRequest = pendingRelations.find(
+                      (r) => r.from_user_id === selectedMember.user_id && r.to_user_id === user?.id
+                    );
+                    if (incomingRequest) {
+                      return (
+                        <div>
+                          <p className="text-sm text-[var(--muted-foreground)] mb-2">
+                            {memberProfile.display_name} wants to label you as their <span className="text-gold-500 font-medium">{incomingRequest.relation_label}</span>
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                await supabase.rpc("approve_relation_request", { request_id: incomingRequest.id });
+                                refreshMembers();
+                                setSelectedMember(null);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors cursor-pointer"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={async () => {
+                                await supabase.from("relation_requests").update({ status: "rejected" }).eq("id", incomingRequest.id);
+                                setPendingRelations((prev) => prev.filter((r) => r.id !== incomingRequest.id));
+                              }}
+                              className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return relationPicker ? (
+                      <div>
+                        <p className="text-xs text-[var(--muted-foreground)] mb-2">{memberProfile.display_name} is my...</p>
+                        <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                          {RELATION_OPTIONS.map((rel) => (
+                            <button
+                              key={rel}
+                              onClick={() => setSelectedRelation(rel)}
+                              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                                selectedRelation === rel
+                                  ? "bg-gold-500 text-white"
+                                  : "bg-[var(--card)] border border-[var(--border)] hover:border-gold-500/50"
+                              }`}
+                            >
+                              {rel}
+                            </button>
+                          ))}
+                        </div>
+                        {selectedRelation && (
+                          <div className="flex items-center gap-2 mt-3">
+                            <button
+                              onClick={() => sendRelationRequest(selectedMember.user_id, selectedRelation)}
+                              disabled={relationSending}
+                              className="px-4 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Send className="w-3 h-3" />
+                              {relationSending ? "Sending..." : `Send "${selectedRelation}" request`}
+                            </button>
+                            <button
+                              onClick={() => { setRelationPicker(false); setSelectedRelation(""); }}
+                              className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setRelationPicker(true)}
+                        className="text-sm text-gold-500 hover:text-gold-400 font-medium cursor-pointer"
+                      >
+                        + Set relationship to {memberProfile.display_name}
+                      </button>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
