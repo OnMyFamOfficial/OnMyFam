@@ -71,10 +71,44 @@ export default function FamilyPage() {
   const [memberCoords, setMemberCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [relationPicker, setRelationPicker] = useState(false);
   const [selectedRelation, setSelectedRelation] = useState("");
+  const [selectedReverseRelation, setSelectedReverseRelation] = useState("");
+  const [relationStep, setRelationStep] = useState<1 | 2>(1);
   const [relationSending, setRelationSending] = useState(false);
   const [relationSent, setRelationSent] = useState(false);
+  const [approvedRelations, setApprovedRelations] = useState<Map<string, string>>(new Map()); // userId -> label (what they are to me)
   const [pendingRelations, setPendingRelations] = useState<any[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
+
+  // Load approved relations for the current user
+  useEffect(() => {
+    if (!user || !currentFamily) return;
+    async function loadRelations() {
+      // Get relations where I'm the sender (relation_label = what they are to me)
+      const { data: sent } = await supabase
+        .from("relation_requests")
+        .select("*")
+        .eq("family_id", currentFamily!.id)
+        .eq("from_user_id", user!.id)
+        .eq("status", "approved");
+      // Get relations where I'm the recipient (reverse_label = what they are to me)
+      const { data: received } = await supabase
+        .from("relation_requests")
+        .select("*")
+        .eq("family_id", currentFamily!.id)
+        .eq("to_user_id", user!.id)
+        .eq("status", "approved");
+
+      const map = new Map<string, string>();
+      for (const r of sent || []) {
+        map.set(r.to_user_id, r.relation_label);
+      }
+      for (const r of received || []) {
+        if (r.reverse_label) map.set(r.from_user_id, r.reverse_label);
+      }
+      setApprovedRelations(map);
+    }
+    loadRelations();
+  }, [user, currentFamily]);
 
   // Load incoming relation requests on page load
   useEffect(() => {
@@ -115,6 +149,8 @@ export default function FamilyPage() {
       setMemberCoords(null);
       setRelationPicker(false);
       setSelectedRelation("");
+      setSelectedReverseRelation("");
+      setRelationStep(1);
       setRelationSent(false);
       return;
     }
@@ -140,7 +176,7 @@ export default function FamilyPage() {
     }
   }, [selectedMember]);
 
-  async function sendRelationRequest(toUserId: string, label: string) {
+  async function sendRelationRequest(toUserId: string, label: string, reverseLabel: string) {
     if (!user || !currentFamily) return;
     setRelationSending(true);
     await supabase.from("relation_requests").insert({
@@ -148,10 +184,12 @@ export default function FamilyPage() {
       from_user_id: user.id,
       to_user_id: toUserId,
       relation_label: label,
+      reverse_label: reverseLabel,
     });
     setRelationSending(false);
     setRelationSent(true);
     setRelationPicker(false);
+    setRelationStep(1);
   }
 
   async function handleCreateFamily() {
@@ -543,8 +581,9 @@ export default function FamilyPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm">
                     <span className="font-medium">{req.sender?.display_name}</span>
-                    {" "}wants to label you as their{" "}
+                    {" "}says you are their{" "}
                     <span className="text-gold-500 font-medium">{req.relation_label}</span>
+                    {req.reverse_label && <> and they are your <span className="text-gold-500 font-medium">{req.reverse_label}</span></>}
                   </p>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
@@ -595,8 +634,8 @@ export default function FamilyPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{p.display_name}</p>
-                      {member.relation_label && (
-                        <p className="text-[10px] text-[var(--muted-foreground)]">{member.relation_label}</p>
+                      {member.user_id !== user?.id && approvedRelations.get(member.user_id) && (
+                        <p className="text-[10px] text-gold-500">{approvedRelations.get(member.user_id)}</p>
                       )}
                     </div>
                     {member.role === "admin" && <Crown className="w-3 h-3 text-gold-500 flex-shrink-0" />}
@@ -953,8 +992,8 @@ export default function FamilyPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold">{memberProfile.display_name}</h3>
-                  {selectedMember.relation_label && (
-                    <p className="text-xs text-gold-500">{selectedMember.relation_label}</p>
+                  {approvedRelations.get(selectedMember.user_id) && (
+                    <p className="text-xs text-gold-500">{approvedRelations.get(selectedMember.user_id)}</p>
                   )}
                   {selectedMember.role !== "member" && (
                     <p className="text-[10px] text-[var(--muted-foreground)] flex items-center gap-1">
@@ -1052,10 +1091,25 @@ export default function FamilyPage() {
                     <span className="text-sm font-semibold">Relationship</span>
                   </div>
 
-                  {selectedMember.relation_label ? (
-                    <p className="text-sm text-[var(--muted-foreground)]">
-                      {memberProfile.display_name} is labeled as your <span className="text-gold-500 font-medium">{selectedMember.relation_label}</span>
-                    </p>
+                  {approvedRelations.get(selectedMember.user_id) ? (
+                    <div>
+                      <p className="text-sm text-[var(--muted-foreground)]">
+                        {memberProfile.display_name} is your <span className="text-gold-500 font-medium">{approvedRelations.get(selectedMember.user_id)}</span>
+                      </p>
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Remove relationship with ${memberProfile.display_name}?`)) return;
+                          await supabase.from("relation_requests").delete()
+                            .eq("family_id", currentFamily!.id)
+                            .or(`and(from_user_id.eq.${user!.id},to_user_id.eq.${selectedMember.user_id}),and(from_user_id.eq.${selectedMember.user_id},to_user_id.eq.${user!.id})`)
+                            .eq("status", "approved");
+                          setApprovedRelations((prev) => { const next = new Map(prev); next.delete(selectedMember.user_id); return next; });
+                        }}
+                        className="text-xs text-red-400 hover:text-red-300 mt-2 cursor-pointer"
+                      >
+                        Remove relationship
+                      </button>
+                    </div>
                   ) : relationSent ? (
                     <p className="text-sm text-green-400 flex items-center gap-1.5">
                       <Check className="w-4 h-4" /> Relation request sent! Waiting for {memberProfile.display_name} to approve.
@@ -1106,40 +1160,76 @@ export default function FamilyPage() {
                     }
                     return relationPicker ? (
                       <div>
-                        <p className="text-xs text-[var(--muted-foreground)] mb-2">{memberProfile.display_name} is my...</p>
-                        <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                          {RELATION_OPTIONS.map((rel) => (
-                            <button
-                              key={rel}
-                              onClick={() => setSelectedRelation(rel)}
-                              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                                selectedRelation === rel
-                                  ? "bg-gold-500 text-white"
-                                  : "bg-[var(--card)] border border-[var(--border)] hover:border-gold-500/50"
-                              }`}
-                            >
-                              {rel}
-                            </button>
-                          ))}
-                        </div>
-                        {selectedRelation && (
-                          <div className="flex items-center gap-2 mt-3">
-                            <button
-                              onClick={() => sendRelationRequest(selectedMember.user_id, selectedRelation)}
-                              disabled={relationSending}
-                              className="px-4 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Send className="w-3 h-3" />
-                              {relationSending ? "Sending..." : `Send "${selectedRelation}" request`}
-                            </button>
-                            <button
-                              onClick={() => { setRelationPicker(false); setSelectedRelation(""); }}
-                              className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer"
-                            >
-                              Cancel
-                            </button>
-                          </div>
+                        {relationStep === 1 ? (
+                          <>
+                            <p className="text-xs text-[var(--muted-foreground)] mb-2">
+                              <span className="font-medium text-[var(--foreground)]">{memberProfile.display_name}</span> is my...
+                            </p>
+                            <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                              {RELATION_OPTIONS.map((rel) => (
+                                <button
+                                  key={rel}
+                                  onClick={() => { setSelectedRelation(rel); setRelationStep(2); }}
+                                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                                    selectedRelation === rel
+                                      ? "bg-gold-500 text-white"
+                                      : "bg-[var(--card)] border border-[var(--border)] hover:border-gold-500/50"
+                                  }`}
+                                >
+                                  {rel}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs text-[var(--muted-foreground)] mb-1">
+                              {memberProfile.display_name} is your <span className="text-gold-500 font-medium">{selectedRelation}</span>
+                            </p>
+                            <p className="text-xs text-[var(--muted-foreground)] mb-2">
+                              And I am {memberProfile.display_name}'s...
+                            </p>
+                            <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                              {RELATION_OPTIONS.map((rel) => (
+                                <button
+                                  key={rel}
+                                  onClick={() => setSelectedReverseRelation(rel)}
+                                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                                    selectedReverseRelation === rel
+                                      ? "bg-gold-500 text-white"
+                                      : "bg-[var(--card)] border border-[var(--border)] hover:border-gold-500/50"
+                                  }`}
+                                >
+                                  {rel}
+                                </button>
+                              ))}
+                            </div>
+                            {selectedReverseRelation && (
+                              <div className="flex items-center gap-2 mt-3">
+                                <button
+                                  onClick={() => sendRelationRequest(selectedMember.user_id, selectedRelation, selectedReverseRelation)}
+                                  disabled={relationSending}
+                                  className="px-4 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Send className="w-3 h-3" />
+                                  {relationSending ? "Sending..." : "Send request"}
+                                </button>
+                                <button
+                                  onClick={() => { setRelationStep(1); setSelectedReverseRelation(""); }}
+                                  className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer"
+                                >
+                                  Back
+                                </button>
+                              </div>
+                            )}
+                          </>
                         )}
+                        <button
+                          onClick={() => { setRelationPicker(false); setSelectedRelation(""); setSelectedReverseRelation(""); setRelationStep(1); }}
+                          className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer mt-2 block"
+                        >
+                          Cancel
+                        </button>
                       </div>
                     ) : (
                       <button

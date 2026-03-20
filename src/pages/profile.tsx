@@ -566,8 +566,9 @@ export default function ProfilePage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm">
                     <span className="font-medium">{req.sender?.display_name}</span>
-                    {" "}wants to label you as their{" "}
+                    {" "}says you are their{" "}
                     <span className="text-gold-500 font-medium">{req.relation_label}</span>
+                    {req.reverse_label && <> and they are your <span className="text-gold-500 font-medium">{req.reverse_label}</span></>}
                   </p>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
