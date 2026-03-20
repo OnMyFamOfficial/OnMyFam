@@ -10,6 +10,7 @@ import { InstallPrompt } from "@/components/shared/install-prompt";
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   return (
     <div className="flex h-screen overflow-hidden light-gradient dark:bg-[var(--background)]">
@@ -19,10 +20,11 @@ export function AppLayout() {
         <Header
           onMenuClick={() => setSidebarOpen(true)}
           onRightMenuClick={() => setRightSidebarOpen(true)}
+          onFilterClick={() => setFilterOpen(true)}
         />
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <Outlet context={{ onMenuClick: () => setSidebarOpen(true) }} />
+          <Outlet context={{ onMenuClick: () => setSidebarOpen(true), filterOpen, setFilterOpen }} />
         </main>
 
         <MobileNav />

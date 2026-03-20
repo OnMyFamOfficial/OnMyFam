@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   Image,
   Video,
@@ -17,6 +17,9 @@ import {
   Check,
   Reply,
   ThumbsDown,
+  ChevronDown,
+  ChevronRight,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
@@ -54,8 +57,9 @@ type FullPost = Post & {
 
 export default function FeedPage() {
   const navigate = useNavigate();
+  const { filterOpen, setFilterOpen } = useOutletContext<{ filterOpen: boolean; setFilterOpen: (v: boolean) => void }>();
   const { user, profile } = useAuth();
-  const { currentFamily, members } = useFamily();
+  const { currentFamily, families, members } = useFamily();
   const [posts, setPosts] = useState<FullPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [postText, setPostText] = useState("");
@@ -73,6 +77,8 @@ export default function FeedPage() {
   const [commentLikes, setCommentLikes] = useState<Map<string, Map<string, string>>>(new Map()); // commentId -> (userId -> reactionType)
   const [commentReactionPicker, setCommentReactionPicker] = useState<string | null>(null);
   const [collapsedReplies, setCollapsedReplies] = useState<Set<string>>(new Set());
+  const [filterByMembers, setFilterByMembers] = useState<Set<string>>(new Set());
+  const [collapsedFamilies, setCollapsedFamilies] = useState<Set<string>>(new Set());
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [deletingComment, setDeletingComment] = useState<{ commentId: string; postId: string } | null>(null);
@@ -449,8 +455,115 @@ export default function FeedPage() {
     );
   }
 
+  const filteredPosts = filterByMembers.size === 0
+    ? posts
+    : posts.filter((p) => filterByMembers.has(p.author_id));
+
+  function toggleMemberFilter(userId: string) {
+    setFilterByMembers((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId); else next.add(userId);
+      return next;
+    });
+  }
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="relative max-w-2xl mx-auto">
+      {/* Left: Member filter sidebar - positioned to the left of centered content */}
+      <div className="hidden lg:block absolute right-full mr-8 top-0 w-[336px]">
+        <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] sticky top-20 overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-gold-500" />
+              <span className="font-semibold text-sm">Filter by Member</span>
+            </div>
+            {filterByMembers.size > 0 && (
+              <button
+                onClick={() => setFilterByMembers(new Set())}
+                className="text-[10px] text-gold-500 hover:text-gold-400 cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="max-h-[65vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {(() => {
+              // Sort by hierarchy: parents first, then children, alphabetical within each level
+              const roots = families.filter((f) => !f.parent_family_id).sort((a, b) => a.name.localeCompare(b.name));
+              const sorted: { family: typeof families[0]; depth: number }[] = [];
+              function addWithChildren(parent: typeof families[0], depth: number) {
+                sorted.push({ family: parent, depth });
+                const children = families.filter((f) => f.parent_family_id === parent.id).sort((a, b) => a.name.localeCompare(b.name));
+                for (const child of children) addWithChildren(child, depth + 1);
+              }
+              for (const root of roots) addWithChildren(root, 0);
+              // Add any orphans (parent not in user's families)
+              for (const f of families) {
+                if (!sorted.some((s) => s.family.id === f.id)) sorted.push({ family: f, depth: 0 });
+              }
+              return sorted;
+            })().map(({ family, depth }) => {
+              const isCollapsed = collapsedFamilies.has(family.id);
+              const isCurrent = family.id === currentFamily?.id;
+              return (
+                <div key={family.id}>
+                  {/* Family header */}
+                  <button
+                    onClick={() => setCollapsedFamilies((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(family.id)) next.delete(family.id); else next.add(family.id);
+                      return next;
+                    })}
+                    className="w-full flex items-center gap-2 py-2 hover:bg-[var(--accent)] transition-colors cursor-pointer text-left border-b border-[var(--border)]"
+                    style={{ paddingLeft: `${12 + depth * 16}px`, paddingRight: 12 }}
+                  >
+                    {isCollapsed ? <ChevronRight className="w-3.5 h-3.5 text-[var(--muted-foreground)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />}
+                    <span className={`text-xs font-semibold truncate ${isCurrent ? "text-gold-500" : ""}`}>{family.name}</span>
+                    <span className="text-[10px] text-[var(--muted-foreground)] ml-auto">{family.member_count}</span>
+                  </button>
+                  {/* Members list */}
+                  {!isCollapsed && isCurrent && (
+                    <div className="p-1.5 space-y-0.5">
+                      {members.map((member) => {
+                        const p = member.profile;
+                        const isSelected = filterByMembers.has(member.user_id);
+                        return (
+                          <button
+                            key={member.id}
+                            onClick={() => toggleMemberFilter(member.user_id)}
+                            className={`w-full flex items-center gap-2 px-2 py-2.5 rounded-lg transition-colors cursor-pointer text-left ${
+                              isSelected ? "bg-gold-500/15 border border-gold-500/30" : "hover:bg-[var(--accent)] border border-transparent"
+                            }`}
+                          >
+                            <div className={`w-7 h-7 rounded-md flex items-center justify-center overflow-hidden flex-shrink-0 ${isSelected ? "ring-2 ring-gold-500" : "bg-gold-500/20"}`}>
+                              {p?.avatar_url ? (
+                                <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-[10px] font-medium text-gold-500">{p?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                              )}
+                            </div>
+                            <span className={`text-xs truncate ${isSelected ? "font-medium text-gold-500" : "text-[var(--muted-foreground)]"}`}>
+                              {p?.display_name}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {!isCollapsed && !isCurrent && (
+                    <div className="px-3 py-2 text-[10px] text-[var(--muted-foreground)]">
+                      Switch to this family to see members
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Feed content */}
+      <div className="space-y-6">
       {/* Composer trigger bar + inline modal */}
       <div className="relative">
         <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
@@ -725,8 +838,13 @@ export default function FeedPage() {
             Share the first update with your family!
           </p>
         </div>
+      ) : filteredPosts.length === 0 ? (
+        <div className="text-center py-12 text-[var(--muted-foreground)]">
+          <p className="text-sm">No posts from selected members</p>
+          <button onClick={() => setFilterByMembers(new Set())} className="text-xs text-gold-500 hover:text-gold-400 mt-2 cursor-pointer">Clear filters</button>
+        </div>
       ) : (
-        posts.map((post) => {
+        filteredPosts.map((post) => {
           const myReaction = post.reactions.find(
             (r) => r.user_id === user?.id
           );
@@ -1761,6 +1879,58 @@ export default function FeedPage() {
           Link copied to clipboard
         </div>
       )}
+      {/* Mobile filter bottom sheet */}
+      {filterOpen && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/50 lg:hidden" onClick={() => setFilterOpen(false)} />
+          <div className="fixed z-[70] bottom-0 left-0 right-0 bg-[var(--card)] border-t border-[var(--border)] rounded-t-2xl lg:hidden" style={{ maxHeight: "70vh" }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-gold-500" />
+                <span className="font-semibold text-sm">Filter by Member</span>
+              </div>
+              <div className="flex items-center gap-3">
+                {filterByMembers.size > 0 && (
+                  <button onClick={() => setFilterByMembers(new Set())} className="text-xs text-gold-500 cursor-pointer">Clear</button>
+                )}
+                <button onClick={() => setFilterOpen(false)} className="p-1 rounded-lg hover:bg-[var(--accent)] cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            {/* Drag handle */}
+            <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-[var(--muted-foreground)]/30" />
+            <div className="overflow-y-auto p-3 space-y-1" style={{ maxHeight: "calc(70vh - 56px)" }}>
+              {members.map((member) => {
+                const p = member.profile;
+                const isSelected = filterByMembers.has(member.user_id);
+                return (
+                  <button
+                    key={member.id}
+                    onClick={() => toggleMemberFilter(member.user_id)}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors cursor-pointer text-left ${
+                      isSelected ? "bg-gold-500/15 border border-gold-500/30" : "hover:bg-[var(--accent)] border border-transparent"
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-md flex items-center justify-center overflow-hidden flex-shrink-0 ${isSelected ? "ring-2 ring-gold-500" : "bg-gold-500/20"}`}>
+                      {p?.avatar_url ? (
+                        <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs font-medium text-gold-500">{p?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                      )}
+                    </div>
+                    <span className={`text-sm truncate ${isSelected ? "font-medium text-gold-500" : ""}`}>
+                      {p?.display_name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      </div>{/* end feed content */}
     </div>
   );
 }
