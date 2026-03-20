@@ -569,10 +569,29 @@ export default function FeedPage() {
               {/* Reaction/comment counts */}
               {(post.reaction_count > 0 || post.comment_count > 0) && (
                 <div className="px-4 py-2 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-                  <span>
-                    {post.reaction_count > 0 &&
-                      `${post.reaction_count} reaction${post.reaction_count !== 1 ? "s" : ""}`}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {post.reaction_count > 0 && (() => {
+                      // Group reactions by type and show unique emojis with total count
+                      const reactionsByType: Record<string, number> = {};
+                      for (const r of post.reactions || []) {
+                        const emoji = REACTIONS.find((rx) => rx.type === r.reaction_type)?.emoji || "\u{1F44D}";
+                        reactionsByType[emoji] = (reactionsByType[emoji] || 0) + 1;
+                      }
+                      return (
+                        <>
+                          <span className="flex gap-0.5">
+                            {Object.entries(reactionsByType).map(([emoji, count]) => (
+                              <span key={emoji} className="flex items-center gap-0.5">
+                                <span className="text-sm">{emoji}</span>
+                                {count > 1 && <span>{count}</span>}
+                              </span>
+                            ))}
+                          </span>
+                          <span>{post.reaction_count}</span>
+                        </>
+                      );
+                    })()}
+                  </div>
                   <span>
                     {post.comment_count > 0 &&
                       `${post.comment_count} comment${post.comment_count !== 1 ? "s" : ""}`}
@@ -597,12 +616,12 @@ export default function FeedPage() {
                         : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
                     }`}
                   >
-                    <ThumbsUp className="w-4 h-4" />
-                    {myReaction
-                      ? REACTIONS.find(
-                          (r) => r.type === myReaction.reaction_type
-                        )?.emoji || "Like"
-                      : "Like"}
+                    {myReaction ? (
+                      <span className="text-base">{REACTIONS.find((r) => r.type === myReaction.reaction_type)?.emoji || "\u{1F44D}"}</span>
+                    ) : (
+                      <ThumbsUp className="w-4 h-4" />
+                    )}
+                    {myReaction ? REACTIONS.find((r) => r.type === myReaction.reaction_type)?.type || "Like" : "Like"}
                   </button>
 
                   {/* Reaction picker */}
