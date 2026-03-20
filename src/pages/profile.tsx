@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Camera, MapPin, Phone, ImagePlus, Calendar, Shield, User, Users, Heart } from "lucide-react";
+import { sanitizeForStorage } from "@/lib/sanitize";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
@@ -331,7 +332,12 @@ export default function ProfilePage() {
   async function handleSave() {
     if (!user) return;
     setSaving(true);
-    const updates: Record<string, string | null> = { ...form };
+    const updates: Record<string, string | null> = {
+      display_name: sanitizeForStorage(form.display_name),
+      bio: form.bio ? sanitizeForStorage(form.bio) : null,
+      location: form.location ? sanitizeForStorage(form.location) : null,
+      phone: form.phone ? sanitizeForStorage(form.phone) : null,
+    };
 
     if (avatarFile) {
       const url = await uploadAvatar(user.id, avatarFile);

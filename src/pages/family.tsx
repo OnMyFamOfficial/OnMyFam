@@ -65,6 +65,68 @@ export default function FamilyPage() {
   const [joining, setJoining] = useState<string | null>(null);
   const [joinSuccess, setJoinSuccess] = useState<string | null>(null);
 
+  // Claimable accounts
+  const [claimableAccounts, setClaimableAccounts] = useState<any[]>([]);
+  const [newClaimName, setNewClaimName] = useState("");
+  const [creatingClaim, setCreatingClaim] = useState(false);
+  const [claimCode, setClaimCode] = useState("");
+  const [claiming, setClaiming] = useState(false);
+  const [claimResult, setClaimResult] = useState<string | null>(null);
+
+  // Load claimable accounts
+  useEffect(() => {
+    if (!currentFamily) return;
+    supabase.from("claimable_accounts").select("*").eq("family_id", currentFamily.id).is("claimed_by", null)
+      .then(({ data }) => setClaimableAccounts(data || []));
+  }, [currentFamily]);
+
+  async function createClaimableAccount() {
+    if (!user || !currentFamily || !newClaimName.trim()) return;
+    setCreatingClaim(true);
+    const { data } = await supabase.from("claimable_accounts").insert({
+      family_id: currentFamily.id,
+      display_name: newClaimName.trim(),
+      created_by: user.id,
+    }).select().single();
+    if (data) setClaimableAccounts((prev) => [...prev, data]);
+    setNewClaimName("");
+    setCreatingClaim(false);
+  }
+
+  async function claimAccount() {
+    if (!user || !claimCode.trim()) return;
+    setClaiming(true);
+    setClaimResult(null);
+    const { data: account } = await supabase.from("claimable_accounts")
+      .select("*").eq("claim_code", claimCode.trim()).is("claimed_by", null).single();
+    if (!account) {
+      setClaimResult("Invalid or already claimed code");
+      setClaiming(false);
+      return;
+    }
+    // Claim it
+    await supabase.from("claimable_accounts").update({ claimed_by: user.id, claimed_at: new Date().toISOString() }).eq("id", account.id);
+    // Add user to family
+    await supabase.from("family_members").insert({ family_id: account.family_id, user_id: user.id, role: "member" });
+    setClaimResult(`You've joined the family as ${account.display_name}!`);
+    setClaimCode("");
+    setClaiming(false);
+    refreshFamilies();
+    refreshMembers();
+  }
+
+  async function changeRole(memberId: string, newRole: string) {
+    // Optimistic update
+    setSelectedMember((prev: any) => prev ? { ...prev, role: newRole } : prev);
+    await supabase.from("family_members").update({ role: newRole }).eq("id", memberId);
+    refreshMembers();
+  }
+
+  async function deleteClaimableAccount(id: string) {
+    await supabase.from("claimable_accounts").delete().eq("id", id);
+    setClaimableAccounts((prev) => prev.filter((a) => a.id !== id));
+  }
+
   // Member modal state
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
   const [memberProfile, setMemberProfile] = useState<Profile | null>(null);
@@ -700,6 +762,85 @@ export default function FamilyPage() {
         )}
       </div>
 
+      {/* Claim an Account */}
+      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+        <h3 className="font-semibold mb-2">Claim an Account</h3>
+        <p className="text-xs text-[var(--muted-foreground)] mb-3">Have a claim code from a family admin? Enter it to join.</p>
+        <div className="flex gap-2">
+          <input
+            value={claimCode}
+            onChange={(e) => setClaimCode(e.target.value)}
+            placeholder="Enter claim code..."
+            className="flex-1 rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+          />
+          <button
+            onClick={claimAccount}
+            disabled={claiming || !claimCode.trim()}
+            className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            {claiming ? "Claiming..." : "Claim"}
+          </button>
+        </div>
+        {claimResult && (
+          <p className={`text-xs mt-2 ${claimResult.includes("joined") ? "text-green-400" : "text-red-400"}`}>{claimResult}</p>
+        )}
+      </div>
+
+      {/* Create Accounts for Family - admin only */}
+      {isAdmin && (
+        <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+          <h3 className="font-semibold mb-1">Create Member Accounts</h3>
+          <p className="text-xs text-[var(--muted-foreground)] mb-3">Create placeholder accounts for family members. They can claim them with a code.</p>
+          <div className="flex gap-2 mb-3">
+            <input
+              value={newClaimName}
+              onChange={(e) => setNewClaimName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") createClaimableAccount(); }}
+              placeholder="Member name (e.g. Aunt Rose)"
+              className="flex-1 rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+            />
+            <button
+              onClick={createClaimableAccount}
+              disabled={creatingClaim || !newClaimName.trim()}
+              className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              Create
+            </button>
+          </div>
+          {claimableAccounts.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-[var(--muted-foreground)]">Unclaimed accounts:</p>
+              {claimableAccounts.map((account) => (
+                <div key={account.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-[var(--accent)]">
+                  <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-medium text-gold-500">{account.display_name?.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{account.display_name}</p>
+                    <p className="text-[10px] text-[var(--muted-foreground)] font-mono">Code: <span className="text-gold-500 select-all">{account.claim_code}</span></p>
+                  </div>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(account.claim_code); }}
+                    className="p-1.5 rounded-lg hover:bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+                    title="Copy code"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => deleteClaimableAccount(account.id)}
+                    className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400 transition-colors cursor-pointer"
+                    title="Delete"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Family Settings - admin or god mode */}
       {(isAdmin || currentFamily.created_by === user?.id) && (
         <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
@@ -1088,6 +1229,33 @@ export default function FamilyPage() {
                         </Tooltip>
                       </Marker>
                     </MapContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Role management - admin only */}
+              {isAdmin && selectedMember.user_id !== user?.id && (
+                <div className="mx-4 mb-4 p-3 rounded-lg border border-[var(--border)] bg-[var(--accent)]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="w-4 h-4 text-blue-400" />
+                    <span className="text-sm font-semibold">Role</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {["member", "moderator", "admin"].map((role) => (
+                      <button
+                        key={role}
+                        onClick={() => changeRole(selectedMember.id, role)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                          selectedMember.role === role
+                            ? role === "admin" ? "bg-gold-500 text-white" : role === "moderator" ? "bg-blue-500 text-white" : "bg-[var(--card)] border border-[var(--border)]"
+                            : "bg-[var(--card)] border border-[var(--border)] hover:border-gold-500/50"
+                        }`}
+                      >
+                        {role === "admin" && <Crown className="w-3 h-3 inline mr-1" />}
+                        {role === "moderator" && <Shield className="w-3 h-3 inline mr-1" />}
+                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}

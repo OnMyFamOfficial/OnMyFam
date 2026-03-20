@@ -25,6 +25,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { uploadPostMedia } from "@/services/storage";
+import { sanitizeForStorage, validateMediaFile } from "@/lib/sanitize";
 import { formatDistanceToNow } from "date-fns";
 import type { Post, PostMedia, PostReaction, Comment, Profile } from "@/lib/types";
 
@@ -164,7 +165,7 @@ export default function FeedPage() {
 
   async function handleEditPost(postId: string) {
     if (!editPostText.trim()) return;
-    await supabase.from("posts").update({ content: editPostText.trim() }).eq("id", postId);
+    await supabase.from("posts").update({ content: sanitizeForStorage(editPostText.trim()) }).eq("id", postId);
     setEditingPost(null);
     setEditPostText("");
     await loadPosts();
@@ -265,12 +266,23 @@ export default function FeedPage() {
     postingRef.current = true;
     setPosting(true);
 
+    // Validate files before uploading
+    for (const file of postFiles) {
+      const result = validateMediaFile(file);
+      if (!result.valid) {
+        alert(result.error);
+        setPosting(false);
+        postingRef.current = false;
+        return;
+      }
+    }
+
     const { data: post, error } = await supabase
       .from("posts")
       .insert({
         family_id: currentFamily.id,
         author_id: user.id,
-        content: postText.trim(),
+        content: sanitizeForStorage(postText.trim()),
       })
       .select()
       .single();
@@ -355,7 +367,7 @@ export default function FeedPage() {
   async function submitComment(postId: string) {
     if (!user || !profile || !commentTexts[postId]?.trim()) return;
 
-    const content = commentTexts[postId].trim();
+    const content = sanitizeForStorage(commentTexts[postId].trim());
     const parentId = (replyingTo && replyingTo.postId === postId) ? replyingTo.commentId : null;
     const tempId = `temp-${Date.now()}`;
 
@@ -417,10 +429,11 @@ export default function FeedPage() {
 
   async function handleEditComment(commentId: string) {
     if (!editCommentText.trim()) return;
-    await supabase.from("comments").update({ content: editCommentText.trim() }).eq("id", commentId);
+    const sanitized = sanitizeForStorage(editCommentText.trim());
+    await supabase.from("comments").update({ content: sanitized }).eq("id", commentId);
     setPosts((prev) => prev.map((p) => ({
       ...p,
-      comments: p.comments.map((c) => c.id === commentId ? { ...c, content: editCommentText.trim() } : c),
+      comments: p.comments.map((c) => c.id === commentId ? { ...c, content: sanitized } : c),
     }) as FullPost));
     setEditingComment(null);
     setEditCommentText("");
