@@ -849,6 +849,31 @@ export default function FamilyPage() {
             <h3 className="font-semibold">Family Settings</h3>
           </div>
 
+          {/* Family Name - admin only */}
+          {myMembership?.role === "admin" && <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Family Name</label>
+            <div className="flex gap-2">
+              <input
+                defaultValue={currentFamily.name}
+                id="family-name-input"
+                className="flex-1 rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+              />
+              <button
+                onClick={async () => {
+                  const input = document.getElementById("family-name-input") as HTMLInputElement;
+                  const newName = input?.value.trim();
+                  if (!newName || newName === currentFamily.name) return;
+                  await supabase.from("families").update({ name: newName }).eq("id", currentFamily.id);
+                  refreshFamilies();
+                }}
+                className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors cursor-pointer"
+              >
+                Save
+              </button>
+            </div>
+          </div>}
+
+          {/* Privacy */}
           <div>
             <label className="block text-sm font-medium mb-2">Who can find and join this family?</label>
             <div className="flex flex-col sm:flex-row gap-2">
