@@ -231,20 +231,20 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
 
         {/* Reactions display */}
         {hasReactions && (
-          <div className={cn("flex flex-wrap gap-1 mt-0.5 px-0.5", isMine ? "justify-end" : "justify-start")}>
+          <div className={cn("flex flex-wrap items-center gap-1 mt-0.5 px-0.5", isMine ? "justify-end" : "justify-start")}>
             {Object.entries(reactions!).filter(([, users]) => users.size > 0).map(([emoji, users]) => (
               <button
                 key={emoji}
                 onClick={() => handleReact(emoji)}
                 className={cn(
-                  "flex items-center gap-0.5 px-1.5 py-0.5 rounded-full border text-lg transition-colors cursor-pointer",
+                  "flex items-center gap-0.5 px-1.5 py-0.5 rounded-full border text-base transition-colors cursor-pointer",
                   users.has(currentUserId || "")
                     ? "bg-gold-500/20 border-gold-500/50"
                     : "bg-[var(--accent)] border-[var(--border)] hover:border-gold-500/50"
                 )}
               >
                 <span>{emoji}</span>
-                {users.size > 1 && <span className="text-[10px] text-[var(--muted-foreground)]">{users.size}</span>}
+                <span className="text-[10px] text-[var(--muted-foreground)]">{users.size}</span>
               </button>
             ))}
           </div>
