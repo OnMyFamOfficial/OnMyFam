@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Image,
   Video,
@@ -9,6 +10,12 @@ import {
   PartyPopper,
   Smile,
   X,
+  MoreHorizontal,
+  Pencil,
+  Share2,
+  Trash2,
+  Check,
+  Reply,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
@@ -44,17 +51,27 @@ type FullPost = Post & {
 };
 
 export default function FeedPage() {
+  const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const { currentFamily } = useFamily();
+  const { currentFamily, members } = useFamily();
   const [posts, setPosts] = useState<FullPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [postText, setPostText] = useState("");
   const [postFiles, setPostFiles] = useState<File[]>([]);
   const [posting, setPosting] = useState(false);
-  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [showReactions, setShowReactions] = useState<string | null>(null);
   const [showReactionDetails, setShowReactionDetails] = useState<string | null>(null);
+  const [postMenu, setPostMenu] = useState<string | null>(null);
+  const [editingPost, setEditingPost] = useState<string | null>(null);
+  const [editPostText, setEditPostText] = useState("");
+  const [deletingPost, setDeletingPost] = useState<string | null>(null);
+  const [shareToast, setShareToast] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ postId: string; commentId: string; authorName: string } | null>(null);
+  const [commentLikes, setCommentLikes] = useState<Map<string, Set<string>>>(new Map());
+  const [activePostId, setActivePostId] = useState<string | null>(null);
+  const postMenuRef = useRef<HTMLDivElement>(null);
+  const commentInputRef = useRef<HTMLInputElement>(null);
 
   // Composer modal state
   const [composerOpen, setComposerOpen] = useState(false);
@@ -78,22 +95,33 @@ export default function FeedPage() {
     setComposerOpen(true);
     setShowEmojiPicker(false);
     if (action === "photo") {
-      setTimeout(() => fileRef.current?.click(), 150);
+      setTimeout(() => openFilePicker(fileRef), 150);
     } else if (action === "video") {
-      setTimeout(() => videoRef.current?.click(), 150);
+      setTimeout(() => openFilePicker(videoRef), 150);
     } else if (action === "emoji") {
       setTimeout(() => setShowEmojiPicker(true), 100);
     }
   }
 
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const fileDialogOpen = useRef(false);
 
   function tryCloseComposer() {
+    // Don't close while a file picker dialog is open
+    if (fileDialogOpen.current) return;
     if (postText.trim() || postFiles.length > 0) {
       setShowDiscardConfirm(true);
     } else {
       closeComposer();
     }
+  }
+
+  function openFilePicker(ref: React.RefObject<HTMLInputElement | null>) {
+    fileDialogOpen.current = true;
+    ref.current?.click();
+    // Reset after a delay (file dialog blocks, so this fires after it closes)
+    const reset = () => { fileDialogOpen.current = false; };
+    window.addEventListener("focus", reset, { once: true });
   }
 
   function closeComposer() {
@@ -106,6 +134,48 @@ export default function FeedPage() {
     setPostText((prev) => prev + emoji);
     setShowEmojiPicker(false);
     textareaRef.current?.focus();
+  }
+
+  // Close post menu on outside click
+  useEffect(() => {
+    if (!postMenu) return;
+    function handleClick(e: MouseEvent) {
+      if (postMenuRef.current && !postMenuRef.current.contains(e.target as Node)) {
+        setPostMenu(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [postMenu]);
+
+  async function handleEditPost(postId: string) {
+    if (!editPostText.trim()) return;
+    await supabase.from("posts").update({ content: editPostText.trim() }).eq("id", postId);
+    setEditingPost(null);
+    setEditPostText("");
+    await loadPosts();
+  }
+
+  async function handleDeletePost(postId: string) {
+    // Delete media, reactions, comments first, then the post
+    await supabase.from("post_media").delete().eq("post_id", postId);
+    await supabase.from("post_reactions").delete().eq("post_id", postId);
+    await supabase.from("comments").delete().eq("post_id", postId);
+    await supabase.from("posts").delete().eq("id", postId);
+    setDeletingPost(null);
+    await loadPosts();
+  }
+
+  function handleSharePost(postId: string) {
+    const url = `${window.location.origin}/feed?post=${postId}`;
+    if (navigator.share) {
+      navigator.share({ title: "Check out this post on OnMyFam", url });
+    } else {
+      navigator.clipboard.writeText(url);
+      setShareToast(true);
+      setTimeout(() => setShareToast(false), 2000);
+    }
+    setPostMenu(null);
   }
 
   async function loadPosts() {
@@ -133,9 +203,36 @@ export default function FeedPage() {
       for (const c of post.comments || []) userIds.add(c.author_id);
     }
 
-    const { data: profiles } = await supabase.from("profiles").select("*").in("id", [...userIds]);
+    // Collect all comment IDs for likes
+    const commentIds: string[] = [];
+    for (const post of data) {
+      for (const c of post.comments || []) commentIds.push(c.id);
+    }
+
+    const [{ data: profiles }, likesResult] = await Promise.all([
+      supabase.from("profiles").select("*").in("id", [...userIds]),
+      commentIds.length > 0
+        ? supabase.from("comment_likes").select("*").in("comment_id", commentIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
     const pm = new Map<string, any>();
     for (const p of profiles || []) pm.set(p.id, p);
+
+    // Build comment likes map: commentId -> Set of userIds
+    const clMap = new Map<string, Set<string>>();
+    for (const like of likesResult.data || []) {
+      if (!clMap.has(like.comment_id)) clMap.set(like.comment_id, new Set());
+      clMap.get(like.comment_id)!.add(like.user_id);
+    }
+    setCommentLikes(clMap);
+
+    // Debug: check if media is coming back from the query
+    for (const post of data) {
+      if (post.media && post.media.length > 0) {
+        console.log(`[loadPosts] Post ${post.id} has ${post.media.length} media:`, post.media);
+      }
+    }
 
     setPosts(data.map((post) => ({
       ...post,
@@ -146,9 +243,12 @@ export default function FeedPage() {
     setLoading(false);
   }
 
+  const postingRef = useRef(false);
   async function handlePost() {
     if (!user || !currentFamily || (!postText.trim() && postFiles.length === 0))
       return;
+    if (postingRef.current) return;
+    postingRef.current = true;
     setPosting(true);
 
     const { data: post, error } = await supabase
@@ -167,19 +267,23 @@ export default function FeedPage() {
     }
 
     for (let i = 0; i < postFiles.length; i++) {
+      console.log(`Uploading file ${i}:`, postFiles[i].name, postFiles[i].type, postFiles[i].size);
       const url = await uploadPostMedia(post.id, postFiles[i], i);
+      console.log(`Upload result:`, url);
       if (url) {
-        await supabase.from("post_media").insert({
+        const { error: mediaError } = await supabase.from("post_media").insert({
           post_id: post.id,
           media_url: url,
           media_type: postFiles[i].type.startsWith("video") ? "video" : "image",
         });
+        if (mediaError) console.error("post_media insert error:", mediaError);
       }
     }
 
     setPostText("");
     setPostFiles([]);
     setPosting(false);
+    postingRef.current = false;
     closeComposer();
     await loadPosts();
   }
@@ -207,13 +311,30 @@ export default function FeedPage() {
   async function submitComment(postId: string) {
     if (!user || !commentTexts[postId]?.trim()) return;
 
-    await supabase.from("comments").insert({
+    const insertData: any = {
       post_id: postId,
       author_id: user.id,
       content: commentTexts[postId].trim(),
-    });
+    };
+    if (replyingTo && replyingTo.postId === postId) {
+      insertData.parent_id = replyingTo.commentId;
+    }
+
+    await supabase.from("comments").insert(insertData);
 
     setCommentTexts({ ...commentTexts, [postId]: "" });
+    setReplyingTo(null);
+    await loadPosts();
+  }
+
+  async function toggleCommentLike(commentId: string) {
+    if (!user) return;
+    const likers = commentLikes.get(commentId);
+    if (likers?.has(user.id)) {
+      await supabase.from("comment_likes").delete().eq("comment_id", commentId).eq("user_id", user.id);
+    } else {
+      await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: user.id });
+    }
     await loadPosts();
   }
 
@@ -357,6 +478,21 @@ export default function FeedPage() {
                 ref={textareaRef}
                 value={postText}
                 onChange={(e) => setPostText(e.target.value)}
+                onPaste={(e) => {
+                  const items = e.clipboardData?.items;
+                  if (!items) return;
+                  const imageFiles: File[] = [];
+                  for (const item of Array.from(items)) {
+                    if (item.type.startsWith("image/")) {
+                      const file = item.getAsFile();
+                      if (file) imageFiles.push(file);
+                    }
+                  }
+                  if (imageFiles.length > 0) {
+                    e.preventDefault();
+                    setPostFiles((prev) => [...prev, ...imageFiles]);
+                  }
+                }}
                 placeholder="What's happening in the family?"
                 rows={4}
                 className="w-full bg-transparent text-base focus:outline-none resize-none placeholder:text-[var(--muted-foreground)]"
@@ -414,14 +550,14 @@ export default function FeedPage() {
             <div className="px-5 py-3 border-t border-[var(--border)] flex items-center justify-between">
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => fileRef.current?.click()}
+                  onClick={() => openFilePicker(fileRef)}
                   className="p-2 rounded-full hover:bg-[var(--accent)] transition-colors text-gold-500 hover:text-white"
                   title="Add photo"
                 >
                   <Image className="w-5 h-5" />
                 </button>
                 <button
-                  onClick={() => videoRef.current?.click()}
+                  onClick={() => openFilePicker(videoRef)}
                   className="p-2 rounded-full hover:bg-[var(--accent)] transition-colors text-gold-500 hover:text-white"
                   title="Add video"
                 >
@@ -497,70 +633,97 @@ export default function FeedPage() {
           const myReaction = post.reactions.find(
             (r) => r.user_id === user?.id
           );
-          const commentsOpen = expandedComments.has(post.id);
 
           return (
             <div
               key={post.id}
-              className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden"
+              className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-visible cursor-pointer hover:border-gold-500/30 transition-colors"
+              onClick={(e) => {
+                // Don't open modal if clicking interactive elements
+                if ((e.target as HTMLElement).closest("button, a, input, textarea, video")) return;
+                setActivePostId(post.id);
+              }}
             >
-              {/* Author */}
+              {/* Author + menu */}
               <div className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
+                <div
+                  className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden cursor-pointer"
+                  onClick={(e) => { e.stopPropagation(); navigate(`/profile/${post.author_id}`); }}
+                >
                   {post.author?.avatar_url ? (
-                    <img
-                      src={post.author.avatar_url}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={post.author.avatar_url} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-sm font-medium text-gold-500">
                       {post.author?.display_name?.charAt(0).toUpperCase() || "?"}
                     </span>
                   )}
                 </div>
-                <div>
-                  <p className="font-medium text-sm">
-                    {post.author?.display_name}
-                  </p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">{post.author?.display_name}</p>
                   <p className="text-xs text-[var(--muted-foreground)]">
-                    {formatDistanceToNow(new Date(post.created_at), {
-                      addSuffix: true,
-                    })}
+                    {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                    {post.updated_at !== post.created_at && " (edited)"}
                   </p>
+                </div>
+                {/* Three-dot menu */}
+                <div className="relative" ref={postMenu === post.id ? postMenuRef : undefined}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setPostMenu(postMenu === post.id ? null : post.id); }}
+                    className="p-1.5 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+                  >
+                    <MoreHorizontal className="w-5 h-5" />
+                  </button>
+                  {postMenu === post.id && (
+                    <div className="absolute right-0 top-full mt-1 z-50 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl py-1 min-w-[160px]">
+                      {post.author_id === user?.id && (
+                        <button
+                          onClick={() => { setActivePostId(post.id); setEditingPost(post.id); setEditPostText(post.content || ""); setPostMenu(null); }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+                        >
+                          <Pencil className="w-4 h-4" /> Edit
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleSharePost(post.id)}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+                      >
+                        <Share2 className="w-4 h-4" /> Share
+                      </button>
+                      {post.author_id === user?.id && (
+                        <>
+                          <div className="my-1 border-t border-[var(--border)]" />
+                          <button
+                            onClick={() => { setDeletingPost(post.id); setPostMenu(null); }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer text-left"
+                          >
+                            <Trash2 className="w-4 h-4" /> Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Content */}
+              {/* Content preview */}
               {post.content && (
                 <div className="px-4 pb-3">
-                  <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+                  <p className="text-sm whitespace-pre-wrap line-clamp-3">{post.content}</p>
                 </div>
               )}
 
-              {/* Media */}
+              {/* Media preview */}
               {post.media.length > 0 && (
-                <div
-                  className={`grid gap-0.5 ${
-                    post.media.length === 1
-                      ? "grid-cols-1"
-                      : "grid-cols-2"
-                  }`}
-                >
-                  {post.media.map((m) =>
+                <div className={`grid gap-0.5 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+                  {post.media.slice(0, 4).map((m) =>
                     m.media_type === "video" ? (
-                      <video
-                        key={m.id}
-                        src={m.media_url}
-                        controls
-                        className="w-full max-h-96"
-                      />
+                      <video key={m.id} src={m.media_url} controls className="w-full max-h-96" />
                     ) : (
                       <img
                         key={m.id}
                         src={m.media_url}
                         alt=""
-                        className="w-full object-cover max-h-96"
+                        className="w-full max-h-96 object-contain bg-black/20 rounded-sm"
                       />
                     )
                   )}
@@ -571,55 +734,22 @@ export default function FeedPage() {
               {(post.reaction_count > 0 || post.comment_count > 0) && (
                 <div className="px-4 py-2 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
                   <div className="flex items-center gap-1">
-                    {post.reaction_count > 0 && (
-                      <>
-                        <button
-                          onClick={() => setShowReactionDetails(showReactionDetails === post.id ? null : post.id)}
-                          className="w-5 h-5 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-gold-500/50 transition-colors cursor-pointer text-xs"
-                          title="See who reacted"
-                        >
-                          +
-                        </button>
-                        {(() => {
-                          const reactionsByType: Record<string, number> = {};
-                          for (const r of post.reactions || []) {
-                            const emoji = REACTIONS.find((rx) => rx.type === r.reaction_type)?.emoji || "\u{1F44D}";
-                            reactionsByType[emoji] = (reactionsByType[emoji] || 0) + 1;
-                          }
-                          return Object.entries(reactionsByType).map(([emoji, count]) => (
-                            <span key={emoji} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--accent)] border border-[var(--border)]">
-                              <span className="text-xl">{emoji}</span>
-                              <span className="text-[10px]">{count}</span>
-                            </span>
-                          ));
-                        })()}
-                      </>
-                    )}
-                  </div>
-                  {/* Reaction details dropdown */}
-                  {showReactionDetails === post.id && post.reactions.length > 0 && (
-                    <div className="mt-1 bg-[var(--background)] border border-[var(--border)] rounded-lg p-2 space-y-1">
-                      {post.reactions.map((r: any) => {
+                    {post.reaction_count > 0 && (() => {
+                      const reactionsByType: Record<string, number> = {};
+                      for (const r of post.reactions || []) {
                         const emoji = REACTIONS.find((rx) => rx.type === r.reaction_type)?.emoji || "\u{1F44D}";
-                        return (
-                          <div key={r.id} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-[var(--accent)] transition-colors">
-                            <span className="text-base">{emoji}</span>
-                            <div className="w-5 h-5 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
-                              {r.user?.avatar_url ? (
-                                <img src={r.user.avatar_url} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="text-[8px] font-medium text-gold-500">{r.user?.display_name?.charAt(0).toUpperCase() || "?"}</span>
-                              )}
-                            </div>
-                            <span className="text-xs">{r.user?.display_name || "Unknown"}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                        reactionsByType[emoji] = (reactionsByType[emoji] || 0) + 1;
+                      }
+                      return Object.entries(reactionsByType).map(([emoji, count]) => (
+                        <span key={emoji} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--accent)] border border-[var(--border)]">
+                          <span className="text-xl">{emoji}</span>
+                          <span className="text-[10px]">{count}</span>
+                        </span>
+                      ));
+                    })()}
+                  </div>
                   <span>
-                    {post.comment_count > 0 &&
-                      `${post.comment_count} comment${post.comment_count !== 1 ? "s" : ""}`}
+                    {post.comment_count > 0 && `${post.comment_count} comment${post.comment_count !== 1 ? "s" : ""}`}
                   </span>
                 </div>
               )}
@@ -628,17 +758,14 @@ export default function FeedPage() {
               <div className="px-4 py-2 border-t border-[var(--border)] flex items-center gap-1">
                 <div className="relative">
                   <button
-                    onClick={() =>
+                    onClick={(e) => {
+                      e.stopPropagation();
                       myReaction
                         ? toggleReaction(post.id, myReaction.reaction_type)
-                        : setShowReactions(
-                            showReactions === post.id ? null : post.id
-                          )
-                    }
+                        : setShowReactions(showReactions === post.id ? null : post.id);
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-colors ${
-                      myReaction
-                        ? "text-gold-500 bg-gold-500/10"
-                        : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
+                      myReaction ? "text-gold-500 bg-gold-500/10" : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
                     }`}
                   >
                     {myReaction ? (
@@ -648,14 +775,12 @@ export default function FeedPage() {
                     )}
                     {myReaction ? "Liked" : "Like"}
                   </button>
-
-                  {/* Reaction picker */}
                   {showReactions === post.id && (
                     <div className="absolute bottom-full left-0 mb-1 flex gap-1 bg-[var(--card)] border border-[var(--border)] rounded-full px-2 py-1 shadow-lg z-10">
                       {REACTIONS.map((r) => (
                         <button
                           key={r.type}
-                          onClick={() => toggleReaction(post.id, r.type)}
+                          onClick={(e) => { e.stopPropagation(); toggleReaction(post.id, r.type); }}
                           className="text-lg hover:scale-125 transition-transform p-1"
                           title={r.type}
                         >
@@ -665,102 +790,410 @@ export default function FeedPage() {
                     </div>
                   )}
                 </div>
-
                 <button
-                  onClick={() => {
-                    const next = new Set(expandedComments);
-                    if (next.has(post.id)) next.delete(post.id);
-                    else next.add(post.id);
-                    setExpandedComments(next);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); setActivePostId(post.id); setTimeout(() => commentInputRef.current?.focus(), 200); }}
                   className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors"
                 >
                   <MessageCircle className="w-4 h-4" />
                   Comment
                 </button>
               </div>
-
-              {/* Comments section */}
-              {commentsOpen && (
-                <div className="px-4 pb-4 border-t border-[var(--border)]">
-                  {post.comments
-                    .filter((c) => !c.parent_id)
-                    .sort(
-                      (a, b) =>
-                        new Date(a.created_at).getTime() -
-                        new Date(b.created_at).getTime()
-                    )
-                    .map((comment) => (
-                      <div key={comment.id} className="flex gap-2 mt-3">
-                        <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
-                          {comment.author?.avatar_url ? (
-                            <img
-                              src={comment.author.avatar_url}
-                              alt=""
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-xs font-medium text-gold-500">
-                              {comment.author?.display_name
-                                ?.charAt(0)
-                                .toUpperCase() || "?"}
-                            </span>
-                          )}
-                        </div>
-                        <div className="bg-[var(--background)] rounded-lg px-3 py-2 flex-1">
-                          <p className="text-xs font-medium">
-                            {comment.author?.display_name}
-                          </p>
-                          <p className="text-sm mt-0.5">{comment.content}</p>
-                          <p className="text-[10px] text-[var(--muted-foreground)] mt-1">
-                            {formatDistanceToNow(
-                              new Date(comment.created_at),
-                              { addSuffix: true }
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-
-                  {/* Comment input */}
-                  <div className="flex gap-2 mt-3">
-                    <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
-                      <span className="text-xs font-medium text-gold-500">
-                        {profile?.display_name?.charAt(0).toUpperCase() || "?"}
-                      </span>
-                    </div>
-                    <div className="flex-1 flex gap-2">
-                      <input
-                        value={commentTexts[post.id] || ""}
-                        onChange={(e) =>
-                          setCommentTexts({
-                            ...commentTexts,
-                            [post.id]: e.target.value,
-                          })
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            submitComment(post.id);
-                          }
-                        }}
-                        placeholder="Write a comment..."
-                        className="flex-1 rounded-full border border-[var(--input)] bg-[var(--background)] px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-                      />
-                      <button
-                        onClick={() => submitComment(post.id)}
-                        disabled={!commentTexts[post.id]?.trim()}
-                        className="p-1.5 rounded-full text-gold-500 hover:bg-gold-500/10 disabled:opacity-30 transition-colors"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           );
         })
+      )}
+
+      {/* ===== Active Post Modal ===== */}
+      {activePostId && (() => {
+        const post = posts.find((p) => p.id === activePostId);
+        if (!post) return null;
+        const myReaction = post.reactions.find((r) => r.user_id === user?.id);
+
+        return (
+          <>
+            <div className="fixed inset-0 z-[60] bg-black/60" onClick={() => { setActivePostId(null); setEditingPost(null); setReplyingTo(null); }} />
+            <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden" style={{ maxHeight: "85vh" }}>
+              {/* Modal header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden cursor-pointer"
+                    onClick={() => { setActivePostId(null); navigate(`/profile/${post.author_id}`); }}
+                  >
+                    {post.author?.avatar_url ? (
+                      <img src={post.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-medium text-gold-500">{post.author?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">{post.author?.display_name}</p>
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                      {post.updated_at !== post.created_at && " (edited)"}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => { setActivePostId(null); setEditingPost(null); setReplyingTo(null); }} className="p-1.5 rounded-lg hover:bg-[var(--accent)] cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {/* Content (or edit mode) */}
+                {editingPost === post.id ? (
+                  <div className="px-4 py-3">
+                    <textarea
+                      value={editPostText}
+                      onChange={(e) => setEditPostText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleEditPost(post.id); }
+                        if (e.key === "Escape") { setEditingPost(null); setEditPostText(""); }
+                      }}
+                      className="w-full bg-[var(--background)] border border-gold-500/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50 resize-none"
+                      rows={4}
+                      autoFocus
+                    />
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        onClick={() => handleEditPost(post.id)}
+                        disabled={!editPostText.trim() || editPostText.trim() === post.content}
+                        className="px-3 py-1 rounded-md bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Check className="w-3 h-3" /> Save
+                      </button>
+                      <button
+                        onClick={() => { setEditingPost(null); setEditPostText(""); }}
+                        className="px-3 py-1 rounded-md border border-[var(--border)] text-xs font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <span className="text-[10px] text-[var(--muted-foreground)] ml-auto">Ctrl+Enter to save</span>
+                    </div>
+                  </div>
+                ) : post.content ? (
+                  <div className="px-4 py-3">
+                    <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+                  </div>
+                ) : null}
+
+                {/* Media */}
+                {post.media.length > 0 && (
+                  <div className={`grid gap-0.5 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+                    {post.media.map((m) =>
+                      m.media_type === "video" ? (
+                        <video key={m.id} src={m.media_url} controls className="w-full max-h-96" />
+                      ) : (
+                        <img key={m.id} src={m.media_url} alt="" className="w-full max-h-[500px] object-contain bg-black/20 rounded-sm" />
+                      )
+                    )}
+                  </div>
+                )}
+
+                {/* Reaction/comment counts */}
+                {(post.reaction_count > 0 || post.comment_count > 0) && (
+                  <div className="px-4 py-2 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+                    <div className="flex items-center gap-1">
+                      {post.reaction_count > 0 && (
+                        <>
+                          <button
+                            onClick={() => setShowReactionDetails(showReactionDetails === post.id ? null : post.id)}
+                            className="w-5 h-5 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-gold-500/50 transition-colors cursor-pointer text-xs"
+                            title="See who reacted"
+                          >
+                            +
+                          </button>
+                          {(() => {
+                            const reactionsByType: Record<string, number> = {};
+                            for (const r of post.reactions || []) {
+                              const emoji = REACTIONS.find((rx) => rx.type === r.reaction_type)?.emoji || "\u{1F44D}";
+                              reactionsByType[emoji] = (reactionsByType[emoji] || 0) + 1;
+                            }
+                            return Object.entries(reactionsByType).map(([emoji, count]) => (
+                              <span key={emoji} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--accent)] border border-[var(--border)]">
+                                <span className="text-xl">{emoji}</span>
+                                <span className="text-[10px]">{count}</span>
+                              </span>
+                            ));
+                          })()}
+                        </>
+                      )}
+                    </div>
+                    <span>{post.comment_count > 0 && `${post.comment_count} comment${post.comment_count !== 1 ? "s" : ""}`}</span>
+                  </div>
+                )}
+
+                {/* Reaction details modal */}
+                {showReactionDetails === post.id && post.reactions.length > 0 && (
+                  <>
+                    <div className="fixed inset-0 z-[80] bg-black/50" onClick={() => setShowReactionDetails(null)} />
+                    <div className="fixed z-[90] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col" style={{ maxHeight: "70vh" }}>
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+                        <h3 className="font-semibold text-sm">Reactions ({post.reactions.length})</h3>
+                        <button onClick={() => setShowReactionDetails(null)} className="p-1 rounded-lg hover:bg-[var(--accent)] cursor-pointer">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        {post.reactions.map((r: any) => {
+                          const emoji = REACTIONS.find((rx) => rx.type === r.reaction_type)?.emoji || "\u{1F44D}";
+                          const isFam = members.some((m) => m.user_id === r.user_id);
+                          return (
+                            <button
+                              key={r.id}
+                              onClick={() => { setShowReactionDetails(null); setActivePostId(null); navigate(`/profile/${r.user_id}`); }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+                            >
+                              <span className="text-xl">{emoji}</span>
+                              <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                {r.user?.avatar_url ? (
+                                  <img src={r.user.avatar_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-xs font-medium text-gold-500">{r.user?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm font-medium truncate block">{r.user?.display_name || "Unknown"}</span>
+                                <span className="text-[10px] text-[var(--muted-foreground)]">
+                                  {r.user_id === user?.id ? "You" : isFam ? "Fam" : "Not in your family"}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Action buttons */}
+                <div className="px-4 py-2 border-t border-[var(--border)] flex items-center gap-1">
+                  <div className="relative">
+                    <button
+                      onClick={() =>
+                        myReaction
+                          ? toggleReaction(post.id, myReaction.reaction_type)
+                          : setShowReactions(showReactions === post.id ? null : post.id)
+                      }
+                      className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-colors ${
+                        myReaction ? "text-gold-500 bg-gold-500/10" : "text-[var(--muted-foreground)] hover:bg-[var(--accent)]"
+                      }`}
+                    >
+                      {myReaction ? (
+                        <span className="text-base">{REACTIONS.find((r) => r.type === myReaction.reaction_type)?.emoji || "\u{1F44D}"}</span>
+                      ) : (
+                        <ThumbsUp className="w-4 h-4" />
+                      )}
+                      {myReaction ? "Liked" : "Like"}
+                    </button>
+                    {showReactions === post.id && (
+                      <div className="absolute bottom-full left-0 mb-1 flex gap-1 bg-[var(--card)] border border-[var(--border)] rounded-full px-2 py-1 shadow-lg z-10">
+                        {REACTIONS.map((r) => (
+                          <button
+                            key={r.type}
+                            onClick={() => toggleReaction(post.id, r.type)}
+                            className="text-lg hover:scale-125 transition-transform p-1"
+                            title={r.type}
+                          >
+                            {r.emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleSharePost(post.id)}
+                    className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 text-[var(--muted-foreground)] hover:bg-[var(--accent)] transition-colors"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Share
+                  </button>
+                </div>
+
+                {/* Comments */}
+                <div className="px-4 pb-3 border-t border-[var(--border)]">
+                  {post.comments
+                    .filter((c) => !c.parent_id)
+                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                    .map((comment) => {
+                      const likes = commentLikes.get(comment.id);
+                      const likeCount = likes?.size || 0;
+                      const iLiked = likes?.has(user?.id || "") || false;
+                      const replies = post.comments
+                        .filter((c) => c.parent_id === comment.id)
+                        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+                      return (
+                        <div key={comment.id} className="mt-3">
+                          <div className="flex gap-2">
+                            <div
+                              className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer"
+                              onClick={() => { setActivePostId(null); navigate(`/profile/${comment.author_id}`); }}
+                            >
+                              {comment.author?.avatar_url ? (
+                                <img src={comment.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-xs font-medium text-gold-500">{comment.author?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="bg-[var(--accent)] rounded-lg px-3 py-2">
+                                <p className="text-xs font-medium">{comment.author?.display_name}</p>
+                                <p className="text-sm mt-0.5">{comment.content}</p>
+                              </div>
+                              <div className="flex items-center gap-3 mt-0.5 px-1">
+                                <span className="text-[10px] text-[var(--muted-foreground)]">
+                                  {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                                </span>
+                                <button
+                                  onClick={() => toggleCommentLike(comment.id)}
+                                  className={`text-[11px] font-semibold transition-colors cursor-pointer ${iLiked ? "text-gold-500" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"}`}
+                                >
+                                  {iLiked ? "Liked" : "Like"}{likeCount > 0 && ` (${likeCount})`}
+                                </button>
+                                <button
+                                  onClick={() => { setReplyingTo({ postId: post.id, commentId: comment.id, authorName: comment.author?.display_name || "Unknown" }); setTimeout(() => commentInputRef.current?.focus(), 100); }}
+                                  className="text-[11px] font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+                                >
+                                  Reply
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Nested replies */}
+                          {replies.length > 0 && (
+                            <div className="ml-10 mt-1 border-l-2 border-[var(--border)] pl-3">
+                              {replies.map((reply) => {
+                                const rLikes = commentLikes.get(reply.id);
+                                const rLikeCount = rLikes?.size || 0;
+                                const rILiked = rLikes?.has(user?.id || "") || false;
+                                return (
+                                  <div key={reply.id} className="flex gap-2 mt-2">
+                                    <div
+                                      className="w-6 h-6 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer"
+                                      onClick={() => { setActivePostId(null); navigate(`/profile/${reply.author_id}`); }}
+                                    >
+                                      {reply.author?.avatar_url ? (
+                                        <img src={reply.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                                      ) : (
+                                        <span className="text-[9px] font-medium text-gold-500">{reply.author?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="bg-[var(--accent)] rounded-lg px-2.5 py-1.5">
+                                        <p className="text-[11px] font-medium">{reply.author?.display_name}</p>
+                                        <p className="text-xs mt-0.5">{reply.content}</p>
+                                      </div>
+                                      <div className="flex items-center gap-3 mt-0.5 px-1">
+                                        <span className="text-[10px] text-[var(--muted-foreground)]">
+                                          {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
+                                        </span>
+                                        <button
+                                          onClick={() => toggleCommentLike(reply.id)}
+                                          className={`text-[10px] font-semibold transition-colors cursor-pointer ${rILiked ? "text-gold-500" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"}`}
+                                        >
+                                          {rILiked ? "Liked" : "Like"}{rLikeCount > 0 && ` (${rLikeCount})`}
+                                        </button>
+                                        <button
+                                          onClick={() => { setReplyingTo({ postId: post.id, commentId: comment.id, authorName: reply.author?.display_name || "Unknown" }); setTimeout(() => commentInputRef.current?.focus(), 100); }}
+                                          className="text-[10px] font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+                                        >
+                                          Reply
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Fixed bottom: reply indicator + comment input */}
+              <div className="flex-shrink-0 border-t border-[var(--border)] bg-[var(--card)]">
+                {replyingTo && replyingTo.postId === post.id && (
+                  <div className="flex items-center gap-2 px-4 pt-2 text-xs text-gold-500">
+                    <Reply className="w-3 h-3" />
+                    <span>Replying to {replyingTo.authorName}</span>
+                    <button onClick={() => setReplyingTo(null)} className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-2 px-4 py-3">
+                  <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-medium text-gold-500">{profile?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 flex gap-2">
+                    <input
+                      ref={commentInputRef}
+                      value={commentTexts[post.id] || ""}
+                      onChange={(e) => setCommentTexts({ ...commentTexts, [post.id]: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitComment(post.id); }
+                      }}
+                      placeholder={replyingTo?.postId === post.id ? `Reply to ${replyingTo.authorName}...` : "Write a comment..."}
+                      className="flex-1 rounded-full border border-[var(--input)] bg-[var(--background)] px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                    />
+                    <button
+                      onClick={() => submitComment(post.id)}
+                      disabled={!commentTexts[post.id]?.trim()}
+                      className="p-1.5 rounded-full text-gold-500 hover:bg-gold-500/10 disabled:opacity-30 transition-colors"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {/* Delete confirmation modal */}
+      {deletingPost && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setDeletingPost(null)} />
+          <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <Trash2 className="w-10 h-10 text-red-400 mx-auto mb-3" />
+            <h3 className="font-semibold text-lg">Delete post?</h3>
+            <p className="text-sm text-[var(--muted-foreground)] mt-2">
+              This will permanently delete the post, its media, reactions, and comments. This cannot be undone.
+            </p>
+            <div className="flex gap-3 mt-5 justify-center">
+              <button
+                onClick={() => setDeletingPost(null)}
+                className="px-5 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeletePost(deletingPost)}
+                className="px-5 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Share copied toast */}
+      {shareToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-lg px-4 py-2.5 flex items-center gap-2 text-sm animate-in fade-in slide-in-from-bottom-2">
+          <Check className="w-4 h-4 text-green-400" />
+          Link copied to clipboard
+        </div>
       )}
     </div>
   );

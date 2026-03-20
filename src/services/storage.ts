@@ -40,7 +40,20 @@ export async function uploadPostMedia(
   file: File,
   index: number
 ): Promise<string | null> {
-  const ext = file.name.split(".").pop();
+  // Handle clipboard-pasted files that may lack proper names/extensions
+  let ext = file.name?.split(".").pop();
+  if (!ext || ext === file.name) {
+    // No extension found, derive from MIME type
+    const mimeMap: Record<string, string> = {
+      "image/png": "png",
+      "image/jpeg": "jpg",
+      "image/gif": "gif",
+      "image/webp": "webp",
+      "video/mp4": "mp4",
+      "video/webm": "webm",
+    };
+    ext = mimeMap[file.type] || "bin";
+  }
   const path = `${postId}/${index}.${ext}`;
   return uploadFile("posts", path, file);
 }

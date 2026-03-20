@@ -100,7 +100,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 bg-[var(--sidebar-background)] border-r border-[var(--sidebar-border)] transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col shadow-xl shadow-black/10 dark:shadow-black/30",
+          "fixed inset-y-0 left-0 z-50 bg-[var(--sidebar-background)] border-r border-[var(--sidebar-border)] transform transition-all duration-300 ease-in-out lg:translate-x-0 flex flex-col shadow-xl shadow-black/10 dark:shadow-black/30",
           collapsed ? "w-16" : "w-48",
           open ? "translate-x-0" : "-translate-x-full"
         )}
