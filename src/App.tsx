@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/shared/theme-provider";
 import { FamilyProvider } from "@/lib/hooks/use-family";
 import { ChatProvider } from "@/components/chat/chat-provider";
 import { VideoCallProvider } from "@/components/video/video-call-provider";
+import { NotificationProvider } from "@/components/notifications/notification-provider";
 import { IncomingCallToast } from "@/components/video/incoming-call-toast";
 import { VideoCallModal } from "@/components/video/video-call-modal";
 import { ProtectedRoute } from "@/components/auth/protected-route";
@@ -35,6 +36,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <FamilyProvider>
+          <NotificationProvider>
           <ChatProvider>
           <VideoCallProvider>
           <BrowserRouter>
@@ -78,6 +80,7 @@ export default function App() {
           <VideoCallModal />
           </VideoCallProvider>
           </ChatProvider>
+          </NotificationProvider>
         </FamilyProvider>
       </AuthProvider>
     </ThemeProvider>

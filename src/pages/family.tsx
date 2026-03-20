@@ -186,6 +186,15 @@ export default function FamilyPage() {
       relation_label: label,
       reverse_label: reverseLabel,
     });
+    // Send notification to the recipient
+    const senderName = members.find((m) => m.user_id === user.id)?.profile?.display_name || "Someone";
+    await supabase.from("notifications").insert({
+      user_id: toUserId,
+      type: "relation_request",
+      title: `${senderName} sent you a relationship request`,
+      body: `${senderName} says you are their ${label}${reverseLabel ? ` and they are your ${reverseLabel}` : ""}`,
+      data: { family_id: currentFamily.id, from_user_id: user.id },
+    });
     setRelationSending(false);
     setRelationSent(true);
     setRelationPicker(false);
