@@ -139,6 +139,11 @@ button, a, [role="button"], input[type="submit"], input[type="button"], select, 
   cursor: pointer;
 }
 
+/* Leaflet map z-index containment */
+.leaflet-container {
+  z-index: 0 !important;
+}
+
 /* Leaflet name tooltips */
 .leaflet-name-tooltip {
   background: rgba(0, 0, 0, 0.75) !important;
