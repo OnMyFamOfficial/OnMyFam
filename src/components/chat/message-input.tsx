@@ -377,7 +377,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
               <div className="flex items-center gap-3 px-4 py-2.5">
                 <button
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => { textareaRef.current?.blur(); setTimeout(() => setToolbarView("emoji"), 50); }}
+                  onClick={() => setToolbarView("emoji")}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-gold-500 transition-colors cursor-pointer"
                   title="Emojis"
                 >
@@ -386,7 +386,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                 </button>
                 <button
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => { textareaRef.current?.blur(); fileInputRef.current?.setAttribute("accept", "image/*"); fileInputRef.current?.click(); }}
+                  onClick={() => { fileInputRef.current?.setAttribute("accept", "image/*"); fileInputRef.current?.click(); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-pink-400 transition-colors cursor-pointer"
                   title="Images"
                 >
@@ -395,7 +395,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                 </button>
                 <button
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => { textareaRef.current?.blur(); setTimeout(() => { setToolbarView("stickers"); searchStickers(""); }, 50); }}
+                  onClick={() => { setToolbarView("stickers"); searchStickers(""); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-green-400 transition-colors cursor-pointer"
                   title="Stickers"
                 >
@@ -404,7 +404,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                 </button>
                 <button
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => { textareaRef.current?.blur(); setTimeout(() => { setToolbarView("gifs"); searchGifs(""); }, 50); }}
+                  onClick={() => { setToolbarView("gifs"); searchGifs(""); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-purple-400 transition-colors cursor-pointer"
                   title="GIFs"
                 >
@@ -413,7 +413,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                 </button>
                 <button
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => { textareaRef.current?.blur(); fileInputRef.current?.setAttribute("accept", ".pdf,.doc,.docx,.txt,.xls,.xlsx,.csv"); fileInputRef.current?.click(); }}
+                  onClick={() => { fileInputRef.current?.setAttribute("accept", ".pdf,.doc,.docx,.txt,.xls,.xlsx,.csv"); fileInputRef.current?.click(); }}
                   className="flex flex-col items-center gap-0.5 text-[var(--muted-foreground)] hover:text-blue-400 transition-colors cursor-pointer"
                   title="Documents"
                 >
@@ -615,7 +615,7 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
             {/* Attach button - left inside */}
             <div className="flex items-center flex-shrink-0" style={{ padding: "2.5px 0 2.5px 2.5px" }}>
               <button
-                onClick={() => { textareaRef.current?.blur(); setShowToolbar(!showToolbar); setToolbarView("main"); }}
+                onClick={() => { setShowToolbar(!showToolbar); setToolbarView("main"); }}
                 className={cn(
                   "p-3 rounded-md text-white hover:brightness-110 transition-colors cursor-pointer",
                   showToolbar ? "brightness-125" : ""
@@ -631,6 +631,8 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
             <textarea
               ref={textareaRef}
               value={text}
+              readOnly={showToolbar && toolbarView !== "main"}
+              onFocus={() => { if (showToolbar && toolbarView !== "main") textareaRef.current?.blur(); }}
               onChange={(e) => {
                 setText(e.target.value);
                 const el = e.target;
