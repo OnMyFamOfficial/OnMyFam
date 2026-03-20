@@ -372,7 +372,6 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
             className="border-t border-[var(--border)]"
             style={{ boxShadow: "0 -4px 12px rgba(0, 0, 0, 0.3)" }}
             onMouseDown={(e) => e.preventDefault()}
-            onTouchEnd={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
           >
             {toolbarView === "main" ? (
               <div className="flex items-center gap-3 px-4 py-2.5">
