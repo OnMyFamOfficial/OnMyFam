@@ -616,7 +616,7 @@ export default function FeedPage() {
                         );
                       })}
                     </div>
-                  )
+                  )}
                   <span>
                     {post.comment_count > 0 &&
                       `${post.comment_count} comment${post.comment_count !== 1 ? "s" : ""}`}
