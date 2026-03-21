@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Circle, UserPlus, Check, X, ExternalLink, Send, Cake, Heart, CalendarCheck } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Circle, UserPlus, Check, X, ExternalLink, Send, Cake, CalendarCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
@@ -108,14 +108,77 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
     setConfirmAction(null);
   }
 
-  const upcomingEvents = [
-    { id: "ev-1", icon: Cake, color: "text-pink-400", label: "Mommy's Birthday", date: "Mar 12", detail: "Turning 72" },
-    { id: "ev-2", icon: Heart, color: "text-red-400", label: "Brian & Melony", date: "Mar 18", detail: "Anniversary" },
-    { id: "ev-3", icon: CalendarCheck, color: "text-gold-500", label: "Easter Cookout", date: "Apr 20", detail: "You're going" },
-    { id: "ev-4", icon: Cake, color: "text-pink-400", label: "Katie's Birthday", date: "Apr 28", detail: "Turning 8" },
-    { id: "ev-5", icon: CalendarCheck, color: "text-gold-500", label: "Summer Reunion", date: "Jun 14", detail: "You're going" },
-    { id: "ev-6", icon: Heart, color: "text-red-400", label: "Jason & LaDonna", date: "Jul 4", detail: "Anniversary" },
-  ];
+  const [upcomingEvents, setUpcomingEvents] = useState<{ id: string; icon: any; color: string; label: string; date: string; detail: string }[]>([]);
+
+  // Load real upcoming events and birthdays
+  useEffect(() => {
+    if (!currentFamily) return;
+    async function loadUpcoming() {
+      const now = new Date();
+      const items: { id: string; icon: any; color: string; label: string; date: string; detail: string; sortDate: Date }[] = [];
+
+      // Fetch family events (next 90 days)
+      const futureDate = new Date(now);
+      futureDate.setDate(futureDate.getDate() + 90);
+      const { data: events } = await supabase
+        .from("events")
+        .select("id, title, start_date, category")
+        .eq("family_id", currentFamily!.id)
+        .gte("start_date", now.toISOString())
+        .lte("start_date", futureDate.toISOString())
+        .order("start_date", { ascending: true })
+        .limit(10);
+
+      for (const ev of events || []) {
+        const d = new Date(ev.start_date);
+        items.push({
+          id: `ev-${ev.id}`,
+          icon: CalendarCheck,
+          color: "text-gold-500",
+          label: ev.title,
+          date: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+          detail: ev.category || "Event",
+          sortDate: d,
+        });
+      }
+
+      // Fetch birthdays from family member profiles
+      const memberIds = members.map((m) => m.user_id);
+      if (memberIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, display_name, date_of_birth, privacy_level")
+          .in("id", memberIds)
+          .not("date_of_birth", "is", null);
+
+        for (const p of profiles || []) {
+          if (p.privacy_level === "private") continue;
+          const dob = new Date(p.date_of_birth);
+          // Get next birthday
+          const nextBday = new Date(now.getFullYear(), dob.getMonth(), dob.getDate());
+          if (nextBday < now) nextBday.setFullYear(nextBday.getFullYear() + 1);
+          // Only show within 90 days
+          const diffDays = (nextBday.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+          if (diffDays <= 90) {
+            const age = nextBday.getFullYear() - dob.getFullYear();
+            items.push({
+              id: `bday-${p.id}`,
+              icon: Cake,
+              color: "text-pink-400",
+              label: `${p.display_name}'s Birthday`,
+              date: nextBday.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+              detail: `Turning ${age}`,
+              sortDate: nextBday,
+            });
+          }
+        }
+      }
+
+      items.sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime());
+      setUpcomingEvents(items.map(({ sortDate, ...rest }) => rest));
+    }
+    loadUpcoming();
+  }, [currentFamily, members]);
 
   return (
     <>
