@@ -29,10 +29,10 @@ import { sanitizeForStorage, validateMediaFile } from "@/lib/sanitize";
 import { LinkifyText } from "@/components/shared/linkify-text";
 import { useRef as useRefFold, useState as useStateFold } from "react";
 
-function FoldableContent({ text }: { text: string }) {
+function FoldableContent({ text, lines = 4 }: { text: string; lines?: number }) {
   const [folded, setFolded] = useStateFold(true);
   const contentRef = useRefFold<HTMLDivElement>(null);
-  const needsFold = text.split("\n").length > 4 || text.length > 300;
+  const needsFold = text.split("\n").length > lines || text.length > lines * 75;
 
   if (!needsFold) {
     return <LinkifyText text={text} className="text-sm whitespace-pre-wrap" />;
@@ -40,7 +40,7 @@ function FoldableContent({ text }: { text: string }) {
 
   return (
     <div>
-      <div ref={contentRef} className={folded ? "line-clamp-4" : ""}>
+      <div ref={contentRef} style={folded ? { display: "-webkit-box", WebkitLineClamp: lines, WebkitBoxOrient: "vertical", overflow: "hidden" } : undefined}>
         <LinkifyText text={text} className="text-sm whitespace-pre-wrap" />
       </div>
       <button
@@ -1195,7 +1195,7 @@ export default function FeedPage() {
                 </div>
               ) : post.content ? (
                 <div className="px-4 py-2">
-                  <FoldableContent text={post.content} />
+                  <FoldableContent text={post.content} lines={9} />
                 </div>
               ) : null}
 
@@ -1572,7 +1572,7 @@ export default function FeedPage() {
               {/* Post content */}
               {post.content && (
                 <div className="px-4 py-2">
-                  <FoldableContent text={post.content} />
+                  <FoldableContent text={post.content} lines={9} />
                 </div>
               )}
 
