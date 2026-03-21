@@ -61,7 +61,7 @@ function LinkPreviewCard({ url }: { url: string }) {
             src={preview.image}
             alt=""
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }}
           />
         </div>
       )}
