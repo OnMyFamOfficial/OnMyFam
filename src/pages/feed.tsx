@@ -44,7 +44,17 @@ function FoldableContent({ text, lines = 4 }: { text: string; lines?: number }) 
         <LinkifyText text={text} className="text-sm whitespace-pre-wrap" />
       </div>
       <button
-        onClick={(e) => { e.stopPropagation(); setFolded(!folded); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          const wasFolded = folded;
+          setFolded(!folded);
+          if (!wasFolded && contentRef.current) {
+            // Folding back - scroll the post card to center
+            setTimeout(() => {
+              contentRef.current?.closest("[data-post-card]")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 50);
+          }
+        }}
         className="w-full mt-1 py-1 rounded text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-center"
         style={{ backgroundColor: "#323345" }}
       >
@@ -905,13 +915,16 @@ export default function FeedPage() {
           return (
             <div
               key={post.id}
+              data-post-card
               className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-visible cursor-pointer hover:border-gold-500/30 transition-colors"
               onClick={(e) => {
                 // Don't open modal if clicking interactive elements
                 if ((e.target as HTMLElement).closest("button, a, input, textarea, video")) return;
-                (e.currentTarget as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+                const card = e.currentTarget as HTMLElement;
                 setActivePostMode("full");
                 setActivePostId(post.id);
+                // Scroll after refold completes
+                setTimeout(() => card.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
               }}
             >
               {/* Author + menu */}
@@ -978,7 +991,7 @@ export default function FeedPage() {
               {/* Content preview */}
               {post.content && (
                 <div className="px-4 pb-3">
-                  <FoldableContent text={post.content} />
+                  <FoldableContent key={`${post.id}-${activePostId}`} text={post.content} />
                 </div>
               )}
 
