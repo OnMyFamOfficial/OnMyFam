@@ -100,9 +100,9 @@ function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
   ].filter(Boolean) as { icon: any; label: string; value: string }[];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Details card */}
-      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden lg:min-h-[500px]">
         <div className="px-4 py-3 border-b border-[var(--border)]">
           <span className="font-semibold text-sm">About</span>
         </div>
@@ -124,7 +124,7 @@ function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
 
       {/* Map card */}
       {coords && (
-        <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+        <div className="lg:col-span-2 bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
           <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-gold-500" />
@@ -140,10 +140,10 @@ function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
               Family Map
             </button>
           </div>
-          <div style={{ height: 360 }}>
+          <div style={{ height: 450 }}>
             <MapContainer
               center={[coords.lat, coords.lon]}
-              zoom={showFamily && familyMarkers.length > 0 ? 5 : 12}
+              zoom={showFamily && familyMarkers.length > 0 ? 4 : 4}
               style={{ height: "100%", width: "100%" }}
               scrollWheelZoom={true}
             >
