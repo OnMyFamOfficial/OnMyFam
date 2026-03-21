@@ -375,8 +375,43 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
                 const prevMsg = i > 0 ? arr[i - 1] : null;
                 const showAvatar = !prevMsg || prevMsg.sender_id !== msg.sender_id ||
                   msg.message_type === "system";
+                const isNewSender = !prevMsg || prevMsg.sender_id !== msg.sender_id;
+                const isGroupChat = conversation.participants.length > 2;
+                const senderProfile = msg.sender as Profile || profileMap.get(msg.sender_id) || null;
+                const isMine = msg.sender_id === user?.id;
+
+                // Date separator
+                const msgDate = new Date(msg.created_at);
+                const prevDate = prevMsg ? new Date(prevMsg.created_at) : null;
+                const showDateSep = !prevDate || msgDate.toDateString() !== prevDate.toDateString();
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                let dateLabel = "";
+                if (showDateSep) {
+                  if (msgDate.toDateString() === today.toDateString()) dateLabel = "Today";
+                  else if (msgDate.toDateString() === yesterday.toDateString()) dateLabel = "Yesterday";
+                  else dateLabel = msgDate.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric", year: msgDate.getFullYear() !== today.getFullYear() ? "numeric" : undefined });
+                }
+
                 return (
                   <div key={msg.id} id={`msg-${msg.id}`}>
+                  {/* Date separator */}
+                  {showDateSep && (
+                    <div className="flex items-center justify-center py-3">
+                      <span className="text-[11px] text-[var(--muted-foreground)] bg-[var(--accent)] px-3 py-1 rounded-full">
+                        {dateLabel}
+                      </span>
+                    </div>
+                  )}
+                  {/* Space between different senders */}
+                  {isNewSender && prevMsg && !showDateSep && <div className="h-2" />}
+                  {/* Sender name for group chats */}
+                  {isGroupChat && isNewSender && !isMine && msg.message_type !== "system" && (
+                    <div className={`text-[11px] font-semibold text-gold-500 mb-0.5 ${showAvatar ? "ml-8" : "ml-8"}`}>
+                      {senderProfile?.display_name || "Unknown"}
+                    </div>
+                  )}
                   <MessageBubble
                     message={msg}
                     isMine={msg.sender_id === user?.id}
