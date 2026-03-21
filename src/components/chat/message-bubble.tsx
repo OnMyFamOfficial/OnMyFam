@@ -38,7 +38,9 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
   const menuRef = useRef<HTMLDivElement>(null);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const touchStartTime = useRef(0);
   function handleTouchStart() {
+    touchStartTime.current = Date.now();
     longPressRef.current = setTimeout(() => {
       setShowReactions(true);
       setShowMenu(false);
@@ -49,6 +51,10 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
     if (longPressRef.current) {
       clearTimeout(longPressRef.current);
       longPressRef.current = null;
+    }
+    // Short tap = toggle time
+    if (Date.now() - touchStartTime.current < 300) {
+      setShowTime((prev) => !prev);
     }
   }
 

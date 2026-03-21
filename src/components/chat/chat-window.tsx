@@ -404,8 +404,8 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
                       </span>
                     </div>
                   )}
-                  {/* Space between different senders */}
-                  {isNewSender && prevMsg && !showDateSep && <div className="h-2" />}
+                  {/* Space between different senders (matches time+reaction height) */}
+                  {isNewSender && prevMsg && !showDateSep && <div className="h-7" />}
                   {/* Sender name for group chats */}
                   {isGroupChat && isNewSender && !isMine && msg.message_type !== "system" && (
                     <div className={`text-[11px] font-semibold text-gold-500 mb-0.5 ${showAvatar ? "ml-8" : "ml-8"}`}>
