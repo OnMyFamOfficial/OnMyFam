@@ -989,19 +989,30 @@ export default function FeedPage() {
               {(post.reaction_count > 0 || post.comment_count > 0) && (
                 <div className="px-4 py-2 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
                   <div className="flex items-center gap-1">
-                    {post.reaction_count > 0 && (() => {
-                      const reactionsByType: Record<string, number> = {};
-                      for (const r of post.reactions || []) {
-                        const emoji = REACTIONS.find((rx) => rx.type === r.reaction_type)?.emoji || "\u{1F44D}";
-                        reactionsByType[emoji] = (reactionsByType[emoji] || 0) + 1;
-                      }
-                      return Object.entries(reactionsByType).map(([emoji, count]) => (
-                        <span key={emoji} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--accent)] border border-[var(--border)]">
-                          <span className="text-xl">{emoji}</span>
-                          <span className="text-[10px]">{count}</span>
-                        </span>
-                      ));
-                    })()}
+                    {post.reaction_count > 0 && (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowReactionDetails(showReactionDetails === post.id ? null : post.id); }}
+                          className="w-5 h-5 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-gold-500/50 transition-colors cursor-pointer text-xs"
+                          title="See who reacted"
+                        >
+                          +
+                        </button>
+                        {(() => {
+                          const reactionsByType: Record<string, number> = {};
+                          for (const r of post.reactions || []) {
+                            const emoji = REACTIONS.find((rx) => rx.type === r.reaction_type)?.emoji || "\u{1F44D}";
+                            reactionsByType[emoji] = (reactionsByType[emoji] || 0) + 1;
+                          }
+                          return Object.entries(reactionsByType).map(([emoji, count]) => (
+                            <span key={emoji} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-[var(--accent)] border border-[var(--border)]">
+                              <span className="text-xl">{emoji}</span>
+                              <span className="text-[10px]">{count}</span>
+                            </span>
+                          ));
+                        })()}
+                      </>
+                    )}
                   </div>
                   {post.comment_count > 0 && (
                     <button
@@ -1012,6 +1023,49 @@ export default function FeedPage() {
                     </button>
                   )}
                 </div>
+              )}
+
+              {/* Reaction details modal */}
+              {showReactionDetails === post.id && post.reactions.length > 0 && (
+                <>
+                  <div className="fixed inset-0 z-[60] bg-black/50" onClick={(e) => { e.stopPropagation(); setShowReactionDetails(null); }} />
+                  <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col" style={{ maxHeight: "70vh" }}>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+                      <h3 className="font-semibold text-sm">Reactions ({post.reactions.length})</h3>
+                      <button onClick={(e) => { e.stopPropagation(); setShowReactionDetails(null); }} className="p-1 rounded-lg hover:bg-[var(--accent)] cursor-pointer">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {post.reactions.map((r: any) => {
+                        const emoji = REACTIONS.find((rx) => rx.type === r.reaction_type)?.emoji || "\u{1F44D}";
+                        const isFam = members.some((m) => m.user_id === r.user_id);
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={(e) => { e.stopPropagation(); setShowReactionDetails(null); navigate(`/profile/${r.user_id}`); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+                          >
+                            <span className="text-xl">{emoji}</span>
+                            <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                              {r.user?.avatar_url ? (
+                                <img src={r.user.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-xs font-medium text-gold-500">{r.user?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm font-medium truncate block">{r.user?.display_name || "Unknown"}</span>
+                              <span className="text-[10px] text-[var(--muted-foreground)]">
+                                {r.user_id === user?.id ? "You" : isFam ? "Fam" : "Not in your family"}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
               )}
 
               {/* Action buttons */}
