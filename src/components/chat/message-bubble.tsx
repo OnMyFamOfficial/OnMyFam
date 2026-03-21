@@ -32,6 +32,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
+  const [showTime, setShowTime] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.content || "");
   const menuRef = useRef<HTMLDivElement>(null);
@@ -114,7 +115,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
   const hasReactions = reactions && Object.entries(reactions).some(([, users]) => users.size > 0);
 
   return (
-    <div className={cn("flex gap-1 group items-start", showAvatar ? "mb-1" : "mb-px", isMine ? "flex-row-reverse" : "flex-row")}>
+    <div className={cn("flex gap-1 group items-start", showAvatar ? "mb-0.5" : "mb-[1px]", isMine ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
       <div className="flex-shrink-0 w-7">
         {showAvatar ? (
@@ -135,7 +136,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
       </div>
 
       {/* Bubble + time */}
-      <div className="max-w-[90%] min-w-0 relative" ref={menuRef}>
+      <div className="max-w-[90%] min-w-0 relative cursor-pointer" ref={menuRef} onClick={(e) => { if (!(e.target as HTMLElement).closest("button, input, textarea")) setShowTime((prev) => !prev); }}>
         {/* Pin indicator */}
         {isPinned && (
           <div className={cn("flex items-center gap-1 text-[10px] text-gold-500 mb-0.5 px-1", isMine ? "justify-end" : "justify-start")}>
@@ -250,13 +251,15 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
           </div>
         )}
 
-        {/* Time */}
-        <div className={cn(
-          "text-[10px] text-[var(--muted-foreground)] mt-0.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity",
-          isMine ? "text-right" : "text-left"
-        )}>
-          {formatTime(message.created_at)}
-        </div>
+        {/* Time - click to reveal */}
+        {showTime && (
+          <div className={cn(
+            "text-[10px] text-[var(--muted-foreground)] mt-0.5 px-1",
+            isMine ? "text-right" : "text-left"
+          )}>
+            {formatTime(message.created_at)}
+          </div>
+        )}
 
         {/* Reaction picker popup */}
         {showReactions && (

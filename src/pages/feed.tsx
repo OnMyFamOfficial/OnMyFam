@@ -80,6 +80,18 @@ export default function FeedPage() {
   const [collapsedReplies, setCollapsedReplies] = useState<Set<string>>(new Set());
   const [filterByMembers, setFilterByMembers] = useState<Set<string>>(new Set());
   const [collapsedFamilies, setCollapsedFamilies] = useState<Set<string>>(new Set());
+  const [sidebarWidth, setSidebarWidth] = useState(0);
+
+  // Watch sidebar element width directly for instant sync
+  useEffect(() => {
+    const sidebar = document.querySelector("aside");
+    if (!sidebar) return;
+    const update = () => setSidebarWidth(sidebar.getBoundingClientRect().width);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(sidebar);
+    return () => observer.disconnect();
+  }, []);
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [deletingComment, setDeletingComment] = useState<{ commentId: string; postId: string } | null>(null);
@@ -496,8 +508,8 @@ export default function FeedPage() {
   return (
     <div className="relative max-w-2xl mx-auto">
       {/* Left: Member filter sidebar - positioned to the left of centered content */}
-      <div className="hidden lg:block absolute right-full mr-8 top-0 w-[336px]">
-        <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] sticky top-20 overflow-hidden">
+      <div className="hidden lg:block fixed top-20 w-[193px] transition-[left] duration-300" style={{ left: `${sidebarWidth + 12}px` }}>
+        <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--border)]">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-gold-500" />
