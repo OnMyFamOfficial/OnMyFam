@@ -27,6 +27,32 @@ import { supabase } from "@/lib/supabase";
 import { uploadPostMedia } from "@/services/storage";
 import { sanitizeForStorage, validateMediaFile } from "@/lib/sanitize";
 import { LinkifyText } from "@/components/shared/linkify-text";
+import { useRef as useRefFold, useState as useStateFold } from "react";
+
+function FoldableContent({ text }: { text: string }) {
+  const [folded, setFolded] = useStateFold(true);
+  const contentRef = useRefFold<HTMLDivElement>(null);
+  const needsFold = text.split("\n").length > 4 || text.length > 300;
+
+  if (!needsFold) {
+    return <LinkifyText text={text} className="text-sm whitespace-pre-wrap" />;
+  }
+
+  return (
+    <div>
+      <div ref={contentRef} className={folded ? "line-clamp-4" : ""}>
+        <LinkifyText text={text} className="text-sm whitespace-pre-wrap" />
+      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); setFolded(!folded); }}
+        className="w-full mt-1 py-1 rounded text-xs font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-center"
+        style={{ backgroundColor: "#323345" }}
+      >
+        {folded ? "Unfold" : "Fold"}
+      </button>
+    </div>
+  );
+}
 import { formatDistanceToNow } from "date-fns";
 import type { Post, PostMedia, PostReaction, Comment, Profile } from "@/lib/types";
 
@@ -952,7 +978,7 @@ export default function FeedPage() {
               {/* Content preview */}
               {post.content && (
                 <div className="px-4 pb-3">
-                  <LinkifyText text={post.content} className="text-sm whitespace-pre-wrap line-clamp-3" />
+                  <FoldableContent text={post.content} />
                 </div>
               )}
 
