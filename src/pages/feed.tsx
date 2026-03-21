@@ -26,6 +26,7 @@ import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { uploadPostMedia } from "@/services/storage";
 import { sanitizeForStorage, validateMediaFile } from "@/lib/sanitize";
+import { LinkifyText } from "@/components/shared/linkify-text";
 import { formatDistanceToNow } from "date-fns";
 import type { Post, PostMedia, PostReaction, Comment, Profile } from "@/lib/types";
 
@@ -951,7 +952,7 @@ export default function FeedPage() {
               {/* Content preview */}
               {post.content && (
                 <div className="px-4 pb-3">
-                  <p className="text-sm whitespace-pre-wrap line-clamp-3">{post.content}</p>
+                  <LinkifyText text={post.content} className="text-sm whitespace-pre-wrap line-clamp-3" />
                 </div>
               )}
 
@@ -1166,7 +1167,7 @@ export default function FeedPage() {
                 </div>
               ) : post.content ? (
                 <div className="px-4 py-2">
-                  <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+                  <LinkifyText text={post.content} className="text-sm whitespace-pre-wrap" />
                 </div>
               ) : null}
 
@@ -1285,7 +1286,7 @@ export default function FeedPage() {
                           ) : (
                           <div className="bg-[var(--accent)] rounded-lg px-3 py-2">
                             <p className="text-xs font-medium text-gold-500">{comment.author?.display_name}</p>
-                            <p className="text-sm mt-0.5">{comment.content}</p>
+                            <LinkifyText text={comment.content} className="text-sm mt-0.5" />
                             {comment.author_id === user?.id && (
                               <div className="flex items-center gap-2 mt-1 justify-end">
                                 <button onClick={() => { setEditingComment(comment.id); setEditCommentText(comment.content); }} className="text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">Edit</button>
@@ -1398,7 +1399,7 @@ export default function FeedPage() {
                                       <span className="text-[var(--muted-foreground)] mx-2">&gt;</span>
                                       <span className="text-sky-400">@{comment.author?.display_name}</span>
                                     </p>
-                                    <p className="text-xs mt-0.5">{reply.content}</p>
+                                    <LinkifyText text={reply.content} className="text-xs mt-0.5" />
                                     {reply.author_id === user?.id && (
                                       <div className="flex items-center gap-2 mt-1 justify-end">
                                         <button onClick={() => { setEditingComment(reply.id); setEditCommentText(reply.content); }} className="text-[9px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">Edit</button>
@@ -1543,7 +1544,7 @@ export default function FeedPage() {
               {/* Post content */}
               {post.content && (
                 <div className="px-4 py-2">
-                  <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+                  <LinkifyText text={post.content} className="text-sm whitespace-pre-wrap" />
                 </div>
               )}
 
@@ -1641,7 +1642,7 @@ export default function FeedPage() {
                             ) : (
                             <div className="bg-[var(--accent)] rounded-lg px-3 py-2">
                               <p className="text-xs font-medium text-gold-500">{comment.author?.display_name}</p>
-                              <p className="text-sm mt-0.5">{comment.content}</p>
+                              <LinkifyText text={comment.content} className="text-sm mt-0.5" />
                               {comment.author_id === user?.id && (
                                 <div className="flex items-center gap-2 mt-1 justify-end">
                                   <button onClick={() => { setEditingComment(comment.id); setEditCommentText(comment.content); }} className="text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">Edit</button>
@@ -1735,7 +1736,7 @@ export default function FeedPage() {
                                             <span className="text-[var(--muted-foreground)] mx-2">&gt;</span>
                                             <span className="text-sky-400">@{comment.author?.display_name}</span>
                                           </p>
-                                          <p className="text-xs mt-0.5">{reply.content}</p>
+                                          <LinkifyText text={reply.content} className="text-xs mt-0.5" />
                                           {reply.author_id === user?.id && (
                                             <div className="flex items-center gap-2 mt-1 justify-end">
                                               <button onClick={() => { setEditingComment(reply.id); setEditCommentText(reply.content); }} className="text-[9px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">Edit</button>
