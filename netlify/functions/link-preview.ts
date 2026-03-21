@@ -61,17 +61,8 @@ export default async (req: Request, context: Context) => {
       absoluteImage = image.startsWith("/") ? `${base.origin}${image}` : `${base.origin}/${image}`;
     }
 
-    // Special handling for YouTube - construct thumbnail and title from video ID
-    let finalImage = absoluteImage;
-    let finalTitle = title;
-    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-    if (ytMatch) {
-      if (!finalImage) finalImage = `https://i.ytimg.com/vi/${ytMatch[1]}/hqdefault.jpg`;
-      if (!finalTitle || finalTitle.trim() === "- YouTube" || finalTitle.trim() === "") finalTitle = "YouTube Video";
-    }
-
     return new Response(JSON.stringify({
-      title: finalTitle || domain,
+      title: title || domain,
       description: description || null,
       image: finalImage || null,
       site_name: siteName || domain,
