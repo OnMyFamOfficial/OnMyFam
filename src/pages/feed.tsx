@@ -1142,9 +1142,8 @@ export default function FeedPage() {
         // Shared comments panel (used in both modes)
         const commentsPanel = (
           <div className="flex flex-col h-full">
-            {/* Author + actions (fixed top) */}
+            {/* Author header (fixed top) */}
             <div className="flex-shrink-0">
-              {/* Author header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
                 <div className="flex items-center gap-3">
                   <div
@@ -1169,7 +1168,10 @@ export default function FeedPage() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
+            </div>
 
+            {/* Scrollable content + comments */}
+            <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {/* Post content (or edit mode) */}
               {editingPost === post.id ? (
                 <div className="px-4 py-2">
@@ -1193,7 +1195,7 @@ export default function FeedPage() {
                 </div>
               ) : post.content ? (
                 <div className="px-4 py-2">
-                  <LinkifyText text={post.content} className="text-sm whitespace-pre-wrap" />
+                  <FoldableContent text={post.content} />
                 </div>
               ) : null}
 
@@ -1262,10 +1264,9 @@ export default function FeedPage() {
                   Share
                 </button>
               </div>
-            </div>
 
-            {/* Scrollable comments */}
-            <div className="flex-1 overflow-y-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {/* Comments */}
+              <div className="px-4 pb-3">
               {post.comments
                 .filter((c) => !c.parent_id)
                 .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -1487,6 +1488,7 @@ export default function FeedPage() {
                   );
                 })}
             </div>
+            </div>{/* end scrollable content + comments */}
 
             {/* Fixed bottom: reply indicator + comment input */}
             <div className="flex-shrink-0 border-t border-[var(--border)] bg-[var(--card)]">
@@ -1570,7 +1572,7 @@ export default function FeedPage() {
               {/* Post content */}
               {post.content && (
                 <div className="px-4 py-2">
-                  <LinkifyText text={post.content} className="text-sm whitespace-pre-wrap" />
+                  <FoldableContent text={post.content} />
                 </div>
               )}
 
