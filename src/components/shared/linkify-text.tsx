@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ExternalLink } from "lucide-react";
 
 const URL_REGEX = /(https?:\/\/[^\s<]+)/g;
+const URL_TEST = /^https?:\/\/[^\s<]+$/;
 
 interface LinkPreview {
   title: string;
@@ -86,7 +87,7 @@ export function LinkifyText({ text, className }: { text: string; className?: str
     <div>
       <p className={className}>
         {parts.map((part, i) =>
-          URL_REGEX.test(part) ? (
+          URL_TEST.test(part) ? (
             <a
               key={i}
               href={part}
