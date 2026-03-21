@@ -17,6 +17,7 @@ interface MessageBubbleProps {
   onReact?: (messageId: string, emoji: string, userId: string) => void;
   reactions?: Record<string, Set<string>>; // emoji -> set of user IDs
   isPinned?: boolean;
+  isFirstMessage?: boolean;
 }
 
 const REACTION_EMOJIS = ["\u{1F44D}", "\u{2764}\u{FE0F}", "\u{1F602}", "\u{1F62E}", "\u{1F622}", "\u{1F64F}", "\u{1F389}", "\u{1F525}"];
@@ -28,7 +29,7 @@ function isEmojiOnly(text: string | null): boolean {
   return emojiRegex.test(stripped);
 }
 
-export function MessageBubble({ message, isMine, senderProfile, showAvatar, currentUserId, onReply, onEdit, onDelete, onPin, onReact, reactions, isPinned }: MessageBubbleProps) {
+export function MessageBubble({ message, isMine, senderProfile, showAvatar, currentUserId, onReply, onEdit, onDelete, onPin, onReact, reactions, isPinned, isFirstMessage }: MessageBubbleProps) {
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
@@ -270,8 +271,8 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
         {/* Reaction picker popup */}
         {showReactions && (
           <div
-            className="absolute z-50 flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 lg:py-2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg bottom-full mb-1"
-            style={{ left: "0", right: "auto", maxWidth: "calc(100vw - 32px)" }}
+            className={cn("absolute z-50 flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 lg:py-2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg", isFirstMessage ? "top-full mt-1" : "bottom-full mb-1", isMine ? "right-0" : "left-0")}
+            style={{ maxWidth: "calc(100vw - 32px)" }}
           >
             {REACTION_EMOJIS.map((emoji) => (
               <button
@@ -299,7 +300,7 @@ export function MessageBubble({ message, isMine, senderProfile, showAvatar, curr
           <div className={cn(
             "absolute z-50 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[140px]",
             isMine ? "right-0" : "left-0",
-            "bottom-full mb-1"
+            isFirstMessage ? "top-full mt-1" : "bottom-full mb-1"
           )}>
             {onReply && (
               <button

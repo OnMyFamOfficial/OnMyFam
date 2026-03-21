@@ -140,14 +140,44 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
     fetchMessages();
   }, [conversation.id, fetchMessages]);
 
-  // Scroll to bottom on new messages + hide mobile address bar
+  // Force scroll to absolute bottom
+  function scrollToBottom(smooth = false) {
+    if (!containerRef.current) return;
+    const doScroll = () => {
+      if (containerRef.current) {
+        containerRef.current.scrollTop = containerRef.current.scrollHeight + 9999;
+      }
+    };
+    if (smooth) {
+      containerRef.current.scrollTo({ top: containerRef.current.scrollHeight + 9999, behavior: "smooth" });
+    } else {
+      doScroll();
+      // Retry after images/layout settle
+      requestAnimationFrame(doScroll);
+      setTimeout(doScroll, 100);
+      setTimeout(doScroll, 300);
+      setTimeout(doScroll, 600);
+    }
+  }
+
+  // Scroll to bottom on new messages
+  const initialScrollDone = useRef(false);
   useEffect(() => {
-    if (!loading) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      // Nudge window scroll to collapse mobile address bar
+    if (!loading && messages.length > 0) {
+      if (!initialScrollDone.current) {
+        scrollToBottom(false);
+        initialScrollDone.current = true;
+      } else {
+        scrollToBottom(true);
+      }
       window.scrollTo(0, 1);
     }
   }, [messages.length, loading]);
+
+  // Reset on conversation change
+  useEffect(() => {
+    initialScrollDone.current = false;
+  }, [conversation.id]);
 
   // Realtime: use broadcast for reliable cross-user delivery + postgres_changes as backup
   useEffect(() => {
@@ -484,10 +514,12 @@ export function ChatWindow({ conversation, onBack, onStartCall, showShortcuts = 
                     }}
                     reactions={reactionsMap[msg.id]}
                     isPinned={pinnedIds.has(msg.id)}
+                    isFirstMessage={i === 0}
                   />
                   </div>
                 );
               })}
+              <div className="h-3" />
               <div ref={messagesEndRef} />
             </>
           )}
