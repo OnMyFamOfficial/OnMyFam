@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Camera, MapPin, Phone, ImagePlus, Calendar, Shield, User, Users, Heart } from "lucide-react";
+import { Camera, MapPin, Phone, ImagePlus, Calendar, Shield, User, Users, Heart, X } from "lucide-react";
 import { sanitizeForStorage } from "@/lib/sanitize";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
@@ -267,6 +267,7 @@ export default function ProfilePage() {
   }, [userId, user?.id]);
 
   const [editing, setEditing] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     display_name: profile?.display_name || "",
@@ -377,7 +378,8 @@ export default function ProfilePage() {
               <img
                 src={displayCover}
                 alt="Cover"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover cursor-pointer"
+                onClick={() => !editing && setLightboxImage(displayCover)}
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-r from-gold-700 via-gold-500 to-gold-400" />
@@ -409,7 +411,8 @@ export default function ProfilePage() {
                     <img
                       src={displayAvatar}
                       alt={profile?.display_name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover cursor-pointer"
+                      onClick={() => !editing && setLightboxImage(displayAvatar)}
                     />
                   ) : (
                     <span className="text-4xl font-bold text-gold-500">
@@ -605,6 +608,27 @@ export default function ProfilePage() {
 
       {/* Details & Map */}
       {profile && <ProfileMapAndDetails profile={profile} />}
+
+      {/* Image lightbox */}
+      {lightboxImage && (
+        <>
+          <div className="fixed inset-0 z-[80] bg-black/90" onClick={() => setLightboxImage(null)} />
+          <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" onClick={() => setLightboxImage(null)}>
+            <img
+              src={lightboxImage}
+              alt=""
+              className="max-w-full max-h-full object-contain rounded-xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              onClick={() => setLightboxImage(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors cursor-pointer"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
