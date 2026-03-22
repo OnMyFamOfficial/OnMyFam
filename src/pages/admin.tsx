@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Shield,
   Users,
@@ -170,6 +171,7 @@ function OverviewTab({ stats, loading }: { stats: AdminStats | null; loading: bo
 
 function UsersTab() {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -270,6 +272,7 @@ function UsersTab() {
                   </button>
                 )}
                 <button
+                  onClick={() => navigate(`/profile/${u.id}`)}
                   className="p-1.5 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
                   title="View profile"
                 >
