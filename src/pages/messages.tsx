@@ -14,7 +14,7 @@ export default function MessagesPage() {
   const { conversationId: paramConvoId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
   const { onMenuClick } = useOutletContext<{ onMenuClick: () => void }>();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { conversations, activeConversationId, setActiveConversationId, refreshConversations } = useChat();
   const { startCall } = useVideoCall();
   const { members } = useFamily();
