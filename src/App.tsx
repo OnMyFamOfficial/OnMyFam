@@ -30,6 +30,7 @@ const SettingsPage = lazy(() => import("@/pages/settings"));
 const InviteClaimPage = lazy(() => import("@/pages/invite-claim"));
 const MessagesPage = lazy(() => import("@/pages/messages"));
 const AdminPage = lazy(() => import("@/pages/admin"));
+const DonatePage = lazy(() => import("@/pages/donate"));
 
 export default function App() {
   return (
@@ -69,6 +70,7 @@ export default function App() {
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/profile/:userId" element={<ProfilePage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/donate" element={<DonatePage />} />
                 <Route path="/messages" element={<MessagesPage />} />
                 <Route path="/messages/:conversationId" element={<MessagesPage />} />
                 <Route path="/admin" element={<AdminPage />} />

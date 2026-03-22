@@ -23,7 +23,6 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTheme } from "@/components/shared/theme-provider";
 import { useChat } from "@/components/chat/chat-provider";
 import { useFamily } from "@/lib/hooks/use-family";
-import { DonateModal } from "@/components/shared/donate-modal";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -50,7 +49,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const { totalUnread } = useChat();
   const { families, currentFamily, setCurrentFamily } = useFamily();
   const [showFamilySwitcher, setShowFamilySwitcher] = useState(false);
-  const [showDonate, setShowDonate] = useState(false);
 
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
@@ -279,7 +277,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
           {/* Donate */}
           <button
-            onClick={() => setShowDonate(true)}
+            onClick={() => handleNav("/donate")}
             className={cn(
               "w-full flex items-center py-2 rounded-lg text-left transition-all group relative whitespace-nowrap cursor-pointer hover:brightness-105 hover:shadow-lg",
               collapsed ? "justify-center px-2" : "space-x-3 px-3"
@@ -329,7 +327,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </div>
       </aside>
 
-      <DonateModal open={showDonate} onClose={() => setShowDonate(false)} />
     </>
   );
 }
