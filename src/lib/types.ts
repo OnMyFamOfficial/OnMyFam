@@ -142,6 +142,8 @@ export interface FamilyEvent {
   cover_url: string | null;
   category: string;
   location: string | null;
+  address: string | null;
+  hosted_by: string[];
   starts_at: string;
   ends_at: string | null;
   is_all_day: boolean;

@@ -1,0 +1,191 @@
+ON MY FAM - SERVICE SEPARATION PLAN
+Separating OnMyFam from the Oeconomia Ecosystem
+Date: March 21, 2026
+
+
+OVERVIEW
+
+OnMyFam currently shares several third-party service accounts with the broader
+Oeconomia project ecosystem. To operate OnMyFam as a fully independent product,
+the following services need their own dedicated accounts and configurations.
+
+
+1. SUPABASE (Database, Authentication, Storage, Realtime)
+
+   Current State:
+   OnMyFam's database, user authentication, file storage (photos, avatars,
+   chat media), and real-time messaging all run on a Supabase project that
+   may be under an Oeconomia-associated account.
+
+   What To Do:
+   - Create a new Supabase organization and project specifically for OnMyFam
+   - Migrate the full database schema (21 tables, RLS policies, triggers,
+     functions) to the new project
+   - Migrate existing user accounts and auth configurations
+   - Migrate storage buckets (avatars, covers, posts, albums, chat media)
+     and all uploaded files
+   - Set up Google OAuth provider on the new project
+   - Update environment variables:
+       VITE_SUPABASE_URL
+       VITE_SUPABASE_ANON_KEY
+       SUPABASE_SERVICE_KEY (for serverless functions)
+
+   Cost: Free tier (sufficient for ~90 DAU). Pro tier is $25/month if needed.
+   Effort: HIGH - This is the largest migration task.
+
+
+2. NETLIFY (Web Hosting, Serverless Functions, CDN)
+
+   Current State:
+   OnMyFam is deployed on Netlify at onmyfam.com. The Netlify account may
+   be shared with other Oeconomia projects.
+
+   What To Do:
+   - Create a separate Netlify team or account for OnMyFam
+   - Transfer or recreate the site under the new account
+   - Reconfigure the custom domain (onmyfam.com) DNS
+   - Set up environment variables on the new account:
+       VITE_SUPABASE_URL
+       VITE_SUPABASE_ANON_KEY
+       SUPABASE_SERVICE_KEY
+   - Verify all 5 serverless functions deploy correctly:
+       giphy-proxy
+       link-preview
+       invite-create
+       invite-claim
+       notifications
+
+   Cost: Free tier is sufficient for current scale.
+   Effort: MEDIUM
+
+
+3. GITHUB (Source Code Repository)
+
+   Current State:
+   The repository is hosted at github.com/Oeconomia2025/onmyfam under
+   the Oeconomia2025 GitHub organization.
+
+   What To Do:
+   - Create a new GitHub organization (e.g., "OnMyFam") or use a
+     standalone GitHub account
+   - Transfer the repository to the new organization, or create a
+     fresh repo and push the code
+   - Update any CI/CD integrations or deploy hooks in Netlify to
+     point to the new repo location
+   - Update any references to the old repo URL in documentation
+
+   Cost: Free.
+   Effort: LOW
+
+
+4. DOMAIN (onmyfam.com)
+
+   Current State:
+   The domain onmyfam.com is registered and active. It may be under
+   a registrar account associated with Oeconomia projects.
+
+   What To Do:
+   - Verify which registrar account holds the domain
+   - If under an Oeconomia account, transfer the domain to a new
+     standalone registrar account
+   - Consider securing related domains for brand protection:
+       onmyfam.net
+       onmyfam.org
+       onmyfam.app
+   - Update DNS records if the Netlify account changes
+
+   Cost: ~$12/year for domain renewal. Additional domains ~$12/year each.
+   Effort: LOW
+
+
+5. GOOGLE CLOUD (OAuth Sign-In)
+
+   Current State:
+   Google sign-in uses OAuth credentials from a Google Cloud project.
+   This may be configured under an Oeconomia-associated Google account.
+
+   What To Do:
+   - Create a new Google Cloud project named "OnMyFam"
+   - Set up OAuth 2.0 credentials (Client ID and Client Secret)
+   - Configure authorized redirect URIs for onmyfam.com
+   - Update the OAuth provider settings in the new Supabase project
+   - Submit for Google OAuth verification if needed (for the consent screen)
+
+   Cost: Free.
+   Effort: LOW
+
+
+6. GIPHY API (GIF and Sticker Search)
+
+   Current State:
+   The chat feature uses a Giphy API key for GIF and sticker search.
+   The key is stored server-side in the giphy-proxy serverless function.
+
+   What To Do:
+   - Create a new Giphy developer account at developers.giphy.com
+   - Create a new app/API key specifically for OnMyFam
+   - Update the API key in netlify/functions/giphy-proxy.ts
+   - Consider applying for a production API key for higher rate limits
+     (beta keys are limited to 42 requests/hour)
+
+   Cost: Free (beta tier). Production tier available if needed.
+   Effort: LOW
+
+
+7. EMAIL SERVICE (Optional but Recommended)
+
+   Current State:
+   No custom email is configured. Supabase sends auth emails (password
+   reset, email verification) from their default domain.
+
+   What To Do:
+   - Set up a custom email domain for professional communications
+     (e.g., noreply@onmyfam.com, support@onmyfam.com)
+   - Options:
+       Cloudflare Email Routing (free, receive-only with forwarding)
+       Google Workspace ($6/month, full email suite)
+       Resend or Postmark (transactional email, free tier available)
+   - Configure Supabase to use custom SMTP for auth emails
+
+   Cost: Free to $6/month depending on provider.
+   Effort: LOW
+
+
+SUMMARY TABLE
+
+   Service              Purpose                          Cost              Effort
+   -------------------  -------------------------------  ----------------  ------
+   Supabase (new org)   Database, auth, storage          Free / $25/mo     HIGH
+   Netlify (own team)   Hosting, serverless functions     Free              MEDIUM
+   GitHub (new org)     Source code repository            Free              LOW
+   Domain registrar     onmyfam.com ownership             ~$12/year         LOW
+   Google Cloud         OAuth sign-in                    Free              LOW
+   Giphy Developer      GIF/sticker search API           Free              LOW
+   Email provider       Custom email domain (optional)   Free - $6/mo      LOW
+
+
+RECOMMENDED ORDER OF OPERATIONS
+
+   1. Create new GitHub org and move/copy the repository
+   2. Create new Supabase organization and project
+   3. Migrate database schema to new Supabase project
+   4. Create new Netlify team and set up the site
+   5. Set up Google Cloud OAuth credentials
+   6. Create new Giphy API key
+   7. Migrate existing data and user accounts
+   8. Update DNS to point to new Netlify deployment
+   9. Test everything end-to-end
+  10. Decommission old shared resources
+
+
+ESTIMATED MONTHLY COST (Post-Separation)
+
+   Supabase Free Tier:    $0
+   Netlify Free Tier:     $0
+   GitHub Free:           $0
+   Domain:                $1/month (~$12/year)
+   Google Cloud:          $0
+   Giphy:                 $0
+   Email (optional):      $0 - $6
+
+   Total: $1 - $7/month

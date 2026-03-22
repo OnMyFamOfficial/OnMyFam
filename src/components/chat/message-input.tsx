@@ -6,6 +6,20 @@ import { useAuth } from "@/components/auth/auth-provider";
 import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+// Session-level cache for Giphy API results (shared across all MessageInput instances)
+const GIPHY_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const giphyCache = new Map<string, { data: any[]; timestamp: number }>();
+
+function getCachedGiphy(key: string) {
+  const entry = giphyCache.get(key);
+  if (entry && Date.now() - entry.timestamp < GIPHY_CACHE_TTL) return entry.data;
+  return null;
+}
+
+function setCachedGiphy(key: string, data: any[]) {
+  giphyCache.set(key, { data, timestamp: Date.now() });
+}
+
 interface MessageInputProps {
   conversationId: string;
   replyTo: Message | null;
@@ -40,25 +54,29 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
   const [loadingGifs, setLoadingGifs] = useState(false);
   const gifSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const GIPHY_KEY = "ZGVuN9nUN1jlHftCOiYxWS5BhVQ9no3B";
-
   const searchGifs = useCallback(async (query: string) => {
+    const cacheKey = `gif:${query.trim().toLowerCase() || "__trending__"}`;
+    const cached = getCachedGiphy(cacheKey);
+    if (cached) {
+      setGifs(cached);
+      return;
+    }
     setLoadingGifs(true);
-    const endpoint = query.trim()
-      ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=pg-13`
-      : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_KEY}&limit=20&rating=pg-13`;
+    const proxyUrl = query.trim()
+      ? `/api/giphy-proxy?type=gifs&q=${encodeURIComponent(query)}`
+      : `/api/giphy-proxy?type=gifs`;
     try {
-      const res = await fetch(endpoint);
+      const res = await fetch(proxyUrl);
       const json = await res.json();
-      setGifs(
-        (json.data || []).map((g: any) => ({
-          id: g.id,
-          url: g.images.original.url,
-          preview: g.images.fixed_width_small.url,
-          width: parseInt(g.images.fixed_width_small.width),
-          height: parseInt(g.images.fixed_width_small.height),
-        }))
-      );
+      const results = (json.data || []).map((g: any) => ({
+        id: g.id,
+        url: g.url,
+        preview: g.preview,
+        width: parseInt(g.width),
+        height: parseInt(g.height),
+      }));
+      setCachedGiphy(cacheKey, results);
+      setGifs(results);
     } catch {
       setGifs([]);
     }
@@ -72,20 +90,26 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
   }
 
   const searchStickers = useCallback(async (query: string) => {
+    const cacheKey = `sticker:${query.trim().toLowerCase() || "__trending__"}`;
+    const cached = getCachedGiphy(cacheKey);
+    if (cached) {
+      setStickers(cached);
+      return;
+    }
     setLoadingStickers(true);
-    const endpoint = query.trim()
-      ? `https://api.giphy.com/v1/stickers/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=pg-13`
-      : `https://api.giphy.com/v1/stickers/trending?api_key=${GIPHY_KEY}&limit=20&rating=pg-13`;
+    const proxyUrl = query.trim()
+      ? `/api/giphy-proxy?type=stickers&q=${encodeURIComponent(query)}`
+      : `/api/giphy-proxy?type=stickers`;
     try {
-      const res = await fetch(endpoint);
+      const res = await fetch(proxyUrl);
       const json = await res.json();
-      setStickers(
-        (json.data || []).map((g: any) => ({
-          id: g.id,
-          url: g.images.original.url,
-          preview: g.images.fixed_width_small.url,
-        }))
-      );
+      const results = (json.data || []).map((g: any) => ({
+        id: g.id,
+        url: g.url,
+        preview: g.preview,
+      }));
+      setCachedGiphy(cacheKey, results);
+      setStickers(results);
     } catch {
       setStickers([]);
     }

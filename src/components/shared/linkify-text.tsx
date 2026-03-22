@@ -56,17 +56,17 @@ function LinkPreviewCard({ url }: { url: string }) {
       onClick={(e) => e.stopPropagation()}
     >
       {preview.image && (
-        <div className="w-full h-40 bg-[var(--accent)] overflow-hidden">
+        <div className="w-full h-48 sm:h-72 bg-[var(--accent)] overflow-hidden">
           <img
             src={preview.image}
             alt=""
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
         </div>
       )}
-      <div className="px-3 py-2.5 bg-[var(--accent)]">
-        <p className="text-sm font-semibold truncate">{preview.title}</p>
+      <div className="px-3 py-2.5 border-t border-[var(--border)] bg-[var(--card)]">
+        <p className="text-sm font-semibold text-[var(--foreground)]">{preview.title}</p>
         {preview.description && (
           <p className="text-xs text-[var(--muted-foreground)] mt-0.5 line-clamp-2">{preview.description}</p>
         )}
@@ -79,7 +79,7 @@ function LinkPreviewCard({ url }: { url: string }) {
   );
 }
 
-export function LinkifyText({ text, className }: { text: string; className?: string }) {
+export function LinkifyText({ text, className, hidePreview }: { text: string; className?: string; hidePreview?: boolean }) {
   const parts = text.split(URL_REGEX);
   const urls = text.match(URL_REGEX) || [];
 
@@ -103,7 +103,13 @@ export function LinkifyText({ text, className }: { text: string; className?: str
           )
         )}
       </p>
-      {urls.length > 0 && urls[0] && <LinkPreviewCard url={urls[0]} />}
+      {!hidePreview && urls.length > 0 && urls[0] && <LinkPreviewCard url={urls[0]} />}
     </div>
   );
+}
+
+export function LinkPreviewFromText({ text }: { text: string }) {
+  const urls = text.match(URL_REGEX) || [];
+  if (urls.length === 0 || !urls[0]) return null;
+  return <LinkPreviewCard url={urls[0]} />;
 }

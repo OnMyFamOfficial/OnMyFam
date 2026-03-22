@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus, X, UserPlus } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
@@ -8,20 +8,90 @@ import { EVENT_CATEGORIES } from "@/lib/constants";
 import { CalendarPicker } from "@/components/shared/calendar-picker";
 import { format } from "date-fns";
 
+function TimePicker({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  // Parse "HH:mm" 24h value into hour/minute/period
+  let hour = "";
+  let minute = "";
+  let period = "AM";
+  if (value) {
+    const [h, m] = value.split(":");
+    const h24 = parseInt(h);
+    period = h24 >= 12 ? "PM" : "AM";
+    hour = String(h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24);
+    minute = m;
+  }
+
+  function update(newHour: string, newMinute: string, newPeriod: string) {
+    if (!newHour || !newMinute) {
+      onChange("");
+      return;
+    }
+    let h24 = parseInt(newHour);
+    if (newPeriod === "AM" && h24 === 12) h24 = 0;
+    else if (newPeriod === "PM" && h24 !== 12) h24 += 12;
+    onChange(`${String(h24).padStart(2, "0")}:${newMinute}`);
+  }
+
+  const selectClass = "rounded-lg border border-gold-500/40 bg-[var(--background)] px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50 cursor-pointer appearance-none text-center";
+
+  return (
+    <div className="flex flex-col items-center gap-2 pt-1">
+      <span className="text-xs font-medium text-gold-500">Time</span>
+      <div className="flex items-center gap-1.5 bg-[var(--accent)] rounded-xl px-3 py-2.5 border border-[var(--border)]">
+        <select
+          value={hour}
+          onChange={(e) => update(e.target.value, minute || "00", period)}
+          className={selectClass}
+          style={{ width: "52px" }}
+        >
+          <option value="">--</option>
+          {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+            <option key={h} value={String(h)}>{h}</option>
+          ))}
+        </select>
+        <span className="text-lg font-bold text-gold-500">:</span>
+        <select
+          value={minute}
+          onChange={(e) => update(hour || "12", e.target.value, period)}
+          className={selectClass}
+          style={{ width: "52px" }}
+        >
+          <option value="">--</option>
+          {["00", "15", "30", "45"].map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+        <select
+          value={period}
+          onChange={(e) => update(hour || "12", minute || "00", e.target.value)}
+          className={`${selectClass} font-semibold`}
+          style={{ width: "58px" }}
+        >
+          <option value="AM">AM</option>
+          <option value="PM">PM</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+
 export default function EventCreatePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { currentFamily } = useFamily();
+  const { currentFamily, members } = useFamily();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: "",
     description: "",
     category: "other" as string,
     location: "",
+    address: "",
     start_time: "",
     end_time: "",
     is_all_day: false,
   });
+  const [hosts, setHosts] = useState<string[]>([]);
+  const [showHostPicker, setShowHostPicker] = useState(false);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -84,6 +154,8 @@ export default function EventCreatePage() {
         description: form.description.trim() || null,
         category: form.category,
         location: form.location.trim() || null,
+        address: form.address.trim() || null,
+        hosted_by: hosts.length > 0 ? hosts : [],
         cover_url: coverUrl,
         starts_at: startsAt,
         ends_at: endsAt,
@@ -202,6 +274,79 @@ export default function EventCreatePage() {
           </div>
         </div>
 
+        {/* Address */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Address</label>
+          <input
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+            placeholder="123 Main St, City, State 12345"
+          />
+        </div>
+
+        {/* Hosted By */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Hosted By</label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {hosts.map((hostId) => {
+              const member = members.find((m) => m.user_id === hostId);
+              return (
+                <div key={hostId} className="flex items-center gap-1.5 bg-gold-500/10 border border-gold-500/30 rounded-full px-2.5 py-1">
+                  <div className="w-5 h-5 rounded-full bg-gold-500/20 overflow-hidden flex items-center justify-center flex-shrink-0">
+                    {member?.profile?.avatar_url ? (
+                      <img src={member.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-[9px] font-medium text-gold-500">{member?.profile?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                    )}
+                  </div>
+                  <span className="text-xs font-medium">{member?.profile?.display_name || "Unknown"}</span>
+                  <button
+                    type="button"
+                    onClick={() => setHosts(hosts.filter((h) => h !== hostId))}
+                    className="text-[var(--muted-foreground)] hover:text-red-400 transition-colors cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setShowHostPicker(!showHostPicker)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-dashed border-[var(--border)] text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-gold-500/50 transition-colors cursor-pointer"
+            >
+              <UserPlus className="w-3 h-3" /> Add host
+            </button>
+          </div>
+          {showHostPicker && (
+            <div className="bg-[var(--background)] border border-[var(--border)] rounded-lg p-2 max-h-40 overflow-y-auto space-y-1">
+              {members
+                .filter((m) => !hosts.includes(m.user_id))
+                .map((m) => (
+                  <button
+                    type="button"
+                    key={m.user_id}
+                    onClick={() => { setHosts([...hosts, m.user_id]); setShowHostPicker(false); }}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-gold-500/20 overflow-hidden flex items-center justify-center flex-shrink-0">
+                      {m.profile?.avatar_url ? (
+                        <img src={m.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-[9px] font-medium text-gold-500">{m.profile?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                      )}
+                    </div>
+                    <span className="text-sm">{m.profile?.display_name}</span>
+                  </button>
+                ))}
+              {members.filter((m) => !hosts.includes(m.user_id)).length === 0 && (
+                <p className="text-xs text-[var(--muted-foreground)] text-center py-2">All members added</p>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* All day toggle */}
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input
@@ -214,42 +359,38 @@ export default function EventCreatePage() {
         </label>
 
         {/* Date pickers */}
-        <div className="flex flex-col sm:flex-row gap-6">
+        <div className="space-y-6">
+          {/* Start date + time */}
           <div>
             <label className="block text-sm font-medium mb-2">
               Start Date *
               {startDate && <span className="ml-2 text-gold-500 font-normal">{format(startDate, "MMM d, yyyy")}</span>}
             </label>
-            <CalendarPicker selected={startDate} onSelect={setStartDate} />
-            {!form.is_all_day && (
-              <div className="mt-2">
-                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Time</label>
-                <input
-                  type="time"
+            <div className="flex items-start gap-4">
+              <CalendarPicker selected={startDate} onSelect={setStartDate} rangeStart={startDate} rangeEnd={endDate} />
+              {!form.is_all_day && (
+                <TimePicker
                   value={form.start_time}
-                  onChange={(e) => setForm({ ...form, start_time: e.target.value })}
-                  className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-gold-500"
+                  onChange={(val) => setForm({ ...form, start_time: val })}
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
+          {/* End date + time */}
           <div>
             <label className="block text-sm font-medium mb-2">
               End Date
               {endDate && <span className="ml-2 text-gold-500 font-normal">{format(endDate, "MMM d, yyyy")}</span>}
             </label>
-            <CalendarPicker selected={endDate} onSelect={setEndDate} />
-            {!form.is_all_day && (
-              <div className="mt-2">
-                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Time</label>
-                <input
-                  type="time"
+            <div className="flex items-start gap-4">
+              <CalendarPicker selected={endDate} onSelect={setEndDate} rangeStart={startDate} rangeEnd={endDate} />
+              {!form.is_all_day && (
+                <TimePicker
                   value={form.end_time}
-                  onChange={(e) => setForm({ ...form, end_time: e.target.value })}
-                  className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-gold-500"
+                  onChange={(val) => setForm({ ...form, end_time: val })}
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 

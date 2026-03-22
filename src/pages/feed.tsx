@@ -26,7 +26,7 @@ import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { uploadPostMedia } from "@/services/storage";
 import { sanitizeForStorage, validateMediaFile } from "@/lib/sanitize";
-import { LinkifyText } from "@/components/shared/linkify-text";
+import { LinkifyText, LinkPreviewFromText } from "@/components/shared/linkify-text";
 import { useRef as useRefFold, useState as useStateFold } from "react";
 
 function FoldableContent({ text, lines = 4 }: { text: string; lines?: number }) {
@@ -41,7 +41,7 @@ function FoldableContent({ text, lines = 4 }: { text: string; lines?: number }) 
   return (
     <div>
       <div ref={contentRef} style={folded ? { display: "-webkit-box", WebkitLineClamp: lines, WebkitBoxOrient: "vertical", overflow: "hidden" } : undefined}>
-        <LinkifyText text={text} className="text-sm whitespace-pre-wrap" />
+        <LinkifyText text={text} className="text-sm whitespace-pre-wrap" hidePreview />
       </div>
       <button
         onClick={(e) => {
@@ -60,6 +60,7 @@ function FoldableContent({ text, lines = 4 }: { text: string; lines?: number }) 
       >
         {folded ? "Unfold" : "Fold"}
       </button>
+      <LinkPreviewFromText text={text} />
     </div>
   );
 }

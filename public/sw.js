@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omf-v1';
+const CACHE_NAME = 'omf-v2';
 const STATIC_ASSETS = [
   '/',
   '/feed',
@@ -52,10 +52,11 @@ self.addEventListener('notificationclick', (event) => {
 
 // Fetch: network first, fall back to cache
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET and API/Supabase requests
+  // Skip non-GET, API, and Supabase requests
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.hostname.includes('supabase')) return;
+  if (url.pathname.startsWith('/api/')) return;
 
   event.respondWith(
     fetch(event.request)

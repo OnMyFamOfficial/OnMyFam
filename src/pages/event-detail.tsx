@@ -1,27 +1,87 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Calendar, MapPin, Users, Send, Pencil, Save, X } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, Send, Pencil, Save, X, Trash2, Navigation, UserCheck, ImagePlus, UserPlus } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { EVENT_CATEGORIES } from "@/lib/constants";
+import { CalendarPicker } from "@/components/shared/calendar-picker";
 import { format, formatDistanceToNow } from "date-fns";
 import type { FamilyEvent, EventRsvp, EventChatMessage, Profile } from "@/lib/types";
 
 type FullEvent = FamilyEvent & {
   creator: Profile;
   rsvps: (EventRsvp & { user: Profile })[];
+  hosts?: Profile[];
 };
+
+function TimePicker({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  let hour = "";
+  let minute = "";
+  let period = "AM";
+  if (value) {
+    const [h, m] = value.split(":");
+    const h24 = parseInt(h);
+    period = h24 >= 12 ? "PM" : "AM";
+    hour = String(h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24);
+    minute = m;
+  }
+  function update(newHour: string, newMinute: string, newPeriod: string) {
+    if (!newHour || !newMinute) { onChange(""); return; }
+    let h24 = parseInt(newHour);
+    if (newPeriod === "AM" && h24 === 12) h24 = 0;
+    else if (newPeriod === "PM" && h24 !== 12) h24 += 12;
+    onChange(`${String(h24).padStart(2, "0")}:${newMinute}`);
+  }
+  const sc = "rounded-lg border border-gold-500/40 bg-[var(--background)] px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50 cursor-pointer appearance-none text-center";
+  return (
+    <div className="flex flex-col items-center gap-2 pt-1">
+      <span className="text-xs font-medium text-gold-500">Time</span>
+      <div className="flex items-center gap-1.5 bg-[var(--accent)] rounded-xl px-3 py-2.5 border border-[var(--border)]">
+        <select value={hour} onChange={(e) => update(e.target.value, minute || "00", period)} className={sc} style={{ width: "52px" }}>
+          <option value="">--</option>
+          {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (<option key={h} value={String(h)}>{h}</option>))}
+        </select>
+        <span className="text-lg font-bold text-gold-500">:</span>
+        <select value={minute} onChange={(e) => update(hour || "12", e.target.value, period)} className={sc} style={{ width: "52px" }}>
+          <option value="">--</option>
+          {["00", "15", "30", "45"].map((m) => (<option key={m} value={m}>{m}</option>))}
+        </select>
+        <select value={period} onChange={(e) => update(hour || "12", minute || "00", e.target.value)} className={`${sc} font-semibold`} style={{ width: "58px" }}>
+          <option value="AM">AM</option>
+          <option value="PM">PM</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function dateToTimeString(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { members } = useFamily();
   const [event, setEvent] = useState<FullEvent | null>(null);
   const [messages, setMessages] = useState<(EventChatMessage & { user: Profile })[]>([]);
   const [chatText, setChatText] = useState("");
   const [editing, setEditing] = useState(searchParams.get("edit") === "true");
-  const [editForm, setEditForm] = useState({ title: "", description: "", location: "", category: "" });
+  const [editForm, setEditForm] = useState({ title: "", description: "", location: "", address: "", category: "" });
+  const [editStartDate, setEditStartDate] = useState<Date | null>(null);
+  const [editEndDate, setEditEndDate] = useState<Date | null>(null);
+  const [editStartTime, setEditStartTime] = useState("");
+  const [editEndTime, setEditEndTime] = useState("");
+  const [editAllDay, setEditAllDay] = useState(false);
+  const [editHosts, setEditHosts] = useState<string[]>([]);
+  const [showEditHostPicker, setShowEditHostPicker] = useState(false);
+  const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
+  const [editCoverPreview, setEditCoverPreview] = useState<string | null>(null);
+  const editCoverRef = useRef<HTMLInputElement>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -75,6 +135,7 @@ export default function EventDetailPage() {
     const userIds = new Set<string>();
     userIds.add(eventData.created_by);
     for (const r of rsvpData || []) userIds.add(r.user_id);
+    for (const hid of eventData.hosted_by || []) userIds.add(hid);
 
     // Fetch profiles
     const { data: profiles } = await supabase
@@ -92,24 +153,67 @@ export default function EventDetailPage() {
         ...r,
         user: profileMap.get(r.user_id) || { display_name: "Unknown" },
       })),
+      hosts: (eventData.hosted_by || []).map((hid: string) => profileMap.get(hid)).filter(Boolean) as Profile[],
     } as FullEvent);
     setEditForm({
       title: eventData.title || "",
       description: eventData.description || "",
       location: eventData.location || "",
+      address: eventData.address || "",
       category: eventData.category || "other",
     });
+    setEditStartDate(new Date(eventData.starts_at));
+    setEditEndDate(eventData.ends_at ? new Date(eventData.ends_at) : null);
+    setEditStartTime(eventData.is_all_day ? "" : dateToTimeString(eventData.starts_at));
+    setEditEndTime(eventData.ends_at && !eventData.is_all_day ? dateToTimeString(eventData.ends_at) : "");
+    setEditAllDay(eventData.is_all_day);
+    setEditHosts(eventData.hosted_by || []);
+    setEditCoverPreview(null);
+    setEditCoverFile(null);
     setLoading(false);
   }
 
   async function handleEditSave() {
-    if (!id || !editForm.title.trim()) return;
+    if (!id || !editForm.title.trim() || !editStartDate) return;
     setEditSaving(true);
+
+    // Upload new cover if changed
+    let coverUrl = event?.cover_url || null;
+    if (editCoverFile && user) {
+      const ext = editCoverFile.name.split(".").pop();
+      const path = `events/${user.id}/${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("events").upload(path, editCoverFile);
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage.from("events").getPublicUrl(path);
+        coverUrl = urlData.publicUrl;
+      }
+    }
+
+    // Build dates
+    const startDateStr = format(editStartDate, "yyyy-MM-dd");
+    const startsAt = editAllDay || !editStartTime
+      ? new Date(`${startDateStr}T12:00:00`).toISOString()
+      : new Date(`${startDateStr}T${editStartTime}`).toISOString();
+
+    let endsAt: string | null = null;
+    if (editEndDate) {
+      const endDateStr = format(editEndDate, "yyyy-MM-dd");
+      endsAt = editAllDay || !editEndTime
+        ? new Date(`${endDateStr}T12:00:00`).toISOString()
+        : new Date(`${endDateStr}T${editEndTime}`).toISOString();
+    }
+
     await supabase.from("events").update({
       title: editForm.title.trim(),
       description: editForm.description.trim() || null,
       location: editForm.location.trim() || null,
+      address: editForm.address.trim() || null,
       category: editForm.category,
+      cover_url: coverUrl,
+      starts_at: startsAt,
+      ends_at: endsAt,
+      is_all_day: editAllDay,
+      hosted_by: editHosts,
     }).eq("id", id);
     await loadEvent();
     setEditing(false);
@@ -173,6 +277,13 @@ export default function EventDetailPage() {
     setChatText("");
   }
 
+  async function handleCancelEvent() {
+    if (!id || !user) return;
+    if (!confirm("Are you sure you want to cancel this event? This cannot be undone.")) return;
+    await supabase.from("events").delete().eq("id", id).eq("created_by", user.id);
+    navigate("/events");
+  }
+
   if (loading) {
     return (
       <div className="text-center py-16 text-[var(--muted-foreground)]">
@@ -219,7 +330,28 @@ export default function EventDetailPage() {
         )}
         <div className="p-6">
           {editing ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* Cover image edit */}
+              <div>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Cover Image</label>
+                {(editCoverPreview || event?.cover_url) ? (
+                  <div className="relative rounded-lg overflow-hidden">
+                    <img src={editCoverPreview || event?.cover_url || ""} alt="Cover" className="w-full h-32 object-cover rounded-lg" />
+                    <div className="absolute top-2 right-2 flex gap-1">
+                      <button type="button" onClick={() => editCoverRef.current?.click()} className="p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors cursor-pointer">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => editCoverRef.current?.click()} className="w-full h-24 rounded-lg border-2 border-dashed border-[var(--border)] hover:border-gold-500/50 flex flex-col items-center justify-center gap-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer">
+                    <ImagePlus className="w-5 h-5" />
+                    <span className="text-xs">Add cover image</span>
+                  </button>
+                )}
+                <input ref={editCoverRef} type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setEditCoverFile(f); setEditCoverPreview(URL.createObjectURL(f)); } }} className="hidden" />
+              </div>
+
               <div>
                 <label className="block text-xs text-[var(--muted-foreground)] mb-1">Title *</label>
                 <input
@@ -259,8 +391,88 @@ export default function EventDetailPage() {
                   />
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button onClick={handleEditSave} disabled={editSaving || !editForm.title.trim()} className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 cursor-pointer flex items-center gap-1">
+              <div>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Address</label>
+                <input
+                  value={editForm.address}
+                  onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                  className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                  placeholder="123 Main St, City, State 12345"
+                />
+              </div>
+
+              {/* Hosted By */}
+              <div>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Hosted By</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {editHosts.map((hostId) => {
+                    const member = members.find((m) => m.user_id === hostId);
+                    return (
+                      <div key={hostId} className="flex items-center gap-1.5 bg-gold-500/10 border border-gold-500/30 rounded-full px-2.5 py-1">
+                        <div className="w-5 h-5 rounded-full bg-gold-500/20 overflow-hidden flex items-center justify-center flex-shrink-0">
+                          {member?.profile?.avatar_url ? (
+                            <img src={member.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[9px] font-medium text-gold-500">{member?.profile?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                          )}
+                        </div>
+                        <span className="text-xs font-medium">{member?.profile?.display_name || "Unknown"}</span>
+                        <button type="button" onClick={() => setEditHosts(editHosts.filter((h) => h !== hostId))} className="text-[var(--muted-foreground)] hover:text-red-400 transition-colors cursor-pointer">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  <button type="button" onClick={() => setShowEditHostPicker(!showEditHostPicker)} className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-dashed border-[var(--border)] text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-gold-500/50 transition-colors cursor-pointer">
+                    <UserPlus className="w-3 h-3" /> Add host
+                  </button>
+                </div>
+                {showEditHostPicker && (
+                  <div className="bg-[var(--background)] border border-[var(--border)] rounded-lg p-2 max-h-40 overflow-y-auto space-y-1">
+                    {members.filter((m) => !editHosts.includes(m.user_id)).map((m) => (
+                      <button type="button" key={m.user_id} onClick={() => { setEditHosts([...editHosts, m.user_id]); setShowEditHostPicker(false); }} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer text-left">
+                        <div className="w-6 h-6 rounded-full bg-gold-500/20 overflow-hidden flex items-center justify-center flex-shrink-0">
+                          {m.profile?.avatar_url ? (<img src={m.profile.avatar_url} alt="" className="w-full h-full object-cover" />) : (<span className="text-[9px] font-medium text-gold-500">{m.profile?.display_name?.charAt(0).toUpperCase() || "?"}</span>)}
+                        </div>
+                        <span className="text-sm">{m.profile?.display_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* All day toggle */}
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={editAllDay} onChange={(e) => setEditAllDay(e.target.checked)} className="rounded border-[var(--input)] accent-gold-500" />
+                All day event
+              </label>
+
+              {/* Date pickers */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs text-[var(--muted-foreground)] mb-1">
+                    Start Date *
+                    {editStartDate && <span className="ml-2 text-gold-500">{format(editStartDate, "MMM d, yyyy")}</span>}
+                  </label>
+                  <div className="flex items-start gap-4">
+                    <CalendarPicker selected={editStartDate} onSelect={setEditStartDate} rangeStart={editStartDate} rangeEnd={editEndDate} />
+                    {!editAllDay && <TimePicker value={editStartTime} onChange={setEditStartTime} />}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--muted-foreground)] mb-1">
+                    End Date
+                    {editEndDate && <span className="ml-2 text-gold-500">{format(editEndDate, "MMM d, yyyy")}</span>}
+                  </label>
+                  <div className="flex items-start gap-4">
+                    <CalendarPicker selected={editEndDate} onSelect={setEditEndDate} rangeStart={editStartDate} rangeEnd={editEndDate} />
+                    {!editAllDay && <TimePicker value={editEndTime} onChange={setEditEndTime} />}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button onClick={handleEditSave} disabled={editSaving || !editForm.title.trim() || !editStartDate} className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 cursor-pointer flex items-center gap-1">
                   <Save className="w-3.5 h-3.5" /> {editSaving ? "Saving..." : "Save"}
                 </button>
                 <button onClick={() => setEditing(false)} className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] cursor-pointer flex items-center gap-1">
@@ -271,16 +483,45 @@ export default function EventDetailPage() {
           ) : (
             <>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium uppercase text-gold-500 px-2 py-0.5 bg-gold-500/10 rounded-full">
-                  {event.category}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase text-gold-500 px-2 py-0.5 bg-gold-500/10 rounded-full">
+                    {event.category}
+                  </span>
+                  {(() => {
+                    const now = new Date();
+                    const start = new Date(event.starts_at);
+                    const end = event.ends_at ? new Date(event.ends_at) : null;
+                    const isOngoing = start <= now && end && end >= now;
+                    const isPast = end ? end < now : start < now;
+                    const status = event.status === "cancelled" ? "cancelled" : isOngoing ? "ongoing" : isPast ? "past" : "upcoming";
+                    const styles = {
+                      upcoming: "bg-sky-500/15 text-sky-400",
+                      ongoing: "bg-green-500/15 text-green-400",
+                      past: "bg-[var(--accent)] text-[var(--muted-foreground)]",
+                      cancelled: "bg-red-500/15 text-red-400",
+                    };
+                    return (
+                      <span className={`text-xs font-medium uppercase px-2 py-0.5 rounded-full ${styles[status]}`}>
+                        {status}
+                      </span>
+                    );
+                  })()}
+                </div>
                 {event.created_by === user?.id && (
-                  <button
-                    onClick={() => setEditing(true)}
-                    className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)] transition-colors cursor-pointer flex items-center gap-1"
-                  >
-                    <Pencil className="w-3.5 h-3.5" /> Edit
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setEditing(true)}
+                      className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--muted-foreground)] transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Pencil className="w-3.5 h-3.5" /> Edit
+                    </button>
+                    <button
+                      onClick={handleCancelEvent}
+                      className="px-3 py-1.5 rounded-lg border border-red-500/30 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/50 transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Cancel Event
+                    </button>
+                  </div>
                 )}
               </div>
               <h1 className="mt-2 text-2xl font-bold">{event.title}</h1>
@@ -311,6 +552,33 @@ export default function EventDetailPage() {
                 <MapPin className="w-4 h-4" />
                 {event.location}
               </p>
+            )}
+            {event.address && (
+              <p className="flex items-center gap-2">
+                <Navigation className="w-4 h-4" />
+                {event.address}
+              </p>
+            )}
+            {event.hosts && event.hosts.length > 0 && (
+              <div className="flex items-center gap-2">
+                <UserCheck className="w-4 h-4 flex-shrink-0" />
+                <span>Hosted by </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {event.hosts.map((host, i) => (
+                    <span key={host.id} className="inline-flex items-center gap-1">
+                      <div className="w-5 h-5 rounded-full bg-gold-500/20 overflow-hidden flex items-center justify-center flex-shrink-0">
+                        {host.avatar_url ? (
+                          <img src={host.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-[8px] font-medium text-gold-500">{host.display_name?.charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <span className="font-medium text-[var(--foreground)]">{host.display_name}</span>
+                      {i < event.hosts!.length - 1 && <span>,</span>}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
             <p className="flex items-center gap-2">
               <Users className="w-4 h-4" />

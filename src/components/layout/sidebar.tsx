@@ -17,11 +17,13 @@ import {
   Search,
   Sun,
   Moon,
+  Heart,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTheme } from "@/components/shared/theme-provider";
 import { useChat } from "@/components/chat/chat-provider";
 import { useFamily } from "@/lib/hooks/use-family";
+import { DonateModal } from "@/components/shared/donate-modal";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -48,6 +50,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const { totalUnread } = useChat();
   const { families, currentFamily, setCurrentFamily } = useFamily();
   const [showFamilySwitcher, setShowFamilySwitcher] = useState(false);
+  const [showDonate, setShowDonate] = useState(false);
 
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
@@ -274,6 +277,28 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </button>
           )}
 
+          {/* Donate */}
+          <button
+            onClick={() => setShowDonate(true)}
+            className={cn(
+              "w-full flex items-center py-2 rounded-lg text-left transition-all group relative whitespace-nowrap cursor-pointer hover:brightness-105 hover:shadow-lg",
+              collapsed ? "justify-center px-2" : "space-x-3 px-3"
+            )}
+            style={{
+              background: "linear-gradient(135deg, #f8e8a0, #f5b8d0, #c8b8f5, #a0e8f0, #b0f0c8, #f5b8d0)",
+              color: "#2e303f",
+            }}
+            title={collapsed ? "Donate" : undefined}
+          >
+            <Heart className="w-5 h-5 flex-shrink-0" />
+            {!collapsed && <span className="font-medium">Donate</span>}
+            {collapsed && (
+              <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--card)] text-gold-500 text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 border border-[var(--border)]">
+                Donate
+              </div>
+            )}
+          </button>
+
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
@@ -303,6 +328,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </button>
         </div>
       </aside>
+
+      <DonateModal open={showDonate} onClose={() => setShowDonate(false)} />
     </>
   );
 }

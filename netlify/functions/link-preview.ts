@@ -64,7 +64,7 @@ export default async (req: Request, context: Context) => {
     return new Response(JSON.stringify({
       title: title || domain,
       description: description || null,
-      image: finalImage || null,
+      image: absoluteImage || null,
       site_name: siteName || domain,
       domain,
     }), {
