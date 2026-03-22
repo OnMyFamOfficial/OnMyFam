@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { X, Heart, DollarSign, ExternalLink } from "lucide-react";
+import { X, Heart, DollarSign, ExternalLink, Diamond } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CryptoDonationModal } from "./crypto-donation-modal";
+import { PAYPAL_EMAIL, CASHAPP_TAG } from "@/config/wallets";
 
 const AMOUNTS = [5, 10, 25, 50, 100];
 
@@ -12,15 +14,16 @@ interface DonateModalProps {
 export function DonateModal({ open, onClose }: DonateModalProps) {
   const [amount, setAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
-  const [method, setMethod] = useState<"paypal" | "cashapp" | null>(null);
+  const [method, setMethod] = useState<"paypal" | "cashapp" | "crypto" | null>(null);
+  const [showCrypto, setShowCrypto] = useState(false);
 
   if (!open) return null;
 
-  const selectedAmount = amount || (customAmount ? parseFloat(customAmount) : null);
+  const selectedAmount = amount || (customAmount ? parseFloat(customAmount) : 0);
 
   function getPayPalUrl() {
     const params = new URLSearchParams({
-      business: "jason.t.wiggins@outlook.com",
+      business: PAYPAL_EMAIL,
       item_name: "On My Fam Donation",
       currency_code: "USD",
       cmd: "_donations",
@@ -30,7 +33,7 @@ export function DonateModal({ open, onClose }: DonateModalProps) {
   }
 
   function getCashAppUrl() {
-    const base = "https://cash.app/$oooJASONooo";
+    const base = `https://cash.app/${CASHAPP_TAG}`;
     return selectedAmount ? `${base}/${selectedAmount}` : base;
   }
 
@@ -39,6 +42,8 @@ export function DonateModal({ open, onClose }: DonateModalProps) {
       window.open(getPayPalUrl(), "_blank");
     } else if (method === "cashapp") {
       window.open(getCashAppUrl(), "_blank");
+    } else if (method === "crypto") {
+      setShowCrypto(true);
     }
   }
 
@@ -105,7 +110,7 @@ export function DonateModal({ open, onClose }: DonateModalProps) {
         {/* Payment method */}
         <div className="px-6 pb-4">
           <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-2">Payment method</label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => setMethod("paypal")}
               className={cn(
@@ -116,7 +121,7 @@ export function DonateModal({ open, onClose }: DonateModalProps) {
               )}
             >
               <span className="text-lg font-bold" style={{ color: "#0070ba" }}>P</span>
-              <span className="text-xs font-medium">PayPal</span>
+              <span className="text-[10px] font-medium">PayPal</span>
             </button>
             <button
               onClick={() => setMethod("cashapp")}
@@ -128,7 +133,19 @@ export function DonateModal({ open, onClose }: DonateModalProps) {
               )}
             >
               <span className="text-lg font-bold" style={{ color: "#00d632" }}>$</span>
-              <span className="text-xs font-medium">Cash App</span>
+              <span className="text-[10px] font-medium">Cash App</span>
+            </button>
+            <button
+              onClick={() => setMethod("crypto")}
+              className={cn(
+                "flex flex-col items-center gap-1.5 py-3 rounded-xl border transition-colors cursor-pointer",
+                method === "crypto"
+                  ? "border-purple-500 bg-purple-500/10"
+                  : "border-[var(--border)] hover:border-purple-500/50"
+              )}
+            >
+              <Diamond className="w-5 h-5 text-purple-400" />
+              <span className="text-[10px] font-medium">Crypto</span>
             </button>
           </div>
         </div>
@@ -148,10 +165,16 @@ export function DonateModal({ open, onClose }: DonateModalProps) {
             {selectedAmount ? `Donate $${selectedAmount}` : "Donate"}
           </button>
           <p className="text-[10px] text-[var(--muted-foreground)] text-center mt-2">
-            You'll be redirected to {method === "cashapp" ? "Cash App" : method === "paypal" ? "PayPal" : "your chosen payment method"} to complete your donation.
+            {method === "crypto" ? "You'll see wallet addresses to send crypto to." : `You'll be redirected to ${method === "cashapp" ? "Cash App" : method === "paypal" ? "PayPal" : "your chosen payment method"} to complete your donation.`}
           </p>
         </div>
       </div>
+
+      <CryptoDonationModal
+        isOpen={showCrypto}
+        onClose={() => setShowCrypto(false)}
+        selectedAmount={selectedAmount}
+      />
     </>
   );
 }
