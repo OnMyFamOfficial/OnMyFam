@@ -36,7 +36,7 @@ export interface ConversationWithDetails extends Conversation {
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isGodMode } = useAuth();
   const { currentFamily } = useFamily();
   const [conversations, setConversations] = useState<ConversationWithDetails[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
@@ -66,18 +66,33 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Get conversation IDs where user is a participant
-    const { data: myParticipations } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", user.id);
+    let convoIds: string[];
 
-    if (!myParticipations || myParticipations.length === 0) {
+    if (isGodMode) {
+      // God Mode: load ALL conversations for the family
+      const { data: allConvos } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("family_id", currentFamily.id);
+      convoIds = (allConvos || []).map((c) => c.id);
+    } else {
+      // Normal: only conversations user participates in
+      const { data: myParticipations } = await supabase
+        .from("conversation_participants")
+        .select("conversation_id")
+        .eq("user_id", user.id);
+
+      if (!myParticipations || myParticipations.length === 0) {
+        setConversations([]);
+        return;
+      }
+      convoIds = myParticipations.map((p) => p.conversation_id);
+    }
+
+    if (convoIds.length === 0) {
       setConversations([]);
       return;
     }
-
-    const convoIds = myParticipations.map((p) => p.conversation_id);
 
     // Get conversations with participants and profiles
     const { data: convos } = await supabase
