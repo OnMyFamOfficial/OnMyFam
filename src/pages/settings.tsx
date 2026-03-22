@@ -1,9 +1,38 @@
+import { useState } from "react";
 import { useTheme } from "@/components/shared/theme-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { supabase } from "@/lib/supabase";
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
   const { profile } = useAuth();
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwStatus, setPwStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [pwSaving, setPwSaving] = useState(false);
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwStatus(null);
+    if (newPassword.length < 6) {
+      setPwStatus({ type: "error", message: "New password must be at least 6 characters" });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwStatus({ type: "error", message: "New passwords do not match" });
+      return;
+    }
+    setPwSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setPwStatus({ type: "error", message: error.message });
+    } else {
+      setPwStatus({ type: "success", message: "Password changed successfully" });
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+    setPwSaving(false);
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -44,6 +73,49 @@ export default function SettingsPage() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Change Password */}
+      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-6">
+        <h2 className="text-lg font-semibold mb-4">Change Password</h2>
+        <form onSubmit={handleChangePassword} className="space-y-3 max-w-sm">
+          {pwStatus && (
+            <div className={`px-3 py-2 rounded-lg text-sm ${pwStatus.type === "success" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+              {pwStatus.message}
+            </div>
+          )}
+          <div>
+            <label className="block text-sm text-[var(--muted-foreground)] mb-1">New Password</label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+              placeholder="Enter new password"
+              required
+              minLength={6}
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-[var(--muted-foreground)] mb-1">Confirm New Password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+              placeholder="Confirm new password"
+              required
+              minLength={6}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={pwSaving || !newPassword || !confirmPassword}
+            className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            {pwSaving ? "Changing..." : "Change Password"}
+          </button>
+        </form>
       </div>
 
       {/* Notifications placeholder */}
