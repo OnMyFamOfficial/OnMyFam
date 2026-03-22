@@ -356,7 +356,7 @@ export default function ProfilePage() {
 
   const displayAvatar = avatarPreview || profile?.avatar_url;
   const displayCover =
-    coverPreview || (profile as any)?.cover_url || null;
+    coverPreview || profile?.cover_url || null;
 
   if (loadingProfile) {
     return <div className="flex items-center justify-center h-64 text-[var(--muted-foreground)]">Loading profile...</div>;

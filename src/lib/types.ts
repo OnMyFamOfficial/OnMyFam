@@ -43,6 +43,7 @@ export interface Profile {
   id: string;
   display_name: string;
   avatar_url: string | null;
+  cover_url: string | null;
   bio: string | null;
   date_of_birth: string | null;
   phone: string | null;
