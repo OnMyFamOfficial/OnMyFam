@@ -641,7 +641,7 @@ export default function FeedPage() {
 
       {/* Right: Feed content */}
       <div className="flex-1 min-w-0 p-4 lg:p-6 lg:overflow-y-auto lg:h-[calc(100vh-4rem)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="max-w-2xl space-y-6" style={{ marginLeft: "calc(50vw - 336px - 210px - 256px)" }}>
+      <div className="max-w-2xl space-y-6" style={{ marginLeft: "calc(50vw - 336px - 210px - 256px + 5vw)" }}>
       {/* Composer trigger bar + inline modal */}
       <div className="relative">
         <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
@@ -1901,7 +1901,7 @@ export default function FeedPage() {
               </div>
             ) : (
               /* ---- Single column layout: Comments or text-only post ---- */
-              <div className="fixed z-[70] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden" style={{ height: "100vh", maxHeight: "100vh" }}>
+              <div className="fixed z-[70] top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden" style={{ height: "100vh", maxHeight: "100vh", left: "calc(50% + 2.5vw)" }}>
                 {commentsPanel}
               </div>
             )}
