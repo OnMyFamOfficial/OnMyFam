@@ -442,17 +442,7 @@ function ConversationsTab() {
     setLoading(true);
     const { data } = await supabase.rpc("admin_list_conversations");
     if (data) {
-      const convos = data as Record<string, unknown>[];
-      const withParticipants = await Promise.all(
-        convos.map(async (c) => {
-          const { data: parts } = await supabase
-            .from("conversation_participants")
-            .select("user_id, profile:profiles(*)")
-            .eq("conversation_id", c.id as string);
-          return { ...c, participants: (parts || []) as unknown as { user_id: string; profile: Profile }[] };
-        })
-      );
-      setConversations(withParticipants as typeof conversations);
+      setConversations((data as any[]).map(c => ({ ...c, participants: [] })) as typeof conversations);
     }
     setLoading(false);
   }
@@ -508,7 +498,7 @@ function ConversationsTab() {
                   </span>
                 </div>
                 <p className="text-xs text-[var(--muted-foreground)] truncate">
-                  {c.last_message_preview || "No messages"} | {c.participants?.length || 0} participants
+                  {c.last_message_preview || "No messages"} | {(c as any).participant_count || 0} participants
                 </p>
                 {c.last_message_at && (
                   <p className="text-[10px] text-[var(--muted-foreground)]">
