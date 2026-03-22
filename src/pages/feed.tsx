@@ -119,7 +119,7 @@ export default function FeedPage() {
   const [collapsedReplies, setCollapsedReplies] = useState<Set<string>>(new Set());
   const [filterByMembers, setFilterByMembers] = useState<Set<string>>(new Set());
   const [memberFilterSearch, setMemberFilterSearch] = useState("");
-  const [collapsedFamilies, setCollapsedFamilies] = useState<Set<string>>(new Set());
+  const [collapsedFamilies, setCollapsedFamilies] = useState<Set<string>>(() => new Set(families.map(f => f.id)));
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [deletingComment, setDeletingComment] = useState<{ commentId: string; postId: string } | null>(null);
@@ -599,38 +599,39 @@ export default function FeedPage() {
                     <span className="text-[10px] text-[var(--muted-foreground)] ml-auto">{family.member_count}</span>
                   </button>
                   {/* Members list */}
-                  {!isCollapsed && isCurrent && (
-                    <div className="p-1.5 space-y-0.5">
-                      {members.filter((m) => !memberFilterSearch || m.profile?.display_name?.toLowerCase().includes(memberFilterSearch.toLowerCase())).map((member) => {
-                        const p = member.profile;
-                        const isSelected = filterByMembers.has(member.user_id);
-                        return (
-                          <button
-                            key={member.id}
-                            onClick={() => toggleMemberFilter(member.user_id)}
-                            className={`w-full flex items-center gap-2 px-2 py-2.5 rounded-lg transition-colors cursor-pointer text-left ${
-                              isSelected ? "bg-gold-500/15 border border-gold-500/30" : "hover:bg-[var(--accent)] border border-transparent"
-                            }`}
-                          >
-                            <div className={`w-7 h-7 rounded-md flex items-center justify-center overflow-hidden flex-shrink-0 ${isSelected ? "ring-2 ring-gold-500" : "bg-gold-500/20"}`}>
-                              {p?.avatar_url ? (
-                                <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="text-[10px] font-medium text-gold-500">{p?.display_name?.charAt(0).toUpperCase() || "?"}</span>
-                              )}
-                            </div>
-                            <span className={`text-xs truncate ${isSelected ? "font-medium text-gold-500" : "text-[var(--muted-foreground)]"}`}>
-                              {p?.display_name}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {!isCollapsed && !isCurrent && (
-                    <div className="px-3 py-2 text-[10px] text-[var(--muted-foreground)]">
-                      Switch to this family to see members
-                    </div>
+                  {!isCollapsed && (
+                    isCurrent ? (
+                      <div className="p-1.5 space-y-0.5">
+                        {members.filter((m) => !memberFilterSearch || m.profile?.display_name?.toLowerCase().includes(memberFilterSearch.toLowerCase())).map((member) => {
+                          const p = member.profile;
+                          const isSelected = filterByMembers.has(member.user_id);
+                          return (
+                            <button
+                              key={member.id}
+                              onClick={() => toggleMemberFilter(member.user_id)}
+                              className={`w-full flex items-center gap-2 px-2 py-2.5 rounded-lg transition-colors cursor-pointer text-left ${
+                                isSelected ? "bg-gold-500/15 border border-gold-500/30" : "hover:bg-[var(--accent)] border border-transparent"
+                              }`}
+                            >
+                              <div className={`w-7 h-7 rounded-md flex items-center justify-center overflow-hidden flex-shrink-0 ${isSelected ? "ring-2 ring-gold-500" : "bg-gold-500/20"}`}>
+                                {p?.avatar_url ? (
+                                  <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-[10px] font-medium text-gold-500">{p?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                                )}
+                              </div>
+                              <span className={`text-xs truncate ${isSelected ? "font-medium text-gold-500" : "text-[var(--muted-foreground)]"}`}>
+                                {p?.display_name}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="px-3 py-2 text-[10px] text-[var(--muted-foreground)]">
+                        Switch to this family to see members
+                      </div>
+                    )
                   )}
                 </div>
               );
