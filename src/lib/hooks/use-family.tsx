@@ -101,7 +101,15 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
     const memberList = (data as FamilyMember[]).map((m) => ({
       ...m,
       profile: profileMap.get(m.user_id) || { id: m.user_id, display_name: "Unknown", avatar_url: null } as Profile,
-    }));
+    })).sort((a, b) => {
+      // 1. Role priority: admin > moderator > member
+      const rolePriority: Record<string, number> = { admin: 0, moderator: 1, member: 2 };
+      const roleA = rolePriority[a.role] ?? 2;
+      const roleB = rolePriority[b.role] ?? 2;
+      if (roleA !== roleB) return roleA - roleB;
+      // 2. Alphabetical by display name
+      return (a.profile.display_name || "").localeCompare(b.profile.display_name || "");
+    });
     setMembers(memberList);
 
     if (user) {

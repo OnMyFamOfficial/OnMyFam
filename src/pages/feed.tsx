@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronRight,
   Users,
+  Search,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
@@ -117,6 +118,7 @@ export default function FeedPage() {
   const [commentReactionPicker, setCommentReactionPicker] = useState<string | null>(null);
   const [collapsedReplies, setCollapsedReplies] = useState<Set<string>>(new Set());
   const [filterByMembers, setFilterByMembers] = useState<Set<string>>(new Set());
+  const [memberFilterSearch, setMemberFilterSearch] = useState("");
   const [collapsedFamilies, setCollapsedFamilies] = useState<Set<string>>(new Set());
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState("");
@@ -532,11 +534,11 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="relative max-w-2xl mx-auto lg:mx-0" style={window.innerWidth >= 1024 ? { marginLeft: "280px" } : undefined}>
-      {/* Left: Member filter sidebar - positioned to the left of centered content */}
-      <div className="hidden lg:block absolute top-0 bottom-0 w-[193px]" style={{ left: "-236px" }}>
-        <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden sticky top-4">
-          <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--border)]">
+    <div className="flex flex-col lg:flex-row -m-4 lg:-m-6">
+      {/* Left: Member filter sidebar */}
+      <div className="hidden lg:flex lg:flex-col lg:w-64 flex-shrink-0 border-r border-[var(--border)] lg:h-[calc(100vh-4rem)]">
+        <div className="px-3 pt-2 pb-2 border-b border-[var(--border)] flex-shrink-0 space-y-2">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-gold-500" />
               <span className="font-semibold text-sm">Filter by Member</span>
@@ -550,7 +552,18 @@ export default function FeedPage() {
               </button>
             )}
           </div>
-          <div className="max-h-[65vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center gap-1.5 bg-[var(--card)] border border-[var(--border)] rounded-lg px-2.5 py-1.5">
+            <Search className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+            <input
+              type="text"
+              placeholder="Search members..."
+              value={memberFilterSearch}
+              onChange={(e) => setMemberFilterSearch(e.target.value)}
+              className="bg-transparent text-xs text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none w-full"
+            />
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {(() => {
               // Sort by hierarchy: parents first, then children, alphabetical within each level
               const roots = families.filter((f) => !f.parent_family_id).sort((a, b) => a.name.localeCompare(b.name));
@@ -588,7 +601,7 @@ export default function FeedPage() {
                   {/* Members list */}
                   {!isCollapsed && isCurrent && (
                     <div className="p-1.5 space-y-0.5">
-                      {members.map((member) => {
+                      {members.filter((m) => !memberFilterSearch || m.profile?.display_name?.toLowerCase().includes(memberFilterSearch.toLowerCase())).map((member) => {
                         const p = member.profile;
                         const isSelected = filterByMembers.has(member.user_id);
                         return (
@@ -623,11 +636,11 @@ export default function FeedPage() {
               );
             })}
           </div>
-        </div>
       </div>
 
-      {/* Feed content */}
-      <div className="space-y-6">
+      {/* Right: Feed content */}
+      <div className="flex-1 min-w-0 p-4 lg:p-6 lg:overflow-y-auto lg:h-[calc(100vh-4rem)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="max-w-2xl space-y-6" style={{ marginLeft: "calc(50vw - 336px - 210px - 256px)" }}>
       {/* Composer trigger bar + inline modal */}
       <div className="relative">
         <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
@@ -2053,7 +2066,8 @@ export default function FeedPage() {
         </>
       )}
 
-      </div>{/* end feed content */}
+      </div>
+      </div>
     </div>
   );
 }

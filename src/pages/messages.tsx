@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
-import { Phone, Video, MoreVertical, Bell, Menu, ArrowLeft, Trash2, LogOut, UserPlus, X } from "lucide-react";
+import { Phone, Video, MoreVertical, Menu, ArrowLeft, Trash2, LogOut, UserPlus, X } from "lucide-react";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useChat } from "@/components/chat/chat-provider";
 import { useFamily } from "@/lib/hooks/use-family";
@@ -209,24 +210,6 @@ export default function MessagesPage() {
         <div className="flex-1 flex items-center h-full">
           {activeConversation && (
             <div className={`items-center gap-3 px-4 w-full ${!mobileShowChat ? "hidden lg:flex" : "flex"}`}>
-              <div
-                className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-gold-500/50 transition-all"
-                onClick={() => {
-                  if (activeConversation.type === "direct" && activeConversation.otherParticipants[0]) {
-                    navigate(`/profile/${activeConversation.otherParticipants[0].user_id}`);
-                  } else {
-                    setShowMembers(true);
-                  }
-                }}
-              >
-                {activeConversation.displayAvatar ? (
-                  <img src={activeConversation.displayAvatar} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs font-bold text-gold-500">
-                    {activeConversation.displayName.charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
               <div className="min-w-0">
                 <h2 className="text-sm font-semibold truncate">{activeConversation.displayName}</h2>
                 <p className="text-[10px] text-[var(--muted-foreground)]">{activeConversation.participants.length} Fam in Chat</p>
@@ -291,22 +274,9 @@ export default function MessagesPage() {
           )}
         </div>
 
-        {/* Right: bell + avatar (desktop only) */}
-        <div className="hidden lg:flex items-center gap-1 px-4 flex-shrink-0">
-          <button className="relative p-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors">
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-gold-500 rounded-full" />
-          </button>
-
-          <div className="w-7 h-7 rounded-md bg-gold-500/20 border border-gold-500/30 flex items-center justify-center overflow-hidden">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-xs font-medium text-gold-500">
-                {profile?.display_name?.charAt(0).toUpperCase() || "?"}
-              </span>
-            )}
-          </div>
+        {/* Right: notification bell (desktop only) */}
+        <div className="hidden lg:flex items-center px-4 flex-shrink-0">
+          <NotificationBell />
         </div>
       </div>
 
