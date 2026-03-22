@@ -7,7 +7,7 @@ export async function uploadFile(
 ): Promise<string | null> {
   const { error } = await supabase.storage.from(bucket).upload(path, file, {
     upsert: true,
-    cacheControl: "3600",
+    cacheControl: "0",
   });
 
   if (error) {
@@ -16,7 +16,7 @@ export async function uploadFile(
   }
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
+  return `${data.publicUrl}?t=${Date.now()}`;
 }
 
 export async function uploadAvatar(userId: string, file: File): Promise<string | null> {
