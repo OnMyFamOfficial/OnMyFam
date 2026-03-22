@@ -641,7 +641,7 @@ export default function FeedPage() {
 
       {/* Right: Feed content */}
       <div className="flex-1 min-w-0 p-4 lg:p-6 lg:overflow-y-auto lg:h-[calc(100vh-4rem)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="max-w-2xl space-y-6" style={{ marginLeft: "calc(50vw - 336px - 210px - 256px + 5vw)" }}>
+      <div className="max-w-2xl space-y-6 lg:[margin-left:calc(50vw-336px-210px-256px+5vw)]">
       {/* Composer trigger bar + inline modal */}
       <div className="relative">
         <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
