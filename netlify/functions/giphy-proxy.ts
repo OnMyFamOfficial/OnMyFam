@@ -1,6 +1,6 @@
 import type { Context } from "@netlify/functions";
 
-const GIPHY_KEY = "ZGVuN9nUN1jlHftCOiYxWS5BhVQ9no3B";
+const GIPHY_KEY = process.env.GIPHY_API_KEY || "ZGVuN9nUN1jlHftCOiYxWS5BhVQ9no3B";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 // Server-side in-memory cache (persists across warm function invocations)
