@@ -119,7 +119,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </div>
             {!collapsed && (
               <h2 className="text-lg font-bold text-[var(--sidebar-foreground)] whitespace-nowrap">
-                On My Fam
+                OnMyFam
               </h2>
             )}
           </div>

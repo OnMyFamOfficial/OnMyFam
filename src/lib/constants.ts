@@ -1,4 +1,4 @@
-export const APP_NAME = "On My Fam";
+export const APP_NAME = "OnMyFam";
 export const APP_TAGLINE = "Where Family Stays Connected";
 export const APP_DESCRIPTION =
   "A private family social platform for sharing moments, events, photos, and staying connected with the people who matter most.";

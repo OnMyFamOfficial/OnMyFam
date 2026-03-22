@@ -24,7 +24,7 @@ export function DonateModal({ open, onClose }: DonateModalProps) {
   function getPayPalUrl() {
     const params = new URLSearchParams({
       business: PAYPAL_EMAIL,
-      item_name: "On My Fam Donation",
+      item_name: "OnMyFam Donation",
       currency_code: "USD",
       cmd: "_donations",
     });
@@ -68,7 +68,7 @@ export function DonateModal({ open, onClose }: DonateModalProps) {
           <div className="w-14 h-14 rounded-full bg-gold-500/15 flex items-center justify-center mx-auto mb-3">
             <Heart className="w-7 h-7 text-gold-500" />
           </div>
-          <h2 className="text-lg font-bold">Support On My Fam</h2>
+          <h2 className="text-lg font-bold">Support OnMyFam</h2>
           <p className="text-xs text-[var(--muted-foreground)] mt-1">
             Help us keep the family connected. Every contribution makes a difference.
           </p>

@@ -26,7 +26,7 @@ export function Header({ onMenuClick, onRightMenuClick, onFilterClick }: HeaderP
   const basePath = "/" + (location.pathname.split("/")[1] || "feed");
   const isMessages = basePath === "/messages";
   const isFeed = basePath === "/feed";
-  const pageInfo = PAGE_INFO[location.pathname] || PAGE_INFO[basePath] || { title: "On My Fam", subtitle: "Where Family Stays Connected" };
+  const pageInfo = PAGE_INFO[location.pathname] || PAGE_INFO[basePath] || { title: "OnMyFam", subtitle: "Where Family Stays Connected" };
 
   // Don't show the default header on messages page (it has its own)
   if (isMessages) return null;

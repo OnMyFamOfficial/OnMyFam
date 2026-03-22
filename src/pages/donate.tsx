@@ -74,7 +74,7 @@ export default function DonatePage() {
                   <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/20">
                     <Heart className="w-10 h-10 text-pink-400" />
                   </div>
-                  <h1 className="text-3xl sm:text-4xl font-bold text-white">Support On My Fam</h1>
+                  <h1 className="text-3xl sm:text-4xl font-bold text-white">Support OnMyFam</h1>
                   <p className="text-sm sm:text-base text-white/70 mt-2 max-w-lg mx-auto">
                     Help us build and maintain a safe, private space where families stay connected
                   </p>
@@ -83,20 +83,20 @@ export default function DonatePage() {
             </div>
             {/* Story text */}
             <div className="p-6">
-              <h2 className="text-lg font-bold mb-4">Our Story</h2>
+              <h2 className="text-lg font-bold mb-4">My Story</h2>
               <div className="space-y-3 text-sm text-[var(--muted-foreground)] leading-relaxed">
                 <p>
-                  On My Fam was created with one simple mission: give families a private, safe place to stay connected.
+                  OnMyFam was created with one simple mission: give families a private, safe place to stay connected.
                   No algorithms, no ads, no data mining. Just your family, sharing moments that matter.
                 </p>
                 <p>
                   Every dollar donated goes directly toward keeping the platform running, adding new features, and making
-                  sure On My Fam remains free for families who need it most. From real-time messaging to photo albums,
+                  sure OnMyFam remains free for families who need it most. From real-time messaging to photo albums,
                   events, and video calls, we're building the family hub that social media should have been.
                 </p>
                 <p>
                   Whether you can give $5 or $500, your support makes a real difference. Thank you for being part of the
-                  On My Fam family.
+                  family, and that's OnMyFam.
                 </p>
               </div>
             </div>
