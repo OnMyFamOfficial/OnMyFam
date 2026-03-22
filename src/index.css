@@ -174,7 +174,11 @@ body {
 
 /* Dark mode overrides */
 .dark body {
-  background: linear-gradient(to bottom, #000000, #181717 40%, var(--background) 100%);
+  background: #000000;
+}
+
+.dark .dark-gradient-bg {
+  background: linear-gradient(to bottom, #000000, #181717 40%, #0b1016 100%);
   background-attachment: fixed;
 }
 

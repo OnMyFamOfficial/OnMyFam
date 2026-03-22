@@ -13,7 +13,7 @@ export function AppLayout() {
   const [filterOpen, setFilterOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden light-gradient dark:bg-[var(--background)]">
+    <div className="flex h-screen overflow-hidden light-gradient dark:bg-transparent">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -23,7 +23,7 @@ export function AppLayout() {
           onFilterClick={() => setFilterOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark-gradient-bg">
           <Outlet context={{ onMenuClick: () => setSidebarOpen(true), filterOpen, setFilterOpen }} />
         </main>
 
