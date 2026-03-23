@@ -4,7 +4,6 @@ import Stripe from "stripe";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 
 export default async (req: Request, context: Context) => {
-  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -31,21 +30,21 @@ export default async (req: Request, context: Context) => {
     const origin = req.headers.get("origin") || "https://onmyfam.com";
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card", "cashapp"],
       line_items: [
         {
           price_data: {
             currency: "usd",
             product_data: {
               name: "OnMyFam Donation",
-              description: `Donation of $${amount} to support OnMyFam`,
+              description: `Thank you for supporting OnMyFam with a $${amount} donation`,
             },
-            unit_amount: Math.round(amount * 100), // cents
+            unit_amount: Math.round(amount * 100),
           },
           quantity: 1,
         },
       ],
       mode: "payment",
+      payment_method_types: ["card", "cashapp"],
       success_url: `${origin}/donate/thankyou?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/donate`,
       metadata: {

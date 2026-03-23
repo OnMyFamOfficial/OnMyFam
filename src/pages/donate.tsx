@@ -1,14 +1,10 @@
 import { useState, useEffect } from "react";
 import { Heart, Share2, Users, Clock, TrendingUp, X, MessageSquare, DollarSign, Check, Diamond } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/auth-provider";
 import { CryptoDonationModal } from "@/components/shared/crypto-donation-modal";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-
-const stripePromise = loadStripe("pk_test_51TDv5ZDYHNTvaMGsshJwS6emZdRmPns66qb0kng9rxhS9dELXir210KZ2ScO14GKZST28XmmD8U73mfVuywURSNO00HyNL1WbT");
 
 const AMOUNTS = [5, 10, 25, 50, 100];
 
@@ -22,64 +18,6 @@ interface Donation {
   created_at: string;
 }
 
-// Embedded payment form component
-function PaymentForm({ amount }: { amount: number }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setProcessing(true);
-    setError(null);
-
-    const { error: submitError } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/donate/thankyou`,
-      },
-    });
-
-    if (submitError) {
-      setError(submitError.message || "Payment failed");
-      setProcessing(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement
-        options={{
-          layout: {
-            type: "accordion",
-            defaultCollapsed: false,
-            radios: true,
-            spacedAccordionItems: true,
-          },
-        }}
-      />
-      {error && (
-        <div className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</div>
-      )}
-      <button
-        type="submit"
-        disabled={!stripe || processing}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer hover:brightness-105 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
-        style={{
-          background: "linear-gradient(135deg, #f8e8a0, #f5b8d0, #c8b8f5, #a0e8f0, #b0f0c8, #f5b8d0)",
-          color: "#2e303f",
-        }}
-      >
-        <Heart className="w-4 h-4" />
-        {processing ? "Processing..." : `Donate $${amount}`}
-      </button>
-    </form>
-  );
-}
-
 export default function DonatePage() {
   const { user, profile } = useAuth();
   const [donations, setDonations] = useState<Donation[]>([]);
@@ -87,9 +25,7 @@ export default function DonatePage() {
   const [donorCount, setDonorCount] = useState(0);
   const [amount, setAmount] = useState<number | null>(25);
   const [customAmount, setCustomAmount] = useState("");
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [loadingIntent, setLoadingIntent] = useState(false);
+  const [donating, setDonating] = useState(false);
   const [showAllSupporters, setShowAllSupporters] = useState(false);
   const [showCrypto, setShowCrypto] = useState(false);
   const [shareToast, setShareToast] = useState(false);
@@ -114,14 +50,12 @@ export default function DonatePage() {
     }
   }
 
-  async function handleProceedToPayment() {
+  async function handleDonate() {
     if (!selectedAmount || selectedAmount < 1) return;
-    setLoadingIntent(true);
-    setShowPaymentModal(false);
-    setClientSecret(null);
+    setDonating(true);
 
     try {
-      const res = await fetch("/api/create-payment-intent", {
+      const res = await fetch("/api/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -132,19 +66,16 @@ export default function DonatePage() {
       });
 
       const data = await res.json();
-      if (data.clientSecret) {
-        // Small delay to ensure old Elements is fully unmounted
-        await new Promise((r) => setTimeout(r, 100));
-        setClientSecret(data.clientSecret);
-        setShowPaymentModal(true);
+      if (data.url) {
+        window.location.href = data.url;
       } else {
         alert("Something went wrong. Please try again.");
+        setDonating(false);
       }
     } catch {
-      alert("Failed to initialize payment.");
+      alert("Failed to start checkout.");
+      setDonating(false);
     }
-
-    setLoadingIntent(false);
   }
 
   function handleShare() {
@@ -160,32 +91,6 @@ export default function DonatePage() {
       return "";
     }
   }
-
-  const stripeAppearance: import("@stripe/stripe-js").Appearance = {
-    theme: "night",
-    variables: {
-      colorPrimary: "#c8a55a",
-      colorBackground: "#1a1b2e",
-      colorText: "#e0e0e0",
-      colorDanger: "#ef4444",
-      borderRadius: "12px",
-      fontFamily: "Inter, system-ui, sans-serif",
-    },
-    rules: {
-      ".Tab": {
-        border: "1px solid #3a3b4e",
-        backgroundColor: "#1a1b2e",
-      },
-      ".Tab--selected": {
-        backgroundColor: "#2a2b3e",
-        borderColor: "#c8a55a",
-      },
-      ".Input": {
-        backgroundColor: "#0b1016",
-        border: "1px solid #3a3b4e",
-      },
-    },
-  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -235,7 +140,7 @@ export default function DonatePage() {
         </div>
 
         {/* Right: Donation widget + recent supporters */}
-        <div className="lg:w-96 flex-shrink-0 space-y-4">
+        <div className="lg:w-80 flex-shrink-0 space-y-4">
           <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] p-6 lg:sticky lg:top-4 space-y-4">
             {/* Amount selection */}
             <div>
@@ -272,8 +177,8 @@ export default function DonatePage() {
 
             {/* Donate button */}
             <button
-              onClick={handleProceedToPayment}
-              disabled={!selectedAmount || selectedAmount < 1 || loadingIntent}
+              onClick={handleDonate}
+              disabled={!selectedAmount || selectedAmount < 1 || donating}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer hover:brightness-105 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 background: "linear-gradient(135deg, #f8e8a0, #f5b8d0, #c8b8f5, #a0e8f0, #b0f0c8, #f5b8d0)",
@@ -281,10 +186,10 @@ export default function DonatePage() {
               }}
             >
               <Heart className="w-4 h-4" />
-              {loadingIntent ? "Loading..." : selectedAmount ? `Donate $${selectedAmount}` : "Donate"}
+              {donating ? "Redirecting..." : selectedAmount ? `Donate $${selectedAmount}` : "Donate"}
             </button>
             <p className="text-[10px] text-[var(--muted-foreground)] text-center">
-              Cards, PayPal, Venmo, Cash App, and more
+              Accepts cards, Cash App, and more via secure checkout
             </p>
 
             {/* Crypto option */}
@@ -391,36 +296,6 @@ export default function DonatePage() {
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Payment modal */}
-      {showPaymentModal && clientSecret && (
-        <>
-          <div className="fixed inset-0 z-[80] bg-black/60" onClick={() => { setShowPaymentModal(false); setClientSecret(null); }} />
-          <div className="fixed z-[90] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
-              <h3 className="font-bold">Donate ${selectedAmount}</h3>
-              <button
-                onClick={() => { setShowPaymentModal(false); setClientSecret(null); }}
-                className="p-1 rounded-full hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-6">
-              <Elements
-                key={clientSecret}
-                stripe={stripePromise}
-                options={{
-                  clientSecret,
-                  appearance: stripeAppearance,
-                }}
-              >
-                <PaymentForm amount={selectedAmount} />
-              </Elements>
             </div>
           </div>
         </>
