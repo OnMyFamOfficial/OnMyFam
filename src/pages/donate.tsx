@@ -54,9 +54,9 @@ function PaymentForm({ amount }: { amount: number }) {
       <PaymentElement
         options={{
           layout: {
-            type: "tabs",
+            type: "accordion",
             defaultCollapsed: false,
-            radios: false,
+            radios: true,
             spacedAccordionItems: true,
           },
         }}
@@ -406,6 +406,7 @@ export default function DonatePage() {
             </div>
             <div className="p-6">
               <Elements
+                key={clientSecret}
                 stripe={stripePromise}
                 options={{
                   clientSecret,
