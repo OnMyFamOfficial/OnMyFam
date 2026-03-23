@@ -243,7 +243,7 @@ function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
 
 export default function ProfilePage() {
   const { userId } = useParams<{ userId?: string }>();
-  const { user, profile: myProfile, updateProfile } = useAuth();
+  const { user, profile: myProfile, updateProfile, refreshProfile } = useAuth();
   const [viewingProfile, setViewingProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
@@ -347,21 +347,28 @@ export default function ProfilePage() {
 
     if (coverFile) {
       const url = await uploadCover("family", user.id, coverFile);
-      if (url) updates.cover_url = url;
+      if (url) {
+        updates.cover_url = url;
+      } else {
+        console.error("Cover upload failed");
+      }
     }
 
-    await updateProfile(updates);
+    const { error } = await updateProfile(updates);
+    if (error) {
+      console.error("Profile update error:", error);
+      alert("Failed to save profile: " + error.message);
+    }
+    await refreshProfile();
+    setCoverFile(null);
+    setCoverPreview(null);
+    setAvatarFile(null);
     setSaving(false);
     setEditing(false);
   }
 
-  function bustCache(url: string | null | undefined) {
-    if (!url) return null;
-    const base = url.split("?")[0];
-    return `${base}?t=${Date.now()}`;
-  }
-  const displayAvatar = avatarPreview || bustCache(profile?.avatar_url);
-  const displayCover = coverPreview || bustCache(profile?.cover_url);
+  const displayAvatar = avatarPreview || profile?.avatar_url;
+  const displayCover = coverPreview || profile?.cover_url || null;
 
   if (loadingProfile) {
     return <div className="flex items-center justify-center h-64 text-[var(--muted-foreground)]">Loading profile...</div>;
