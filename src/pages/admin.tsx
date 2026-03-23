@@ -250,7 +250,7 @@ function UsersTab() {
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-[var(--muted-foreground)] truncate">{u.id}</p>
+                <p className="text-[10px] text-[var(--muted-foreground)] truncate">{u.email || u.id}</p>
                 <p className="text-xs text-[var(--muted-foreground)]">
                   {u.location || "No location"} | Joined {new Date(u.created_at).toLocaleDateString()}
                 </p>
