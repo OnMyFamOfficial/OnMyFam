@@ -88,6 +88,7 @@ export default function DonatePage() {
   const [amount, setAmount] = useState<number | null>(25);
   const [customAmount, setCustomAmount] = useState("");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentKey, setPaymentKey] = useState(0);
   const [loadingIntent, setLoadingIntent] = useState(false);
   const [showAllSupporters, setShowAllSupporters] = useState(false);
   const [showCrypto, setShowCrypto] = useState(false);
@@ -130,6 +131,7 @@ export default function DonatePage() {
 
       const data = await res.json();
       if (data.clientSecret) {
+        setPaymentKey((k) => k + 1);
         setClientSecret(data.clientSecret);
       } else {
         alert("Something went wrong. Please try again.");
@@ -406,7 +408,7 @@ export default function DonatePage() {
             </div>
             <div className="p-6">
               <Elements
-                key={clientSecret}
+                key={paymentKey}
                 stripe={stripePromise}
                 options={{
                   clientSecret,
