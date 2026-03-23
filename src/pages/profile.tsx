@@ -355,9 +355,13 @@ export default function ProfilePage() {
     setEditing(false);
   }
 
-  const displayAvatar = avatarPreview || profile?.avatar_url;
-  const displayCover =
-    coverPreview || profile?.cover_url || null;
+  function bustCache(url: string | null | undefined) {
+    if (!url) return null;
+    const base = url.split("?")[0];
+    return `${base}?t=${Date.now()}`;
+  }
+  const displayAvatar = avatarPreview || bustCache(profile?.avatar_url);
+  const displayCover = coverPreview || bustCache(profile?.cover_url);
 
   if (loadingProfile) {
     return <div className="flex items-center justify-center h-64 text-[var(--muted-foreground)]">Loading profile...</div>;
