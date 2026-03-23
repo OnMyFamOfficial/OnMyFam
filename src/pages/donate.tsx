@@ -88,7 +88,7 @@ export default function DonatePage() {
   const [amount, setAmount] = useState<number | null>(25);
   const [customAmount, setCustomAmount] = useState("");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [paymentKey, setPaymentKey] = useState(0);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [loadingIntent, setLoadingIntent] = useState(false);
   const [showAllSupporters, setShowAllSupporters] = useState(false);
   const [showCrypto, setShowCrypto] = useState(false);
@@ -117,6 +117,8 @@ export default function DonatePage() {
   async function handleProceedToPayment() {
     if (!selectedAmount || selectedAmount < 1) return;
     setLoadingIntent(true);
+    setShowPaymentModal(false);
+    setClientSecret(null);
 
     try {
       const res = await fetch("/api/create-payment-intent", {
@@ -131,8 +133,10 @@ export default function DonatePage() {
 
       const data = await res.json();
       if (data.clientSecret) {
-        setPaymentKey((k) => k + 1);
+        // Small delay to ensure old Elements is fully unmounted
+        await new Promise((r) => setTimeout(r, 100));
         setClientSecret(data.clientSecret);
+        setShowPaymentModal(true);
       } else {
         alert("Something went wrong. Please try again.");
       }
@@ -393,14 +397,14 @@ export default function DonatePage() {
       )}
 
       {/* Payment modal */}
-      {clientSecret && (
+      {showPaymentModal && clientSecret && (
         <>
-          <div className="fixed inset-0 z-[80] bg-black/60" onClick={() => setClientSecret(null)} />
+          <div className="fixed inset-0 z-[80] bg-black/60" onClick={() => { setShowPaymentModal(false); setClientSecret(null); }} />
           <div className="fixed z-[90] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
               <h3 className="font-bold">Donate ${selectedAmount}</h3>
               <button
-                onClick={() => setClientSecret(null)}
+                onClick={() => { setShowPaymentModal(false); setClientSecret(null); }}
                 className="p-1 rounded-full hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -408,7 +412,7 @@ export default function DonatePage() {
             </div>
             <div className="p-6">
               <Elements
-                key={paymentKey}
+                key={clientSecret}
                 stripe={stripePromise}
                 options={{
                   clientSecret,
