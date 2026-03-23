@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Heart, Share2, Users, Clock, TrendingUp, X, MessageSquare, DollarSign, Check, Diamond } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/components/auth/auth-provider";
 import { CryptoDonationModal } from "@/components/shared/crypto-donation-modal";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -19,13 +19,12 @@ interface Donation {
 }
 
 export default function DonatePage() {
-  const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [donations, setDonations] = useState<Donation[]>([]);
   const [, setTotalRaised] = useState(0);
   const [donorCount, setDonorCount] = useState(0);
   const [amount, setAmount] = useState<number | null>(25);
   const [customAmount, setCustomAmount] = useState("");
-  const [donating, setDonating] = useState(false);
   const [showAllSupporters, setShowAllSupporters] = useState(false);
   const [showCrypto, setShowCrypto] = useState(false);
   const [shareToast, setShareToast] = useState(false);
@@ -50,32 +49,9 @@ export default function DonatePage() {
     }
   }
 
-  async function handleDonate() {
+  function handleDonate() {
     if (!selectedAmount || selectedAmount < 1) return;
-    setDonating(true);
-
-    try {
-      const res = await fetch("/api/create-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: selectedAmount,
-          donorName: profile?.display_name || "Anonymous",
-          userId: user?.id || "",
-        }),
-      });
-
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert("Something went wrong. Please try again.");
-        setDonating(false);
-      }
-    } catch {
-      alert("Failed to start checkout.");
-      setDonating(false);
-    }
+    navigate(`/donate/pay?amount=${selectedAmount}`);
   }
 
   function handleShare() {
@@ -178,7 +154,7 @@ export default function DonatePage() {
             {/* Donate button */}
             <button
               onClick={handleDonate}
-              disabled={!selectedAmount || selectedAmount < 1 || donating}
+              disabled={!selectedAmount || selectedAmount < 1}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer hover:brightness-105 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 background: "linear-gradient(135deg, #f8e8a0, #f5b8d0, #c8b8f5, #a0e8f0, #b0f0c8, #f5b8d0)",
@@ -186,7 +162,7 @@ export default function DonatePage() {
               }}
             >
               <Heart className="w-4 h-4" />
-              {donating ? "Redirecting..." : selectedAmount ? `Donate $${selectedAmount}` : "Donate"}
+              {selectedAmount ? `Donate $${selectedAmount}` : "Donate"}
             </button>
             <p className="text-[10px] text-[var(--muted-foreground)] text-center">
               Accepts cards, Cash App, and more via secure checkout
