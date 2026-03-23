@@ -1,9 +1,7 @@
 import type { Context } from "@netlify/functions";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2025-03-31.basil",
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "";
