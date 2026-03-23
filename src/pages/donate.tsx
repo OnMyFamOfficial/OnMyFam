@@ -11,7 +11,6 @@ import { formatDistanceToNow } from "date-fns";
 const stripePromise = loadStripe("pk_test_51TDv5ZDYHNTvaMGsshJwS6emZdRmPns66qb0kng9rxhS9dELXir210KZ2ScO14GKZST28XmmD8U73mfVuywURSNO00HyNL1WbT");
 
 const AMOUNTS = [5, 10, 25, 50, 100];
-const GOAL = 10000;
 
 interface Donation {
   id: string;
@@ -79,7 +78,7 @@ function PaymentForm({ amount }: { amount: number }) {
 export default function DonatePage() {
   const { user, profile } = useAuth();
   const [donations, setDonations] = useState<Donation[]>([]);
-  const [totalRaised, setTotalRaised] = useState(0);
+  const [, setTotalRaised] = useState(0);
   const [donorCount, setDonorCount] = useState(0);
   const [amount, setAmount] = useState<number | null>(25);
   const [customAmount, setCustomAmount] = useState("");
@@ -90,7 +89,6 @@ export default function DonatePage() {
   const [shareToast, setShareToast] = useState(false);
 
   const selectedAmount = amount || (customAmount ? parseFloat(customAmount) : 0);
-  const progress = Math.min((totalRaised / GOAL) * 100, 100);
 
   useEffect(() => {
     loadDonations();
@@ -180,27 +178,6 @@ export default function DonatePage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Progress bar */}
-      <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] px-6 py-4">
-        <div className="flex items-end justify-between mb-2">
-          <div>
-            <span className="text-2xl font-bold text-gold-500">${totalRaised.toLocaleString()}</span>
-            <span className="text-sm text-[var(--muted-foreground)] ml-1">raised of ${GOAL.toLocaleString()}</span>
-          </div>
-          <span className="text-sm text-[var(--muted-foreground)]">{donorCount} donor{donorCount !== 1 ? "s" : ""}</span>
-        </div>
-        <div className="w-full h-3 rounded-full bg-[var(--accent)] overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-1000"
-            style={{
-              width: `${progress}%`,
-              background: "linear-gradient(90deg, #f8e8a0, #f5b8d0, #c8b8f5, #a0e8f0)",
-            }}
-          />
-        </div>
-        <p className="text-xs text-[var(--muted-foreground)] mt-1.5">{progress.toFixed(0)}% of goal reached</p>
-      </div>
-
       {/* Two column layout */}
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left: Campaign story */}
@@ -239,6 +216,9 @@ export default function DonatePage() {
                   family, and that's OnMyFam.
                 </p>
               </div>
+              <div className="mt-6 pt-4 border-t border-[var(--border)]">
+                <p className="text-xs text-[var(--muted-foreground)]">Created by <span className="text-[var(--foreground)] font-medium">Jason Wiggins</span></p>
+              </div>
             </div>
           </div>
         </div>
@@ -246,90 +226,64 @@ export default function DonatePage() {
         {/* Right: Donation widget + recent supporters */}
         <div className="lg:w-96 flex-shrink-0 space-y-4">
           <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] p-6 lg:sticky lg:top-4 space-y-4">
-            {!clientSecret ? (
-              <>
-                {/* Amount selection */}
-                <div>
-                  <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-2">Select an amount</label>
-                  <div className="grid grid-cols-5 gap-1.5 mb-3">
-                    {AMOUNTS.map((a) => (
-                      <button
-                        key={a}
-                        onClick={() => { setAmount(a); setCustomAmount(""); }}
-                        className={cn(
-                          "py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border",
-                          amount === a
-                            ? "bg-gold-500 text-white border-gold-500"
-                            : "border-[var(--border)] hover:border-gold-500/50 text-[var(--foreground)]"
-                        )}
-                      >
-                        ${a}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]" />
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={customAmount}
-                      onChange={(e) => { setCustomAmount(e.target.value); setAmount(null); }}
-                      placeholder="Custom amount"
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-                    />
-                  </div>
-                </div>
-
-                {/* Proceed to payment */}
-                <button
-                  onClick={handleProceedToPayment}
-                  disabled={!selectedAmount || selectedAmount < 1 || loadingIntent}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer hover:brightness-105 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{
-                    background: "linear-gradient(135deg, #f8e8a0, #f5b8d0, #c8b8f5, #a0e8f0, #b0f0c8, #f5b8d0)",
-                    color: "#2e303f",
-                  }}
-                >
-                  <Heart className="w-4 h-4" />
-                  {loadingIntent ? "Loading..." : selectedAmount ? `Donate $${selectedAmount}` : "Donate"}
-                </button>
-                <p className="text-[10px] text-[var(--muted-foreground)] text-center">
-                  Cards, PayPal, Venmo, Cash App, and more
-                </p>
-
-                {/* Crypto option */}
-                <button
-                  onClick={() => setShowCrypto(true)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-purple-500/30 text-purple-400 text-xs font-medium hover:bg-purple-500/10 transition-colors cursor-pointer"
-                >
-                  <Diamond className="w-3.5 h-3.5" />
-                  Donate with Crypto
-                </button>
-              </>
-            ) : (
-              <>
-                {/* Embedded Stripe payment form */}
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-sm">Pay ${selectedAmount}</h3>
+            {/* Amount selection */}
+            <div>
+              <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-2">Select an amount</label>
+              <div className="grid grid-cols-5 gap-1.5 mb-3">
+                {AMOUNTS.map((a) => (
                   <button
-                    onClick={() => setClientSecret(null)}
-                    className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer"
+                    key={a}
+                    onClick={() => { setAmount(a); setCustomAmount(""); }}
+                    className={cn(
+                      "py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border",
+                      amount === a
+                        ? "bg-gold-500 text-white border-gold-500"
+                        : "border-[var(--border)] hover:border-gold-500/50 text-[var(--foreground)]"
+                    )}
                   >
-                    Change amount
+                    ${a}
                   </button>
-                </div>
-                <Elements
-                  stripe={stripePromise}
-                  options={{
-                    clientSecret,
-                    appearance: stripeAppearance,
-                  }}
-                >
-                  <PaymentForm amount={selectedAmount} />
-                </Elements>
-              </>
-            )}
+                ))}
+              </div>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]" />
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={customAmount}
+                  onChange={(e) => { setCustomAmount(e.target.value); setAmount(null); }}
+                  placeholder="Custom amount"
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                />
+              </div>
+            </div>
+
+            {/* Donate button */}
+            <button
+              onClick={handleProceedToPayment}
+              disabled={!selectedAmount || selectedAmount < 1 || loadingIntent}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer hover:brightness-105 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                background: "linear-gradient(135deg, #f8e8a0, #f5b8d0, #c8b8f5, #a0e8f0, #b0f0c8, #f5b8d0)",
+                color: "#2e303f",
+              }}
+            >
+              <Heart className="w-4 h-4" />
+              {loadingIntent ? "Loading..." : selectedAmount ? `Donate $${selectedAmount}` : "Donate"}
+            </button>
+            <p className="text-[10px] text-[var(--muted-foreground)] text-center">
+              Cards, PayPal, Venmo, Cash App, and more
+            </p>
+
+            {/* Crypto option */}
+            <button
+              onClick={() => setShowCrypto(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-purple-500/30 text-purple-400 text-xs font-medium hover:bg-purple-500/10 transition-colors cursor-pointer"
+            >
+              <Diamond className="w-3.5 h-3.5" />
+              Donate with Crypto
+            </button>
 
             <div className="border-t border-[var(--border)] pt-4 space-y-3">
               <button
@@ -426,6 +380,35 @@ export default function DonatePage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Payment modal */}
+      {clientSecret && (
+        <>
+          <div className="fixed inset-0 z-[80] bg-black/60" onClick={() => setClientSecret(null)} />
+          <div className="fixed z-[90] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+              <h3 className="font-bold">Donate ${selectedAmount}</h3>
+              <button
+                onClick={() => setClientSecret(null)}
+                className="p-1 rounded-full hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6">
+              <Elements
+                stripe={stripePromise}
+                options={{
+                  clientSecret,
+                  appearance: stripeAppearance,
+                }}
+              >
+                <PaymentForm amount={selectedAmount} />
+              </Elements>
             </div>
           </div>
         </>
