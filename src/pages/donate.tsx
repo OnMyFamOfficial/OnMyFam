@@ -53,7 +53,12 @@ function PaymentForm({ amount }: { amount: number }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <PaymentElement
         options={{
-          layout: "tabs",
+          layout: {
+            type: "tabs",
+            defaultCollapsed: false,
+            radios: false,
+            spacedAccordionItems: true,
+          },
         }}
       />
       {error && (
@@ -389,7 +394,7 @@ export default function DonatePage() {
       {clientSecret && (
         <>
           <div className="fixed inset-0 z-[80] bg-black/60" onClick={() => setClientSecret(null)} />
-          <div className="fixed z-[90] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
+          <div className="fixed z-[90] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
               <h3 className="font-bold">Donate ${selectedAmount}</h3>
               <button
