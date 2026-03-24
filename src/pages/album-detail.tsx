@@ -17,8 +17,8 @@ export default function AlbumDetailPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (albumId) loadAlbum();
-  }, [albumId]);
+    if (albumId && user) loadAlbum();
+  }, [albumId, user]);
 
   async function loadAlbum() {
     if (!albumId) return;

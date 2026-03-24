@@ -19,8 +19,8 @@ export default function PhotosPage() {
   const [form, setForm] = useState({ title: "", description: "" });
 
   useEffect(() => {
-    if (currentFamily) loadAlbums();
-  }, [currentFamily]);
+    if (currentFamily && user) loadAlbums();
+  }, [currentFamily, user]);
 
   async function loadAlbums() {
     if (!currentFamily) return;
