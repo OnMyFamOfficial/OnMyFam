@@ -329,6 +329,12 @@ function FamiliesTab() {
     fetchFamilies();
   }
 
+  async function deleteFamily(familyId: string, familyName: string) {
+    if (!confirm(`Delete "${familyName}" and ALL its data (posts, events, albums, conversations, members)? This cannot be undone.`)) return;
+    await supabase.rpc("admin_delete_family", { p_family_id: familyId });
+    fetchFamilies();
+  }
+
   if (loading) {
     return <div className="text-center py-8 text-[var(--muted-foreground)]">Loading families...</div>;
   }
@@ -375,6 +381,13 @@ function FamiliesTab() {
                     Join
                   </button>
                 )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); deleteFamily(f.id, f.name); }}
+                  className="p-1.5 rounded-lg hover:bg-red-500/15 text-[var(--muted-foreground)] hover:text-red-400 transition-colors cursor-pointer"
+                  title="Delete family"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
                 {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </div>
             </button>

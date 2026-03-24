@@ -194,7 +194,8 @@ export default function DonatePage() {
               {donations.length > 0 && (
                 <button
                   onClick={() => setShowAllSupporters(true)}
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium text-gold-500 hover:bg-gold-500/10 transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer hover:opacity-80 bg-clip-text text-transparent"
+                  style={{ backgroundImage: "linear-gradient(135deg, #f8e8a0, #f5b8d0, #c8b8f5, #a0e8f0, #b0f0c8, #f5b8d0)" }}
                 >
                   <TrendingUp className="w-3.5 h-3.5" />
                   See All Supporters
@@ -208,7 +209,7 @@ export default function DonatePage() {
             <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] p-4">
               <h3 className="text-sm font-semibold mb-3">Recent Supporters</h3>
               <div className="divide-y divide-[var(--border)]">
-                {donations.slice(0, 5).map((d) => (
+                {donations.slice(0, 6).map((d) => (
                   <div key={d.id} className="flex items-center gap-3 py-2.5">
                     <div className="w-8 h-8 rounded-full bg-gold-500/15 flex items-center justify-center flex-shrink-0">
                       <Users className="w-3.5 h-3.5 text-gold-500" />
