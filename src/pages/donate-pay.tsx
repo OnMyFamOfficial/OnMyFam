@@ -6,7 +6,7 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import { useAuth } from "@/components/auth/auth-provider";
 import { supabase } from "@/lib/supabase";
 
-const stripePromise = loadStripe("pk_test_51TDv5ZDYHNTvaMGsshJwS6emZdRmPns66qb0kng9rxhS9dELXir210KZ2ScO14GKZST28XmmD8U73mfVuywURSNO00HyNL1WbT");
+const stripePromise = loadStripe("pk_live_51TDv5PDWiKpr7pH8lBX9JErM6VkX17KdxgYHCrnjrB8vPEttkHIU4DWqhGmt3ZAciWXWFtIDjUUzCZh4Sv38vcRb00Cl8pOWqI");
 
 function PaymentForm({ amount, userId, donorName }: { amount: number; userId: string; donorName: string }) {
   const stripe = useStripe();
