@@ -453,9 +453,9 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                 </button>
               </div>
             ) : toolbarView === "emoji" ? (
-              <div className="flex flex-col" style={{ maxHeight: "280px" }}>
+              <div className="flex flex-col" style={{ height: "320px" }}>
                 {/* Search + back */}
-                <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[var(--border)]">
+                <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[var(--border)] flex-shrink-0">
                   <div className="flex-1 flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2 py-1">
                     <Search className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
                     <input
@@ -474,50 +474,50 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                     <ChevronDown className="w-5 h-5" />
                   </button>
                 </div>
-                {/* Category tabs */}
-                <div className="flex gap-0.5 px-2 py-1.5 border-b border-[var(--border)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {/* Category tabs - icons only */}
+                {!emojiSearch && (
+                <div className="flex gap-1 px-2 py-1.5 border-b border-[var(--border)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-shrink-0">
                   {EMOJI_CATEGORIES.map((cat, i) => (
                     <button
                       key={cat.name}
                       onClick={() => setEmojiCategory(i)}
-                      className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
+                      className={`p-1.5 rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
                         emojiCategory === i
-                          ? "bg-gold-500/20 text-gold-500"
-                          : "hover:bg-[var(--accent)] text-[var(--muted-foreground)]"
+                          ? "bg-gold-500/20"
+                          : "hover:bg-[var(--accent)]"
                       }`}
                       title={cat.name}
                     >
-                      <span className="text-base leading-none">{cat.icon}</span>
-                      <span className="text-[8px] leading-none">{cat.name}</span>
+                      <span className="text-lg leading-none">{cat.icon}</span>
                     </button>
                   ))}
                 </div>
+                )}
                 {/* Emoji grid */}
                 <div className="flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <div className="grid grid-cols-8 gap-0.5">
                     {(() => {
-                      const category = EMOJI_CATEGORIES[emojiCategory];
-                      const emojis = emojiCategory === 0
-                        ? getRecentEmojis()
-                        : emojiSearch
-                          ? EMOJI_CATEGORIES.flatMap((c) => c.emojis).filter(() => true)
-                          : category.emojis;
+                      const emojis = emojiSearch
+                        ? EMOJI_CATEGORIES.flatMap((c) => c.emojis).filter((e) => e.name.includes(emojiSearch.toLowerCase()))
+                        : emojiCategory === 0
+                          ? (() => { const recent = getRecentEmojis(); return recent.length > 0 ? recent.map((e: string) => ({ emoji: e, name: e })) : EMOJI_CATEGORIES[0]?.emojis || []; })()
+                          : EMOJI_CATEGORIES[emojiCategory]?.emojis || [];
                       return emojis.length === 0 ? (
                         <p className="col-span-8 text-xs text-[var(--muted-foreground)] text-center py-4">
                           {emojiCategory === 0 ? "No recent emojis" : "No emojis found"}
                         </p>
                       ) : (
-                        emojis.map((emoji, idx) => (
+                        emojis.map((emoji: any, idx: number) => (
                           <button
-                            key={`${emoji}-${idx}`}
+                            key={`${typeof emoji === "string" ? emoji : emoji.emoji}-${idx}`}
                             onClick={() => {
-                              setText((prev) => prev + emoji);
-                              addRecentEmoji(emoji);
-                              // Don't refocus textarea on mobile to keep keyboard hidden
+                              const e = typeof emoji === "string" ? emoji : emoji.emoji;
+                              setText((prev) => prev + e);
+                              addRecentEmoji(e);
                             }}
                             className="text-xl hover:scale-110 hover:bg-[var(--accent)] rounded p-0.5 transition-transform cursor-pointer text-center"
                           >
-                            {emoji}
+                            {typeof emoji === "string" ? emoji : emoji.emoji}
                           </button>
                         ))
                       );
