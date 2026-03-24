@@ -92,7 +92,7 @@ export default function EventDetailPage() {
   const [messages, setMessages] = useState<(EventChatMessage & { user: Profile })[]>([]);
   const [chatText, setChatText] = useState("");
   const [editing, setEditing] = useState(searchParams.get("edit") === "true");
-  const [editForm, setEditForm] = useState({ title: "", description: "", location: "", address: "", category: "" });
+  const [editForm, setEditForm] = useState({ title: "", description: "", location: "", address: "", latitude: "", longitude: "", category: "" });
   const [editStartDate, setEditStartDate] = useState<Date | null>(null);
   const [editEndDate, setEditEndDate] = useState<Date | null>(null);
   const [editStartTime, setEditStartTime] = useState("");
@@ -107,9 +107,16 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [mapCoords, setMapCoords] = useState<[number, number] | null>(null);
 
-  // Geocode location when event loads, with fallback
+  // Use saved coordinates or geocode location, with fallback
   useEffect(() => {
     if (!event) return;
+
+    // Use saved lat/lng if available
+    if ((event as any).latitude && (event as any).longitude) {
+      setMapCoords([(event as any).latitude, (event as any).longitude]);
+      return;
+    }
+
     const address = event.address;
     const location = event.location;
     if (!address && !location) { setMapCoords(null); return; }
@@ -217,6 +224,8 @@ export default function EventDetailPage() {
       description: eventData.description || "",
       location: eventData.location || "",
       address: eventData.address || "",
+      latitude: eventData.latitude ? String(eventData.latitude) : "",
+      longitude: eventData.longitude ? String(eventData.longitude) : "",
       category: eventData.category || "other",
     });
     setEditStartDate(new Date(eventData.starts_at));
@@ -265,6 +274,8 @@ export default function EventDetailPage() {
       description: editForm.description.trim() || null,
       location: editForm.location.trim() || null,
       address: editForm.address.trim() || null,
+      latitude: editForm.latitude ? parseFloat(editForm.latitude) : null,
+      longitude: editForm.longitude ? parseFloat(editForm.longitude) : null,
       category: editForm.category,
       cover_url: coverUrl,
       starts_at: startsAt,
@@ -460,6 +471,27 @@ export default function EventDetailPage() {
                   className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
                   placeholder="123 Main St, City, State 12345"
                 />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Coordinates <span className="text-[10px] font-normal">(optional, for precise map pin)</span></label>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="number"
+                    step="any"
+                    value={editForm.latitude}
+                    onChange={(e) => setEditForm({ ...editForm, latitude: e.target.value })}
+                    className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                    placeholder="Latitude"
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    value={editForm.longitude}
+                    onChange={(e) => setEditForm({ ...editForm, longitude: e.target.value })}
+                    className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                    placeholder="Longitude"
+                  />
+                </div>
               </div>
 
               {/* Hosted By */}

@@ -86,6 +86,8 @@ export default function EventCreatePage() {
     category: "other" as string,
     location: "",
     address: "",
+    latitude: "",
+    longitude: "",
     start_time: "",
     end_time: "",
     is_all_day: false,
@@ -155,6 +157,8 @@ export default function EventCreatePage() {
         category: form.category,
         location: form.location.trim() || null,
         address: form.address.trim() || null,
+        latitude: form.latitude ? parseFloat(form.latitude) : null,
+        longitude: form.longitude ? parseFloat(form.longitude) : null,
         hosted_by: hosts.length > 0 ? hosts : [],
         cover_url: coverUrl,
         starts_at: startsAt,
@@ -283,6 +287,29 @@ export default function EventCreatePage() {
             className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
             placeholder="123 Main St, City, State 12345"
           />
+        </div>
+
+        {/* Coordinates */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Coordinates <span className="text-xs text-[var(--muted-foreground)] font-normal">(optional, for precise map pin)</span></label>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              type="number"
+              step="any"
+              value={form.latitude}
+              onChange={(e) => setForm({ ...form, latitude: e.target.value })}
+              className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+              placeholder="Latitude (e.g. 28.2919)"
+            />
+            <input
+              type="number"
+              step="any"
+              value={form.longitude}
+              onChange={(e) => setForm({ ...form, longitude: e.target.value })}
+              className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+              placeholder="Longitude (e.g. -81.4076)"
+            />
+          </div>
         </div>
 
         {/* Hosted By */}
