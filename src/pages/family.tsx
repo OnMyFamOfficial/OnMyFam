@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert } from "lucide-react";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
@@ -45,6 +45,59 @@ interface SearchResult {
   privacy_level: string;
   member_count: number;
   established_year: number | null;
+}
+
+function VerificationSection({ unverified, userId, refreshFamilies }: { unverified: any[]; userId?: string; refreshFamilies: () => void }) {
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <div className="bg-[var(--card)] rounded-lg border border-gold-500/30 p-4">
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="w-full flex items-center gap-2 cursor-pointer text-left"
+      >
+        <ShieldAlert className="w-4 h-4 text-gold-500" />
+        <h3 className="font-semibold text-sm flex-1">Awaiting Verification ({unverified.length})</h3>
+        {collapsed ? <ChevronRight className="w-4 h-4 text-[var(--muted-foreground)]" /> : <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />}
+      </button>
+      {!collapsed && (
+        <>
+          <p className="text-xs text-[var(--muted-foreground)] mb-3 mt-2">
+            These members need to be verified as family. Click to verify.
+          </p>
+          <div className="space-y-2">
+            {unverified.map((m: any) => {
+              const p = m.profile;
+              return (
+                <div key={m.id} className="flex items-center gap-3 p-2 rounded-lg bg-[var(--background)]">
+                  <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {p?.avatar_url ? (
+                      <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-medium text-gold-500">{p?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{p?.display_name || "Unknown"}</p>
+                    <p className="text-[10px] text-[var(--muted-foreground)]">Joined {new Date(m.joined_at).toLocaleDateString()}</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      await supabase.from("family_members").update({ is_verified: true, verified_by: userId, verified_at: new Date().toISOString() }).eq("id", m.id);
+                      refreshFamilies();
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors cursor-pointer"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Verify
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 export default function FamilyPage() {
@@ -897,45 +950,7 @@ export default function FamilyPage() {
         const unverified = members.filter((m) => !m.is_verified && m.user_id !== user?.id);
         if (!canVerify || unverified.length === 0) return null;
         return (
-          <div className="bg-[var(--card)] rounded-lg border border-gold-500/30 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <ShieldAlert className="w-4 h-4 text-gold-500" />
-              <h3 className="font-semibold text-sm">Awaiting Verification ({unverified.length})</h3>
-            </div>
-            <p className="text-xs text-[var(--muted-foreground)] mb-3">
-              These members need to be verified as family. Click to verify.
-            </p>
-            <div className="space-y-2">
-              {unverified.map((m) => {
-                const p = m.profile;
-                return (
-                  <div key={m.id} className="flex items-center gap-3 p-2 rounded-lg bg-[var(--background)]">
-                    <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
-                      {p?.avatar_url ? (
-                        <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-xs font-medium text-gold-500">{p?.display_name?.charAt(0).toUpperCase() || "?"}</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{p?.display_name || "Unknown"}</p>
-                      <p className="text-[10px] text-[var(--muted-foreground)]">Joined {new Date(m.joined_at).toLocaleDateString()}</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        await supabase.from("family_members").update({ is_verified: true, verified_by: user?.id, verified_at: new Date().toISOString() }).eq("id", m.id);
-                        refreshFamilies();
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors cursor-pointer"
-                    >
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      Verify
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <VerificationSection unverified={unverified} userId={user?.id} refreshFamilies={refreshFamilies} />
         );
       })()}
 

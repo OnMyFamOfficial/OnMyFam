@@ -107,18 +107,39 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [mapCoords, setMapCoords] = useState<[number, number] | null>(null);
 
-  // Geocode location when event loads
+  // Geocode location when event loads, with fallback
   useEffect(() => {
     if (!event) return;
-    const query = event.address || event.location;
-    if (!query) { setMapCoords(null); return; }
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.[0]) setMapCoords([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
-        else setMapCoords(null);
-      })
-      .catch(() => setMapCoords(null));
+    const address = event.address;
+    const location = event.location;
+    if (!address && !location) { setMapCoords(null); return; }
+
+    async function geocode() {
+      // Try full address first
+      if (address) {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+        const data = await res.json();
+        if (data?.[0]) { setMapCoords([parseFloat(data[0].lat), parseFloat(data[0].lon)]); return; }
+
+        // Fallback: strip street number/name, try city/state/zip
+        const parts = address.split(",").slice(1).join(",").trim();
+        if (parts) {
+          const res2 = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(parts)}&limit=1`);
+          const data2 = await res2.json();
+          if (data2?.[0]) { setMapCoords([parseFloat(data2[0].lat), parseFloat(data2[0].lon)]); return; }
+        }
+      }
+
+      // Try location field
+      if (location) {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`);
+        const data = await res.json();
+        if (data?.[0]) { setMapCoords([parseFloat(data[0].lat), parseFloat(data[0].lon)]); return; }
+      }
+
+      setMapCoords(null);
+    }
+    geocode().catch(() => setMapCoords(null));
   }, [event?.address, event?.location]);
 
   useEffect(() => {
