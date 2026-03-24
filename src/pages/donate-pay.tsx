@@ -59,7 +59,12 @@ function PaymentForm({ amount, userId, donorName }: { amount: number; userId: st
       <PaymentElement
         onReady={() => setReady(true)}
         options={{
-          layout: "tabs",
+          layout: {
+            type: "accordion",
+            defaultCollapsed: false,
+            radios: true,
+            spacedAccordionItems: true,
+          },
         }}
       />
 
