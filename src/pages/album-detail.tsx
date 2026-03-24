@@ -33,6 +33,9 @@ export default function AlbumDetailPage() {
         .order("created_at", { ascending: false }),
     ]);
 
+    if (albumRes.error) console.error("Album load error:", albumRes.error);
+    if (mediaRes.error) console.error("Media load error:", mediaRes.error);
+
     setAlbum(albumRes.data as Album);
     setMedia((mediaRes.data as AlbumMedia[]) || []);
     setLoading(false);

@@ -26,13 +26,27 @@ export default function PhotosPage() {
     if (!currentFamily) return;
     setLoading(true);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("albums")
-      .select("*, creator:profiles!albums_created_by_fkey(*)")
+      .select("*")
       .eq("family_id", currentFamily.id)
       .order("created_at", { ascending: false });
 
-    setAlbums((data as FullAlbum[]) || []);
+    if (error) {
+      console.error("Albums load error:", error);
+      setAlbums([]);
+    } else if (data && data.length > 0) {
+      // Fetch creator profiles separately to avoid foreign key join issues
+      const creatorIds = [...new Set(data.map((a: any) => a.created_by))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("*")
+        .in("id", creatorIds);
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+      setAlbums(data.map((a: any) => ({ ...a, creator: profileMap.get(a.created_by) || { display_name: "Unknown" } })) as FullAlbum[]);
+    } else {
+      setAlbums([]);
+    }
     setLoading(false);
   }
 
