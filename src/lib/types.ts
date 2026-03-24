@@ -125,6 +125,7 @@ export interface Comment {
   author_id: string;
   parent_id: string | null;
   content: string;
+  media_url: string | null;
   like_count: number;
   created_at: string;
   updated_at: string;

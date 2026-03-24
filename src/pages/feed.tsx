@@ -27,6 +27,7 @@ import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { uploadPostMedia } from "@/services/storage";
 import { sanitizeForStorage, validateMediaFile } from "@/lib/sanitize";
+import { CommentToolbar } from "@/components/shared/comment-toolbar";
 import { LinkifyText, LinkPreviewFromText } from "@/components/shared/linkify-text";
 import { useRef as useRefFold, useState as useStateFold } from "react";
 
@@ -417,10 +418,12 @@ export default function FeedPage() {
     }
   }
 
-  async function submitComment(postId: string) {
-    if (!user || !profile || !commentTexts[postId]?.trim()) return;
+  async function submitComment(postId: string, mediaUrl?: string) {
+    if (!user || !profile) return;
+    const text = commentTexts[postId]?.trim() || "";
+    if (!text && !mediaUrl) return;
 
-    const content = sanitizeForStorage(commentTexts[postId].trim());
+    const content = text ? sanitizeForStorage(text) : "";
     const parentId = (replyingTo && replyingTo.postId === postId) ? replyingTo.commentId : null;
     const tempId = `temp-${Date.now()}`;
 
@@ -431,6 +434,7 @@ export default function FeedPage() {
       author_id: user.id,
       parent_id: parentId,
       content,
+      media_url: mediaUrl || null,
       like_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -445,8 +449,9 @@ export default function FeedPage() {
     setReplyingTo(null);
 
     // Persist to DB
-    const insertData: any = { post_id: postId, author_id: user.id, content };
+    const insertData: any = { post_id: postId, author_id: user.id, content: content || " " };
     if (parentId) insertData.parent_id = parentId;
+    if (mediaUrl) insertData.media_url = mediaUrl;
     await supabase.from("comments").insert(insertData);
     loadPosts(true);
   }
@@ -1341,7 +1346,10 @@ export default function FeedPage() {
                           ) : (
                           <div className="bg-[var(--accent)] rounded-lg px-3 py-2">
                             <p className="text-xs font-medium text-gold-500">{comment.author?.display_name}</p>
-                            <LinkifyText text={comment.content} className="text-sm mt-0.5" />
+                            {comment.content?.trim() && <LinkifyText text={comment.content} className="text-sm mt-0.5" />}
+                            {comment.media_url && (
+                              <img src={comment.media_url} alt="" className="mt-1 max-h-40 rounded-lg object-contain" />
+                            )}
                             {comment.author_id === user?.id && (
                               <div className="flex items-center gap-2 mt-1 justify-end">
                                 <button onClick={() => { setEditingComment(comment.id); setEditCommentText(comment.content); }} className="text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">Edit</button>
@@ -1454,7 +1462,8 @@ export default function FeedPage() {
                                       <span className="text-[var(--muted-foreground)] mx-2">&gt;</span>
                                       <span className="text-sky-400">@{comment.author?.display_name}</span>
                                     </p>
-                                    <LinkifyText text={reply.content} className="text-xs mt-0.5" />
+                                    {reply.content?.trim() && <LinkifyText text={reply.content} className="text-xs mt-0.5" />}
+                                    {reply.media_url && <img src={reply.media_url} alt="" className="mt-1 max-h-32 rounded-lg object-contain" />}
                                     {reply.author_id === user?.id && (
                                       <div className="flex items-center gap-2 mt-1 justify-end">
                                         <button onClick={() => { setEditingComment(reply.id); setEditCommentText(reply.content); }} className="text-[9px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">Edit</button>
@@ -1518,7 +1527,7 @@ export default function FeedPage() {
             </div>
             </div>{/* end scrollable content + comments */}
 
-            {/* Fixed bottom: reply indicator + comment input */}
+            {/* Fixed bottom: reply indicator + toolbar + comment input */}
             <div className="flex-shrink-0 border-t border-[var(--border)] bg-[var(--card)]">
               {replyingTo && replyingTo.postId === post.id && (
                 <div className="flex items-center gap-2 px-4 pt-2 text-xs text-gold-500">
@@ -1529,7 +1538,7 @@ export default function FeedPage() {
                   </button>
                 </div>
               )}
-              <div className="flex gap-2 px-4 py-3">
+              <div className="flex gap-2 px-4 py-3 items-center">
                 <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {profile?.avatar_url ? (
                     <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -1547,6 +1556,11 @@ export default function FeedPage() {
                     }}
                     placeholder={replyingTo?.postId === post.id ? `Reply to ${replyingTo.authorName}...` : "Write a comment..."}
                     className="flex-1 rounded-full border border-[var(--input)] bg-[var(--background)] px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                  />
+                  <CommentToolbar
+                    postId={post.id}
+                    onEmojiSelect={(emoji) => setCommentTexts({ ...commentTexts, [post.id]: (commentTexts[post.id] || "") + emoji })}
+                    onMediaSelect={(url) => submitComment(post.id, url)}
                   />
                   <button
                     onClick={() => submitComment(post.id)}
@@ -1792,7 +1806,8 @@ export default function FeedPage() {
                                             <span className="text-[var(--muted-foreground)] mx-2">&gt;</span>
                                             <span className="text-sky-400">@{comment.author?.display_name}</span>
                                           </p>
-                                          <LinkifyText text={reply.content} className="text-xs mt-0.5" />
+                                          {reply.content?.trim() && <LinkifyText text={reply.content} className="text-xs mt-0.5" />}
+                                    {reply.media_url && <img src={reply.media_url} alt="" className="mt-1 max-h-32 rounded-lg object-contain" />}
                                           {reply.author_id === user?.id && (
                                             <div className="flex items-center gap-2 mt-1 justify-end">
                                               <button onClick={() => { setEditingComment(reply.id); setEditCommentText(reply.content); }} className="text-[9px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">Edit</button>
@@ -1842,7 +1857,7 @@ export default function FeedPage() {
                   <button onClick={() => setReplyingTo(null)} className="text-[var(--muted-foreground)] cursor-pointer"><X className="w-3 h-3" /></button>
                 </div>
               )}
-              <div className="flex gap-2 px-4 py-2">
+              <div className="flex gap-2 px-4 py-2 items-center">
                 <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {profile?.avatar_url ? (
                     <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -1858,6 +1873,11 @@ export default function FeedPage() {
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitComment(post.id); } }}
                     placeholder={replyingTo?.postId === post.id ? `Reply to ${replyingTo.authorName}...` : "Write a comment..."}
                     className="flex-1 rounded-full border border-[var(--input)] bg-[var(--background)] px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                  />
+                  <CommentToolbar
+                    postId={post.id}
+                    onEmojiSelect={(emoji) => setCommentTexts({ ...commentTexts, [post.id]: (commentTexts[post.id] || "") + emoji })}
+                    onMediaSelect={(url) => submitComment(post.id, url)}
                   />
                   <button onClick={() => submitComment(post.id)} disabled={!commentTexts[post.id]?.trim()} className="p-1.5 rounded-full text-gold-500 hover:bg-gold-500/10 disabled:opacity-30 transition-colors">
                     <Send className="w-4 h-4" />
