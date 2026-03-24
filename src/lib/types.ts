@@ -62,6 +62,7 @@ export interface Family {
   cover_url: string | null;
   established_year: number | null;
   privacy_level: "private" | "invite_only" | "public";
+  verification_mode: "verified_can_verify" | "admin_only";
   parent_family_id: string | null;
   member_count: number;
   created_by: string;
@@ -75,6 +76,9 @@ export interface FamilyMember {
   user_id: string;
   role: "admin" | "moderator" | "member";
   relation_label: string | null;
+  is_verified: boolean;
+  verified_by: string | null;
+  verified_at: string | null;
   joined_at: string;
   profile?: Profile;
 }

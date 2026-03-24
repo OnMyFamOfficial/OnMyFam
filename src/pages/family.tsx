@@ -1,12 +1,22 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle } from "lucide-react";
+import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert } from "lucide-react";
+import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
-import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+
+function MapResizer() {
+  const map = useMap();
+  useEffect(() => {
+    setTimeout(() => map.invalidateSize(), 100);
+    setTimeout(() => map.invalidateSize(), 500);
+  }, [map]);
+  return null;
+}
 import type { Profile } from "@/lib/types";
 
 const goldIcon = L.icon({
@@ -648,7 +658,10 @@ export default function FamilyPage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{p.display_name}</p>
+                  <p className="text-sm font-medium truncate flex items-center gap-1">
+                    {p.display_name}
+                    {member.is_verified && <VerifiedBadge size="xs" />}
+                  </p>
                   {member.user_id !== user?.id && approvedRelations.get(member.user_id) && (
                     <p className="text-[10px] text-gold-500">{approvedRelations.get(member.user_id)}</p>
                   )}
@@ -875,6 +888,57 @@ export default function FamilyPage() {
         </div>
       )}
 
+      {/* Awaiting Verification */}
+      {(() => {
+        const myMember = members.find((m) => m.user_id === user?.id);
+        const canVerify = currentFamily.verification_mode === "admin_only"
+          ? myMember?.role === "admin"
+          : myMember?.is_verified;
+        const unverified = members.filter((m) => !m.is_verified && m.user_id !== user?.id);
+        if (!canVerify || unverified.length === 0) return null;
+        return (
+          <div className="bg-[var(--card)] rounded-lg border border-gold-500/30 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldAlert className="w-4 h-4 text-gold-500" />
+              <h3 className="font-semibold text-sm">Awaiting Verification ({unverified.length})</h3>
+            </div>
+            <p className="text-xs text-[var(--muted-foreground)] mb-3">
+              These members need to be verified as family. Click to verify.
+            </p>
+            <div className="space-y-2">
+              {unverified.map((m) => {
+                const p = m.profile;
+                return (
+                  <div key={m.id} className="flex items-center gap-3 p-2 rounded-lg bg-[var(--background)]">
+                    <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {p?.avatar_url ? (
+                        <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs font-medium text-gold-500">{p?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{p?.display_name || "Unknown"}</p>
+                      <p className="text-[10px] text-[var(--muted-foreground)]">Joined {new Date(m.joined_at).toLocaleDateString()}</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await supabase.from("family_members").update({ is_verified: true, verified_by: user?.id, verified_at: new Date().toISOString() }).eq("id", m.id);
+                        refreshFamilies();
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors cursor-pointer"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Verify
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Family Settings - admin or god mode */}
       {(isAdmin || currentFamily.created_by === user?.id) && (
         <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
@@ -924,6 +988,37 @@ export default function FamilyPage() {
                     currentFamily.privacy_level === opt.value
                       ? "border-gold-500 bg-gold-500/30"
                       : "border-[var(--border)] hover:border-[var(--muted-foreground)]"
+                  }`}
+                >
+                  <opt.icon className={`w-5 h-5 flex-shrink-0 ${opt.color}`} />
+                  <div>
+                    <p className="text-sm font-medium">{opt.label}</p>
+                    <p className="text-[10px] text-[var(--muted-foreground)]">{opt.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Verification mode */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium mb-2">Who can verify new members?</label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              {[
+                { value: "verified_can_verify", label: "Verified Members", desc: "Any verified member can verify others", icon: ShieldCheck, color: "text-green-400" },
+                { value: "admin_only", label: "Admins Only", desc: "Only admins can verify new members", icon: Crown, color: "text-gold-500" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={async () => {
+                    await supabase.from("families").update({ verification_mode: opt.value }).eq("id", currentFamily.id);
+                    refreshFamilies();
+                  }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors cursor-pointer flex-1 text-left ${
+                    currentFamily.verification_mode === opt.value
+                      ? "border-gold-500 bg-gold-500/10"
+                      : "border-[var(--border)] hover:border-gold-500/50"
                   }`}
                 >
                   <opt.icon className={`w-5 h-5 flex-shrink-0 ${opt.color}`} />
@@ -1224,7 +1319,10 @@ export default function FamilyPage() {
                   )}
                 </div>
                 <div>
-                  <h3 className="font-semibold">{memberProfile.display_name}</h3>
+                  <h3 className="font-semibold flex items-center gap-1.5">
+                    {memberProfile.display_name}
+                    {selectedMember.is_verified && <VerifiedBadge size="sm" />}
+                  </h3>
                   {approvedRelations.get(selectedMember.user_id) && (
                     <p className="text-xs text-gold-500">{approvedRelations.get(selectedMember.user_id)}</p>
                   )}
@@ -1248,6 +1346,44 @@ export default function FamilyPage() {
                 </button>
               </div>
             </div>
+
+            {/* Verification action */}
+            {selectedMember.user_id !== user?.id && (() => {
+              const myMember = members.find((m) => m.user_id === user?.id);
+              const canVerify = currentFamily.verification_mode === "admin_only"
+                ? myMember?.role === "admin"
+                : myMember?.is_verified;
+              if (!canVerify) return null;
+              return (
+                <div className="px-4 py-2 border-b border-[var(--border)]">
+                  {selectedMember.is_verified ? (
+                    <button
+                      onClick={async () => {
+                        await supabase.from("family_members").update({ is_verified: false, verified_by: null, verified_at: null }).eq("id", selectedMember.id);
+                        refreshFamilies();
+                        setSelectedMember(null);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/10 transition-colors cursor-pointer"
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                      Remove Verification
+                    </button>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        await supabase.from("family_members").update({ is_verified: true, verified_by: user?.id, verified_at: new Date().toISOString() }).eq("id", selectedMember.id);
+                        refreshFamilies();
+                        setSelectedMember(null);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors cursor-pointer"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Verify as Family
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -1301,7 +1437,9 @@ export default function FamilyPage() {
                       zoom={12}
                       style={{ height: "100%", width: "100%" }}
                       scrollWheelZoom={false}
+                      key={`${memberCoords.lat},${memberCoords.lon}`}
                     >
+                      <MapResizer />
                       <TileLayer
                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
