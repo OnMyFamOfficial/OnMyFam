@@ -4,6 +4,7 @@ import { Heart, ArrowLeft, Lock, CreditCard, Shield } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useAuth } from "@/components/auth/auth-provider";
+import { supabase } from "@/lib/supabase";
 
 const stripePromise = loadStripe("pk_test_51TDv5ZDYHNTvaMGsshJwS6emZdRmPns66qb0kng9rxhS9dELXir210KZ2ScO14GKZST28XmmD8U73mfVuywURSNO00HyNL1WbT");
 
@@ -23,11 +24,10 @@ const elementStyle = {
   },
 };
 
-function PaymentForm({ amount, clientSecret }: { amount: number; clientSecret: string }) {
+function PaymentForm({ amount, clientSecret, userId, donorName }: { amount: number; clientSecret: string; userId: string; donorName: string }) {
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
-  const { profile } = useAuth();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cardComplete, setCardComplete] = useState({ number: false, expiry: false, cvc: false });
@@ -52,7 +52,7 @@ function PaymentForm({ amount, clientSecret }: { amount: number; clientSecret: s
       payment_method: {
         card: cardNumber,
         billing_details: {
-          name: profile?.display_name || "Anonymous",
+          name: donorName,
         },
       },
     });
@@ -61,6 +61,16 @@ function PaymentForm({ amount, clientSecret }: { amount: number; clientSecret: s
       setError(confirmError.message || "Payment failed");
       setProcessing(false);
     } else if (paymentIntent?.status === "succeeded") {
+      // Record donation directly in Supabase
+      await supabase.from("donations").upsert({
+        stripe_session_id: paymentIntent.id,
+        amount,
+        donor_name: donorName,
+        user_id: userId || null,
+        payment_method: "card",
+        status: "completed",
+      }, { onConflict: "stripe_session_id" });
+
       navigate("/donate/thankyou?payment_intent=" + paymentIntent.id);
     }
   }
@@ -211,7 +221,7 @@ export default function DonatePayPage() {
                 stripe={stripePromise}
                 options={{ clientSecret }}
               >
-                <PaymentForm amount={amount} clientSecret={clientSecret} />
+                <PaymentForm amount={amount} clientSecret={clientSecret} userId={user?.id || ""} donorName={profile?.display_name || "Anonymous"} />
               </Elements>
             ) : null}
           </div>
