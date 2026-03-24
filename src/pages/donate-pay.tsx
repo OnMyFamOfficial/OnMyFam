@@ -1,38 +1,20 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Heart, ArrowLeft, Lock, CreditCard, Shield } from "lucide-react";
+import { Heart, ArrowLeft, Lock, Shield } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useAuth } from "@/components/auth/auth-provider";
 import { supabase } from "@/lib/supabase";
 
 const stripePromise = loadStripe("pk_test_51TDv5ZDYHNTvaMGsshJwS6emZdRmPns66qb0kng9rxhS9dELXir210KZ2ScO14GKZST28XmmD8U73mfVuywURSNO00HyNL1WbT");
 
-const elementStyle = {
-  style: {
-    base: {
-      color: "#e0e0e0",
-      fontFamily: "Inter, system-ui, sans-serif",
-      fontSize: "16px",
-      "::placeholder": {
-        color: "#6b7280",
-      },
-    },
-    invalid: {
-      color: "#ef4444",
-    },
-  },
-};
-
-function PaymentForm({ amount, clientSecret, userId, donorName }: { amount: number; clientSecret: string; userId: string; donorName: string }) {
+function PaymentForm({ amount, userId, donorName }: { amount: number; userId: string; donorName: string }) {
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cardComplete, setCardComplete] = useState({ number: false, expiry: false, cvc: false });
-
-  const allComplete = cardComplete.number && cardComplete.expiry && cardComplete.cvc;
+  const [ready, setReady] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,20 +23,17 @@ function PaymentForm({ amount, clientSecret, userId, donorName }: { amount: numb
     setProcessing(true);
     setError(null);
 
-    const cardNumber = elements.getElement(CardNumberElement);
-    if (!cardNumber) {
-      setError("Card element not found");
-      setProcessing(false);
-      return;
-    }
-
-    const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: {
-        card: cardNumber,
-        billing_details: {
-          name: donorName,
+    const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        payment_method_data: {
+          billing_details: {
+            name: donorName,
+          },
         },
+        return_url: window.location.origin + "/donate/thankyou",
       },
+      redirect: "if_required",
     });
 
     if (confirmError) {
@@ -67,7 +46,7 @@ function PaymentForm({ amount, clientSecret, userId, donorName }: { amount: numb
         amount,
         donor_name: donorName,
         user_id: userId || null,
-        payment_method: "card",
+        payment_method: paymentIntent.payment_method_types?.[0] || "card",
         status: "completed",
       }, { onConflict: "stripe_session_id" });
 
@@ -77,38 +56,12 @@ function PaymentForm({ amount, clientSecret, userId, donorName }: { amount: numb
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Card number */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-2">Card number</label>
-        <div className="rounded-xl border border-[var(--border)] bg-[#0b1016] px-4 py-3.5 focus-within:ring-2 focus-within:ring-gold-500/50 focus-within:border-gold-500/50 transition-all">
-          <CardNumberElement
-            options={elementStyle}
-            onChange={(e) => setCardComplete((prev) => ({ ...prev, number: e.complete }))}
-          />
-        </div>
-      </div>
-
-      {/* Expiry + CVC row */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-2">Expiration</label>
-          <div className="rounded-xl border border-[var(--border)] bg-[#0b1016] px-4 py-3.5 focus-within:ring-2 focus-within:ring-gold-500/50 focus-within:border-gold-500/50 transition-all">
-            <CardExpiryElement
-              options={elementStyle}
-              onChange={(e) => setCardComplete((prev) => ({ ...prev, expiry: e.complete }))}
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-2">Security code</label>
-          <div className="rounded-xl border border-[var(--border)] bg-[#0b1016] px-4 py-3.5 focus-within:ring-2 focus-within:ring-gold-500/50 focus-within:border-gold-500/50 transition-all">
-            <CardCvcElement
-              options={elementStyle}
-              onChange={(e) => setCardComplete((prev) => ({ ...prev, cvc: e.complete }))}
-            />
-          </div>
-        </div>
-      </div>
+      <PaymentElement
+        onReady={() => setReady(true)}
+        options={{
+          layout: "tabs",
+        }}
+      />
 
       {/* Error */}
       {error && (
@@ -118,7 +71,7 @@ function PaymentForm({ amount, clientSecret, userId, donorName }: { amount: numb
       {/* Pay button */}
       <button
         type="submit"
-        disabled={!stripe || processing || !allComplete}
+        disabled={!stripe || processing || !ready}
         className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-base transition-all cursor-pointer hover:brightness-105 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
         style={{
           background: "linear-gradient(135deg, #f8e8a0, #f5b8d0, #c8b8f5, #a0e8f0, #b0f0c8, #f5b8d0)",
@@ -219,24 +172,24 @@ export default function DonatePayPage() {
             ) : clientSecret ? (
               <Elements
                 stripe={stripePromise}
-                options={{ clientSecret }}
+                options={{
+                  clientSecret,
+                  appearance: {
+                    theme: "night",
+                    variables: {
+                      colorPrimary: "#d4a843",
+                      colorBackground: "#0b1016",
+                      colorText: "#e0e0e0",
+                      colorDanger: "#ef4444",
+                      fontFamily: "Inter, system-ui, sans-serif",
+                      borderRadius: "12px",
+                    },
+                  },
+                }}
               >
-                <PaymentForm amount={amount} clientSecret={clientSecret} userId={user?.id || ""} donorName={profile?.display_name || "Anonymous"} />
+                <PaymentForm amount={amount} userId={user?.id || ""} donorName={profile?.display_name || "Anonymous"} />
               </Elements>
             ) : null}
-          </div>
-
-          {/* Footer */}
-          <div className="px-8 pb-6 flex items-center justify-center gap-4 text-[10px] text-[var(--muted-foreground)]">
-            <div className="flex items-center gap-1">
-              <CreditCard className="w-3 h-3" />
-              <span>Visa, Mastercard, Amex</span>
-            </div>
-            <span>|</span>
-            <div className="flex items-center gap-1">
-              <Lock className="w-3 h-3" />
-              <span>256-bit encryption</span>
-            </div>
           </div>
         </div>
       </div>

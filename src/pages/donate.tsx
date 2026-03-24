@@ -116,8 +116,8 @@ export default function DonatePage() {
         </div>
 
         {/* Right: Donation widget + recent supporters */}
-        <div className="lg:w-80 flex-shrink-0 space-y-6">
-          <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] p-6 lg:sticky lg:top-4 space-y-4">
+        <div className="lg:w-80 flex-shrink-0 space-y-6 lg:sticky lg:top-4 lg:self-start">
+          <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] p-6 space-y-4">
             {/* Amount selection */}
             <div>
               <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-2">Select an amount</label>
