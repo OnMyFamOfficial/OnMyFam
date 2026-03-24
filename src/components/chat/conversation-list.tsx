@@ -63,7 +63,7 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
               New Conversation
             </button>
             {showNewMenu && (
-              <div className="absolute right-0 top-full mt-1 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg py-1 min-w-[160px] z-50">
+              <div className="absolute left-0 right-0 top-full mt-1 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-lg py-1 z-50">
                 <button
                   onClick={() => { setShowNewMenu(false); setShowDmPicker(true); }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
