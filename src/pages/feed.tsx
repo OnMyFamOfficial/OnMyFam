@@ -1914,14 +1914,14 @@ export default function FeedPage() {
                     )}
                   </div>
                   {/* Right: Info + Comments */}
-                  <div className="w-[420px] flex-shrink-0 bg-[var(--card)] border-l border-[var(--border)] flex flex-col h-full">
+                  <div className="w-[520px] flex-shrink-0 bg-[var(--card)] border-l border-[var(--border)] flex flex-col h-full">
                     {commentsPanel}
                   </div>
                 </div>
               </div>
             ) : (
               /* ---- Single column layout: Comments or text-only post ---- */
-              <div className="fixed z-[70] top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden" style={{ height: "100vh", maxHeight: "100vh", left: "calc(50% + 2.5vw)" }}>
+              <div className="fixed z-[70] top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden" style={{ height: "100vh", maxHeight: "100vh", left: "calc(50% + 2.5vw)" }}>
                 {commentsPanel}
               </div>
             )}
