@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Upload, X, ChevronLeft, ChevronRight, ArrowLeft, Trash2 } from "lucide-react";
+import { Upload, X, ChevronLeft, ChevronRight, ArrowLeft, Trash2, ImageIcon } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { supabase } from "@/lib/supabase";
 import { uploadAlbumMedia } from "@/services/storage";
@@ -15,6 +15,7 @@ export default function AlbumDetailPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [pickingCover, setPickingCover] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -61,6 +62,13 @@ export default function AlbumDetailPage() {
 
     setUploading(false);
     await loadAlbum();
+  }
+
+  async function handleSetCover(mediaUrl: string) {
+    if (!album) return;
+    await supabase.from("albums").update({ cover_url: mediaUrl }).eq("id", album.id);
+    setAlbum({ ...album, cover_url: mediaUrl });
+    setPickingCover(false);
   }
 
   async function handleDeleteAlbum() {
@@ -121,6 +129,20 @@ export default function AlbumDetailPage() {
             <Upload className="w-4 h-4" />
             {uploading ? "Uploading..." : "Upload Photos"}
           </button>
+          {isCreator && media.length > 0 && (
+            <button
+              onClick={() => setPickingCover(!pickingCover)}
+              className={`px-3 py-2 rounded-lg border text-sm font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+                pickingCover
+                  ? "border-gold-500 bg-gold-500/10 text-gold-500"
+                  : "border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-gold-500/50"
+              }`}
+              title="Set album cover image"
+            >
+              <ImageIcon className="w-4 h-4" />
+              {pickingCover ? "Click a photo" : "Set Cover"}
+            </button>
+          )}
           {isCreator && (
             <button
               onClick={handleDeleteAlbum}
@@ -155,12 +177,22 @@ export default function AlbumDetailPage() {
           </p>
         </div>
       ) : (
+        {pickingCover && (
+          <div className="bg-gold-500/10 border border-gold-500/30 rounded-lg px-4 py-2 text-sm text-gold-500 flex items-center gap-2">
+            <ImageIcon className="w-4 h-4" />
+            Click a photo to set it as the album cover
+          </div>
+        )}
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5">
           {media.map((item, index) => (
             <div
               key={item.id}
-              onClick={() => setViewerIndex(index)}
-              className="aspect-square rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity bg-black/20"
+              onClick={() => pickingCover ? handleSetCover(item.media_url) : setViewerIndex(index)}
+              className={`aspect-square rounded-md overflow-hidden cursor-pointer transition-all bg-black/20 relative ${
+                pickingCover
+                  ? "hover:ring-2 hover:ring-gold-500 hover:opacity-100"
+                  : "hover:opacity-90"
+              } ${album?.cover_url === item.media_url ? "ring-2 ring-gold-500" : ""}`}
             >
               <img
                 src={item.media_url}
@@ -168,6 +200,11 @@ export default function AlbumDetailPage() {
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
+              {album?.cover_url === item.media_url && (
+                <div className="absolute top-1 left-1 bg-gold-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                  COVER
+                </div>
+              )}
             </div>
           ))}
         </div>
