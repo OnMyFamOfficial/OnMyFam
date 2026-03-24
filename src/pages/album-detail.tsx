@@ -177,8 +177,9 @@ export default function AlbumDetailPage() {
           </p>
         </div>
       ) : (
+        <>
         {pickingCover && (
-          <div className="bg-gold-500/10 border border-gold-500/30 rounded-lg px-4 py-2 text-sm text-gold-500 flex items-center gap-2">
+          <div className="bg-gold-500/10 border border-gold-500/30 rounded-lg px-4 py-2 text-sm text-gold-500 flex items-center gap-2 mb-3">
             <ImageIcon className="w-4 h-4" />
             Click a photo to set it as the album cover
           </div>
@@ -208,6 +209,7 @@ export default function AlbumDetailPage() {
             </div>
           ))}
         </div>
+        </>
       )}
 
       {/* Lightbox */}
