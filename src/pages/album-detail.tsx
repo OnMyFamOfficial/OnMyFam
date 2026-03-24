@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
-import { Upload, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Upload, X, ChevronLeft, ChevronRight, ArrowLeft, Trash2 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { supabase } from "@/lib/supabase";
 import { uploadAlbumMedia } from "@/services/storage";
@@ -8,6 +8,7 @@ import type { Album, AlbumMedia } from "@/lib/types";
 
 export default function AlbumDetailPage() {
   const { albumId } = useParams<{ albumId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [album, setAlbum] = useState<Album | null>(null);
   const [media, setMedia] = useState<AlbumMedia[]>([]);
@@ -62,6 +63,13 @@ export default function AlbumDetailPage() {
     await loadAlbum();
   }
 
+  async function handleDeleteAlbum() {
+    if (!album || !user) return;
+    if (!confirm(`Delete "${album.title}" and all its photos? This cannot be undone.`)) return;
+    await supabase.from("albums").delete().eq("id", album.id);
+    navigate("/photos");
+  }
+
   if (loading) {
     return (
       <div className="text-center py-16 text-[var(--muted-foreground)]">
@@ -78,8 +86,19 @@ export default function AlbumDetailPage() {
     );
   }
 
+  const isCreator = album.created_by === user?.id;
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Back button */}
+      <button
+        onClick={() => navigate("/photos")}
+        className="flex items-center gap-1.5 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Photos
+      </button>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -93,14 +112,25 @@ export default function AlbumDetailPage() {
             {media.length} photo{media.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="px-4 py-2 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50"
-        >
-          <Upload className="w-4 h-4" />
-          {uploading ? "Uploading..." : "Upload Photos"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="px-4 py-2 rounded-md bg-gold-500 text-white hover:bg-gold-600 transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+          >
+            <Upload className="w-4 h-4" />
+            {uploading ? "Uploading..." : "Upload Photos"}
+          </button>
+          {isCreator && (
+            <button
+              onClick={handleDeleteAlbum}
+              className="p-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 transition-colors cursor-pointer"
+              title="Delete album"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
         <input
           ref={fileRef}
           type="file"
@@ -125,17 +155,18 @@ export default function AlbumDetailPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5">
           {media.map((item, index) => (
             <div
               key={item.id}
               onClick={() => setViewerIndex(index)}
-              className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+              className="aspect-square rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity bg-black/20"
             >
               <img
                 src={item.media_url}
                 alt={item.caption || ""}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
             </div>
           ))}
