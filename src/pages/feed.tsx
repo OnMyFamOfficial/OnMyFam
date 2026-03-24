@@ -352,10 +352,12 @@ export default function FeedPage() {
     if (otherMembers.length > 0) {
       const notifications = otherMembers.map((m) => ({
         user_id: m.user_id,
+        family_id: currentFamily.id,
         type: "post",
         title: `${profile?.display_name || "Someone"} posted in ${currentFamily.name}`,
         body: postText.trim().slice(0, 100) || "Shared a photo",
-        data: { post_id: post.id, family_id: currentFamily.id },
+        link: "/feed",
+        actor_id: user.id,
       }));
       await supabase.from("notifications").insert(notifications);
     }

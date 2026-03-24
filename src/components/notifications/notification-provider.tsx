@@ -1,17 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { supabase } from "@/lib/supabase";
-
-interface Notification {
-  id: string;
-  user_id: string;
-  type: string;
-  title: string;
-  body: string | null;
-  data: any;
-  read: boolean;
-  created_at: string;
-}
+import type { Notification } from "@/lib/types";
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -47,15 +37,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(50);
-    if (data) setNotifications(data);
+    if (data) setNotifications(data as Notification[]);
   }, [user]);
 
-  // Initial load
   useEffect(() => {
     loadNotifications();
   }, [loadNotifications]);
 
-  // Request notification permission on first load
+  // Request notification permission
   useEffect(() => {
     if (!user) return;
     if ("Notification" in window && window.Notification.permission === "default") {
@@ -77,7 +66,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         notif.close();
       };
     } catch {
-      // Service worker notification fallback
       if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({
           type: "SHOW_NOTIFICATION",
@@ -106,7 +94,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         (payload) => {
           const newNotif = payload.new as Notification;
           setNotifications((prev) => [newNotif, ...prev]);
-          // Show device notification
           showDeviceNotification(newNotif);
         }
       )
@@ -117,16 +104,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     };
   }, [user]);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   async function markAsRead(id: string) {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
-    await supabase.from("notifications").update({ read: true }).eq("id", id);
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
+    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
   }
 
   async function markAllAsRead() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    await supabase.from("notifications").update({ read: true }).eq("user_id", user?.id).eq("read", false);
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    await supabase.from("notifications").update({ is_read: true }).eq("user_id", user?.id).eq("is_read", false);
   }
 
   async function deleteNotification(id: string) {

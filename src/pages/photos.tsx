@@ -11,7 +11,7 @@ type FullAlbum = Album & { creator: Profile };
 export default function PhotosPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { currentFamily } = useFamily();
+  const { currentFamily, members } = useFamily();
   const [albums, setAlbums] = useState<FullAlbum[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -66,6 +66,23 @@ export default function PhotosPage() {
       .single();
 
     if (!error && data) {
+      // Notify family members
+      const otherMembers = members.filter((m) => m.user_id !== user.id);
+      if (otherMembers.length > 0) {
+        const profile = await supabase.from("profiles").select("display_name").eq("id", user.id).single();
+        const name = profile.data?.display_name || "Someone";
+        await supabase.from("notifications").insert(
+          otherMembers.map((m) => ({
+            user_id: m.user_id,
+            family_id: currentFamily.id,
+            type: "new_album",
+            title: `${name} created a new album`,
+            body: form.title.trim(),
+            link: `/photos/${data.id}`,
+            actor_id: user.id,
+          }))
+        );
+      }
       navigate(`/photos/${data.id}`);
     }
     setSaving(false);

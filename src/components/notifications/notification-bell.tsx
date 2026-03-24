@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, X, CheckCheck, Trash2, Heart, MessageCircle, ThumbsUp, Users } from "lucide-react";
+import { Bell, X, CheckCheck, Trash2, Heart, MessageCircle, ThumbsUp, Users, Camera, ShieldCheck, FileText } from "lucide-react";
 import { useNotifications } from "./notification-provider";
 import { formatDistanceToNow } from "date-fns";
 
@@ -9,6 +9,10 @@ const TYPE_ICONS: Record<string, any> = {
   comment: MessageCircle,
   reaction: ThumbsUp,
   family: Users,
+  member_joined: Users,
+  member_verified: ShieldCheck,
+  new_album: Camera,
+  post: FileText,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -16,6 +20,10 @@ const TYPE_COLORS: Record<string, string> = {
   comment: "text-sky-400",
   reaction: "text-gold-500",
   family: "text-green-400",
+  member_joined: "text-green-400",
+  member_verified: "text-gold-500",
+  new_album: "text-purple-400",
+  post: "text-blue-400",
 };
 
 export function NotificationBell() {
@@ -35,13 +43,14 @@ export function NotificationBell() {
 
   function handleNotificationClick(n: any) {
     markAsRead(n.id);
-    // Navigate based on type
-    if (n.type === "relation_request") {
+    if (n.link) {
+      navigate(n.link);
+    } else if (n.type === "relation_request" || n.type === "member_joined" || n.type === "member_verified") {
       navigate("/family");
-    } else if (n.type === "comment" && n.data?.post_id) {
+    } else if (n.type === "post" || n.type === "comment" || n.type === "reaction") {
       navigate("/feed");
-    } else if (n.type === "reaction" && n.data?.post_id) {
-      navigate("/feed");
+    } else if (n.type === "new_album") {
+      navigate("/photos");
     }
     setOpen(false);
   }
@@ -62,7 +71,6 @@ export function NotificationBell() {
 
       {open && (
         <div className="fixed inset-x-2 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl z-[100] flex flex-col overflow-hidden" style={{ maxHeight: "70vh" }}>
-          {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
             <h3 className="font-semibold text-sm">Notifications</h3>
             <div className="flex items-center gap-2">
@@ -79,7 +87,6 @@ export function NotificationBell() {
             </div>
           </div>
 
-          {/* List */}
           <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {notifications.length === 0 ? (
               <div className="py-8 text-center text-sm text-[var(--muted-foreground)]">
@@ -94,20 +101,20 @@ export function NotificationBell() {
                     key={n.id}
                     onClick={() => handleNotificationClick(n)}
                     className={`flex items-start gap-3 px-4 py-3 hover:bg-[var(--accent)] transition-colors cursor-pointer border-b border-[var(--border)] last:border-0 ${
-                      !n.read ? "bg-gold-500/5" : ""
+                      !n.is_read ? "bg-gold-500/5" : ""
                     }`}
                   >
                     <div className={`mt-0.5 ${color}`}>
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm ${!n.read ? "font-medium" : ""}`}>{n.title}</p>
+                      <p className={`text-sm ${!n.is_read ? "font-medium" : ""}`}>{n.title}</p>
                       {n.body && <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{n.body}</p>}
                       <p className="text-[10px] text-[var(--muted-foreground)] mt-1">
                         {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                       </p>
                     </div>
-                    {!n.read && (
+                    {!n.is_read && (
                       <div className="w-2 h-2 rounded-full bg-gold-500 flex-shrink-0 mt-2" />
                     )}
                     <button

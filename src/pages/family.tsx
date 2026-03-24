@@ -84,6 +84,18 @@ function VerificationSection({ unverified, userId, refreshFamilies }: { unverifi
                   <button
                     onClick={async () => {
                       await supabase.from("family_members").update({ is_verified: true, verified_by: userId, verified_at: new Date().toISOString() }).eq("id", m.id);
+                      if (m.user_id && userId) {
+                        const { data: verifier } = await supabase.from("profiles").select("display_name").eq("id", userId).single();
+                        await supabase.from("notifications").insert({
+                          user_id: m.user_id,
+                          family_id: m.family_id,
+                          type: "member_verified",
+                          title: "You've been verified as family!",
+                          body: `${verifier?.display_name || "Someone"} verified you as a family member.`,
+                          link: "/family",
+                          actor_id: userId,
+                        });
+                      }
                       refreshFamilies();
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors cursor-pointer"
@@ -103,7 +115,7 @@ function VerificationSection({ unverified, userId, refreshFamilies }: { unverifi
 
 export default function FamilyPage() {
   const navigate = useNavigate();
-  const { user, isGodMode } = useAuth();
+  const { user, profile, isGodMode } = useAuth();
   const { currentFamily, members, myMembership, refreshFamilies, refreshMembers } = useFamily();
   const [creating, setCreating] = useState(false);
 
@@ -318,10 +330,12 @@ export default function FamilyPage() {
     const senderName = members.find((m) => m.user_id === user.id)?.profile?.display_name || "Someone";
     await supabase.from("notifications").insert({
       user_id: toUserId,
+      family_id: currentFamily.id,
       type: "relation_request",
       title: `${senderName} sent you a relationship request`,
       body: `${senderName} says you are their ${label}${reverseLabel ? ` and they are your ${reverseLabel}` : ""}`,
-      data: { family_id: currentFamily.id, from_user_id: user.id },
+      link: "/family",
+      actor_id: user.id,
     });
     setRelationSending(false);
     setRelationSent(true);
@@ -1403,6 +1417,17 @@ export default function FamilyPage() {
                     <button
                       onClick={async () => {
                         await supabase.from("family_members").update({ is_verified: true, verified_by: user?.id, verified_at: new Date().toISOString() }).eq("id", selectedMember.id);
+                        if (user && profile) {
+                          await supabase.from("notifications").insert({
+                            user_id: selectedMember.user_id,
+                            family_id: selectedMember.family_id,
+                            type: "member_verified",
+                            title: "You've been verified as family!",
+                            body: `${profile.display_name} verified you as a family member.`,
+                            link: "/family",
+                            actor_id: user.id,
+                          });
+                        }
                         refreshFamilies();
                         setSelectedMember(null);
                       }}

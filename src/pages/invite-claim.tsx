@@ -92,6 +92,28 @@ export default function InviteClaimPage() {
       .update({ used_count: invite.used_count + 1 })
       .eq("id", invite.id);
 
+    // Notify existing family members
+    const { data: existingMembers } = await supabase
+      .from("family_members")
+      .select("user_id")
+      .eq("family_id", invite.family_id)
+      .neq("user_id", user.id);
+    const { data: myProfile } = await supabase.from("profiles").select("display_name").eq("id", user.id).single();
+    const myName = myProfile?.display_name || "Someone";
+    if (existingMembers && existingMembers.length > 0) {
+      await supabase.from("notifications").insert(
+        existingMembers.map((m: any) => ({
+          user_id: m.user_id,
+          family_id: invite.family_id,
+          type: "member_joined",
+          title: `${myName} joined the family!`,
+          body: "A new member has joined your family group.",
+          link: "/family",
+          actor_id: user.id,
+        }))
+      );
+    }
+
     setStatus("success");
     setTimeout(() => navigate("/feed"), 2000);
   }
