@@ -9,6 +9,8 @@ export default function DonateThankyouPage() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const sessionId = searchParams.get("session_id");
+  const paymentIntentId = searchParams.get("payment_intent");
+  const stripeId = paymentIntentId || sessionId;
   const [comment, setComment] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -16,7 +18,7 @@ export default function DonateThankyouPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!stripeId) {
       setLoading(false);
       return;
     }
@@ -28,7 +30,7 @@ export default function DonateThankyouPage() {
       const { data } = await supabase
         .from("donations")
         .select("id, amount, donor_name")
-        .eq("stripe_session_id", sessionId)
+        .eq("stripe_session_id", stripeId)
         .single();
 
       if (data) {
@@ -42,7 +44,7 @@ export default function DonateThankyouPage() {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [sessionId]);
+  }, [stripeId]);
 
   async function handleSaveComment() {
     if (!donation || !comment.trim()) return;
