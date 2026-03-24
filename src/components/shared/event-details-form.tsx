@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus, X, Plane, Globe, Phone, DollarSign, Shirt, FileText } from "lucide-react";
+import { useTheme } from "@/components/shared/theme-provider";
 
 export interface EventDetails {
   cost: string;
@@ -62,6 +63,7 @@ interface Props {
 const inputClass = "w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50";
 
 export function EventDetailsForm({ details, onChange }: Props) {
+  const { theme } = useTheme();
   const [expanded, setExpanded] = useState(false);
 
   function update(key: keyof EventDetails, value: any) {
@@ -83,15 +85,16 @@ export function EventDetailsForm({ details, onChange }: Props) {
   }
 
   return (
-    <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+    <div className="rounded-lg overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer text-left"
+        className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer text-left text-white rounded-lg"
+        style={{ background: theme === "dark" ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))" : "#000000" }}
       >
         {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         Additional Details
-        <span className="text-xs text-[var(--muted-foreground)] font-normal">(optional)</span>
+        <span className="text-xs text-white/70 font-normal">(optional)</span>
       </button>
 
       {expanded && (
