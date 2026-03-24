@@ -171,8 +171,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <button
                     key={fam.id}
                     onClick={() => {
-                      setCurrentFamily(fam);
-                      setShowFamilySwitcher(false);
+                      if (fam.id !== currentFamily?.id) {
+                        setCurrentFamily(fam);
+                        setShowFamilySwitcher(false);
+                        setTimeout(() => window.location.reload(), 50);
+                      } else {
+                        setShowFamilySwitcher(false);
+                      }
                     }}
                     className={cn(
                       "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors cursor-pointer",
