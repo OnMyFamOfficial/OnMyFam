@@ -1,15 +1,7 @@
-const CACHE_NAME = 'omf-v2';
-const STATIC_ASSETS = [
-  '/',
-  '/feed',
-  '/manifest.json',
-];
+const CACHE_NAME = 'omf-v3';
 
-// Install: cache shell
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
+// Install: activate immediately
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
@@ -50,19 +42,25 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Fetch: network first, fall back to cache
+// Fetch: only cache static assets, never cache pages
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET, API, and Supabase requests
   if (event.request.method !== 'GET') return;
+
   const url = new URL(event.request.url);
+
+  // Never intercept: API calls, Supabase, Stripe, navigation requests
   if (url.hostname.includes('supabase')) return;
+  if (url.hostname.includes('stripe')) return;
   if (url.pathname.startsWith('/api/')) return;
+  if (event.request.mode === 'navigate') return;
+
+  // Only cache static file assets
+  if (!url.pathname.match(/\.(js|css|svg|png|jpg|jpeg|webp|woff2?|ico)$/)) return;
 
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache successful responses for static assets
-        if (response.ok && (url.pathname.match(/\.(js|css|svg|png|jpg|woff2?)$/) || url.pathname === '/')) {
+        if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
