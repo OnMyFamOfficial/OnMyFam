@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Smile, Image, Search, Sticker, X } from "lucide-react";
 import { EMOJI_CATEGORIES, addRecentEmoji, getRecentEmojis } from "@/components/chat/emoji-data";
 import { supabase } from "@/lib/supabase";
@@ -39,6 +39,17 @@ export function CommentToolbar({ onEmojiSelect, onMediaSelect, postId }: Comment
   const gifTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stickerTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (view === "closed") return;
+    function handleClick(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) setView("closed");
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [view]);
 
   function toggle(v: View) {
     if (view === v) { setView("closed"); return; }
@@ -113,16 +124,17 @@ export function CommentToolbar({ onEmojiSelect, onMediaSelect, postId }: Comment
       ? (() => { const recent = getRecentEmojis(); return recent.length > 0 ? recent.map((e) => ({ emoji: e, name: e })) : EMOJI_CATEGORIES[0]?.emojis || []; })()
       : EMOJI_CATEGORIES[emojiCategory]?.emojis || [];
 
-  if (view === "closed") {
-    return (
+  return (
+    <div className="relative" ref={panelRef}>
+      {/* Trigger buttons */}
       <div className="flex items-center gap-0.5">
-        <button type="button" onClick={() => toggle("emoji")} className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer" title="Emoji">
+        <button type="button" onClick={() => toggle("emoji")} className={cn("p-1 rounded transition-colors cursor-pointer", view === "emoji" ? "bg-gold-500/15 text-gold-500" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]")} title="Emoji">
           <Smile className="w-4 h-4" />
         </button>
-        <button type="button" onClick={() => toggle("gifs")} className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-[10px] font-bold" title="GIFs">
+        <button type="button" onClick={() => toggle("gifs")} className={cn("p-1 rounded transition-colors cursor-pointer text-[10px] font-bold", view === "gifs" ? "bg-gold-500/15 text-gold-500" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]")} title="GIFs">
           GIF
         </button>
-        <button type="button" onClick={() => toggle("stickers")} className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer" title="Stickers">
+        <button type="button" onClick={() => toggle("stickers")} className={cn("p-1 rounded transition-colors cursor-pointer", view === "stickers" ? "bg-gold-500/15 text-gold-500" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]")} title="Stickers">
           <Sticker className="w-4 h-4" />
         </button>
         <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="p-1 rounded hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer disabled:opacity-30" title="Image">
@@ -130,105 +142,99 @@ export function CommentToolbar({ onEmojiSelect, onMediaSelect, postId }: Comment
         </button>
         <input ref={fileRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
       </div>
-    );
-  }
 
-  return (
-    <div className="border-t border-[var(--border)] bg-[var(--card)]">
-      {/* Tab bar */}
-      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--border)]">
-        <button type="button" onClick={() => toggle("emoji")} className={cn("p-1.5 rounded text-xs transition-colors cursor-pointer", view === "emoji" ? "bg-gold-500/15 text-gold-500" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}>
-          <Smile className="w-4 h-4" />
-        </button>
-        <button type="button" onClick={() => toggle("gifs")} className={cn("p-1.5 rounded text-[10px] font-bold transition-colors cursor-pointer", view === "gifs" ? "bg-gold-500/15 text-gold-500" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}>
-          GIF
-        </button>
-        <button type="button" onClick={() => toggle("stickers")} className={cn("p-1.5 rounded transition-colors cursor-pointer", view === "stickers" ? "bg-gold-500/15 text-gold-500" : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]")}>
-          <Sticker className="w-4 h-4" />
-        </button>
-        <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="p-1.5 rounded text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer disabled:opacity-30">
-          <Image className="w-4 h-4" />
-        </button>
-        <input ref={fileRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-        <div className="flex-1" />
-        <button type="button" onClick={() => setView("closed")} className="p-1 rounded text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+      {/* Popup panel */}
+      {view !== "closed" && (
+        <div className="absolute bottom-full right-0 mb-2 w-72 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden z-50">
+          {/* Header */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
+            <span className="text-xs font-semibold text-[var(--muted-foreground)]">
+              {view === "emoji" ? "Emoji" : view === "gifs" ? "GIFs" : "Stickers"}
+            </span>
+            <button type="button" onClick={() => setView("closed")} className="p-0.5 rounded text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-      {/* Content */}
-      <div className="h-48 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {view === "emoji" && (
-          <div>
-            <div className="sticky top-0 bg-[var(--card)] px-3 py-2 z-10">
-              <div className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2.5 py-1">
-                <Search className="w-3 h-3 text-[var(--muted-foreground)]" />
-                <input value={emojiSearch} onChange={(e) => setEmojiSearch(e.target.value)} placeholder="Search emoji..." className="bg-transparent text-xs outline-none w-full" />
-              </div>
-            </div>
-            {!emojiSearch && (
-              <div className="flex gap-1 px-3 pb-1 overflow-x-auto [scrollbar-width:none]">
-                {EMOJI_CATEGORIES.map((cat, i) => (
-                  <button key={i} type="button" onClick={() => setEmojiCategory(i)} className={cn("text-base px-1.5 py-0.5 rounded cursor-pointer flex-shrink-0", emojiCategory === i ? "bg-gold-500/15" : "hover:bg-[var(--accent)]")}>
-                    {cat.icon}
-                  </button>
-                ))}
+          {/* Content */}
+          <div className="h-56 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {view === "emoji" && (
+              <div>
+                <div className="sticky top-0 bg-[var(--card)] px-3 py-2 z-10">
+                  <div className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2.5 py-1">
+                    <Search className="w-3 h-3 text-[var(--muted-foreground)]" />
+                    <input value={emojiSearch} onChange={(e) => setEmojiSearch(e.target.value)} placeholder="Search emoji..." className="bg-transparent text-xs outline-none w-full" />
+                  </div>
+                </div>
+                {!emojiSearch && (
+                  <div className="flex gap-0.5 px-3 pb-1 overflow-x-auto [scrollbar-width:none]">
+                    {EMOJI_CATEGORIES.map((cat, i) => (
+                      <button key={i} type="button" onClick={() => setEmojiCategory(i)} className={cn("text-sm px-1 py-0.5 rounded cursor-pointer flex-shrink-0", emojiCategory === i ? "bg-gold-500/15" : "hover:bg-[var(--accent)]")}>
+                        {cat.icon}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="grid grid-cols-8 gap-0.5 px-3 py-1">
+                  {filteredEmojis.map((e: any, i: number) => (
+                    <button key={i} type="button" onClick={() => { onEmojiSelect(e.emoji); addRecentEmoji(e.emoji); }} className="text-lg p-0.5 rounded hover:bg-[var(--accent)] cursor-pointer text-center">
+                      {e.emoji}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-            <div className="grid grid-cols-8 gap-0.5 px-3 py-1">
-              {filteredEmojis.map((e: any, i: number) => (
-                <button key={i} type="button" onClick={() => { onEmojiSelect(e.emoji); addRecentEmoji(e.emoji); }} className="text-xl p-1 rounded hover:bg-[var(--accent)] cursor-pointer text-center">
-                  {e.emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {view === "gifs" && (
-          <div>
-            <div className="sticky top-0 bg-[var(--card)] px-3 py-2 z-10">
-              <div className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2.5 py-1">
-                <Search className="w-3 h-3 text-[var(--muted-foreground)]" />
-                <input value={gifSearch} onChange={(e) => handleGifSearch(e.target.value)} placeholder="Search GIFs..." className="bg-transparent text-xs outline-none w-full" />
-              </div>
-            </div>
-            {loadingGifs ? (
-              <div className="text-center py-6 text-xs text-[var(--muted-foreground)]">Loading...</div>
-            ) : (
-              <div className="grid grid-cols-3 gap-1 px-3 py-1">
-                {gifs.map((g) => (
-                  <button key={g.id} type="button" onClick={() => { onMediaSelect(g.url); setView("closed"); }} className="rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-gold-500">
-                    <img src={g.preview} alt="" className="w-full h-20 object-cover" loading="lazy" />
-                  </button>
-                ))}
+            {view === "gifs" && (
+              <div>
+                <div className="sticky top-0 bg-[var(--card)] px-3 py-2 z-10">
+                  <div className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2.5 py-1">
+                    <Search className="w-3 h-3 text-[var(--muted-foreground)]" />
+                    <input value={gifSearch} onChange={(e) => handleGifSearch(e.target.value)} placeholder="Search GIFs..." className="bg-transparent text-xs outline-none w-full" />
+                  </div>
+                </div>
+                {loadingGifs ? (
+                  <div className="text-center py-6 text-xs text-[var(--muted-foreground)]">Loading...</div>
+                ) : gifs.length === 0 ? (
+                  <div className="text-center py-6 text-xs text-[var(--muted-foreground)]">No GIFs found</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-1 px-3 py-1">
+                    {gifs.map((g) => (
+                      <button key={g.id} type="button" onClick={() => { onMediaSelect(g.url); setView("closed"); }} className="rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-gold-500">
+                        <img src={g.preview} alt="" className="w-full h-20 object-cover" loading="lazy" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {view === "stickers" && (
-          <div>
-            <div className="sticky top-0 bg-[var(--card)] px-3 py-2 z-10">
-              <div className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2.5 py-1">
-                <Search className="w-3 h-3 text-[var(--muted-foreground)]" />
-                <input value={stickerSearch} onChange={(e) => handleStickerSearch(e.target.value)} placeholder="Search stickers..." className="bg-transparent text-xs outline-none w-full" />
-              </div>
-            </div>
-            {loadingStickers ? (
-              <div className="text-center py-6 text-xs text-[var(--muted-foreground)]">Loading...</div>
-            ) : (
-              <div className="grid grid-cols-4 gap-1 px-3 py-1">
-                {stickers.map((s) => (
-                  <button key={s.id} type="button" onClick={() => { onMediaSelect(s.url); setView("closed"); }} className="rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-gold-500 p-1">
-                    <img src={s.preview} alt="" className="w-full h-16 object-contain" loading="lazy" />
-                  </button>
-                ))}
+            {view === "stickers" && (
+              <div>
+                <div className="sticky top-0 bg-[var(--card)] px-3 py-2 z-10">
+                  <div className="flex items-center gap-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2.5 py-1">
+                    <Search className="w-3 h-3 text-[var(--muted-foreground)]" />
+                    <input value={stickerSearch} onChange={(e) => handleStickerSearch(e.target.value)} placeholder="Search stickers..." className="bg-transparent text-xs outline-none w-full" />
+                  </div>
+                </div>
+                {loadingStickers ? (
+                  <div className="text-center py-6 text-xs text-[var(--muted-foreground)]">Loading...</div>
+                ) : stickers.length === 0 ? (
+                  <div className="text-center py-6 text-xs text-[var(--muted-foreground)]">No stickers found</div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1 px-3 py-1">
+                    {stickers.map((s) => (
+                      <button key={s.id} type="button" onClick={() => { onMediaSelect(s.url); setView("closed"); }} className="rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-gold-500 p-1">
+                        <img src={s.preview} alt="" className="w-full h-16 object-contain" loading="lazy" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
