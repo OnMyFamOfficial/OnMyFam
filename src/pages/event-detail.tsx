@@ -6,6 +6,7 @@ import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { EVENT_CATEGORIES } from "@/lib/constants";
 import { CalendarPicker } from "@/components/shared/calendar-picker";
+import { EventDetailsForm, parseDetails, detailsToJson, type EventDetails } from "@/components/shared/event-details-form";
 import { format, formatDistanceToNow } from "date-fns";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -103,6 +104,7 @@ export default function EventDetailPage() {
   const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
   const [editCoverPreview, setEditCoverPreview] = useState<string | null>(null);
   const editCoverRef = useRef<HTMLInputElement>(null);
+  const [editDetails, setEditDetails] = useState<EventDetails>(parseDetails(null));
   const [editSaving, setEditSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mapCoords, setMapCoords] = useState<[number, number] | null>(null);
@@ -234,6 +236,7 @@ export default function EventDetailPage() {
     setEditEndTime(eventData.ends_at && !eventData.is_all_day ? dateToTimeString(eventData.ends_at) : "");
     setEditAllDay(eventData.is_all_day);
     setEditHosts(eventData.hosted_by || []);
+    setEditDetails(parseDetails(eventData.details));
     setEditCoverPreview(null);
     setEditCoverFile(null);
     setLoading(false);
@@ -282,6 +285,7 @@ export default function EventDetailPage() {
       ends_at: endsAt,
       is_all_day: editAllDay,
       hosted_by: editHosts,
+      details: detailsToJson(editDetails),
     }).eq("id", id);
     await loadEvent();
     setEditing(false);
@@ -563,6 +567,9 @@ export default function EventDetailPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Additional Details */}
+              <EventDetailsForm details={editDetails} onChange={setEditDetails} />
 
               <div className="flex gap-2 pt-2">
                 <button onClick={handleEditSave} disabled={editSaving || !editForm.title.trim() || !editStartDate} className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 cursor-pointer flex items-center gap-1">
@@ -904,7 +911,61 @@ export default function EventDetailPage() {
             </p>
           </div>
         </div>
-      </div>
+
+        {/* Additional details from JSONB */}
+        {(() => {
+          const d = parseDetails((event as any).details);
+          const hasAny = d.cost || d.dress_code || d.nearby_airports || d.websites.length > 0 || d.contact_name || d.contact_phone || d.contact_email || d.additional_notes;
+          if (!hasAny) return null;
+          return (
+            <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4 space-y-3">
+              <h3 className="font-semibold text-sm">Additional Info</h3>
+              <div className="space-y-2 text-sm">
+                {d.cost && (
+                  <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+                    <span className="text-green-400 font-medium">$</span>
+                    <span>{d.cost}</span>
+                  </div>
+                )}
+                {d.dress_code && (
+                  <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+                    <span className="text-purple-400 text-xs">Dress:</span>
+                    <span>{d.dress_code}</span>
+                  </div>
+                )}
+                {d.nearby_airports && (
+                  <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+                    <span className="text-sky-400 text-xs">Airports:</span>
+                    <span>{d.nearby_airports}</span>
+                  </div>
+                )}
+                {d.websites.length > 0 && (
+                  <div className="space-y-1">
+                    {d.websites.filter((w) => w.url).map((w, i) => (
+                      <a key={i} href={w.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-gold-500 hover:text-gold-400 text-xs">
+                        <span>{w.label || w.url}</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+                {(d.contact_name || d.contact_phone || d.contact_email) && (
+                  <div className="border-t border-[var(--border)] pt-2 space-y-1 text-xs text-[var(--muted-foreground)]">
+                    <p className="text-[var(--foreground)] font-medium text-sm">Contact</p>
+                    {d.contact_name && <p>{d.contact_name}</p>}
+                    {d.contact_phone && <p>{d.contact_phone}</p>}
+                    {d.contact_email && <a href={`mailto:${d.contact_email}`} className="text-gold-500 hover:text-gold-400">{d.contact_email}</a>}
+                  </div>
+                )}
+                {d.additional_notes && (
+                  <div className="border-t border-[var(--border)] pt-2">
+                    <p className="text-xs text-[var(--muted-foreground)] whitespace-pre-wrap">{d.additional_notes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+      </div>{/* end right column */}
 
       </div>{/* end 2-column layout */}
     </div>

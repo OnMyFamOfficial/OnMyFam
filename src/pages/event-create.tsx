@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ImagePlus, X, UserPlus } from "lucide-react";
+import { EventDetailsForm, emptyDetails, detailsToJson, type EventDetails } from "@/components/shared/event-details-form";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
@@ -92,6 +93,7 @@ export default function EventCreatePage() {
     end_time: "",
     is_all_day: false,
   });
+  const [details, setDetails] = useState<EventDetails>({ ...emptyDetails });
   const [hosts, setHosts] = useState<string[]>([]);
   const [showHostPicker, setShowHostPicker] = useState(false);
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -164,6 +166,7 @@ export default function EventCreatePage() {
         starts_at: startsAt,
         ends_at: endsAt,
         is_all_day: form.is_all_day,
+        details: detailsToJson(details),
       })
       .select()
       .single();
@@ -420,6 +423,9 @@ export default function EventCreatePage() {
             </div>
           </div>
         </div>
+
+        {/* Additional Details */}
+        <EventDetailsForm details={details} onChange={setDetails} />
 
         {/* Submit */}
         <div className="flex gap-2 pt-2">
