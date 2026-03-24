@@ -21,7 +21,7 @@ export async function uploadFile(
 
 export async function uploadAvatar(userId: string, file: File): Promise<string | null> {
   const ext = file.name.split(".").pop();
-  const path = `${userId}/avatar.${ext}`;
+  const path = `${userId}/avatar-${Date.now()}.${ext}`;
   return uploadFile("avatars", path, file);
 }
 
@@ -31,7 +31,7 @@ export async function uploadCover(
   file: File
 ): Promise<string | null> {
   const ext = file.name.split(".").pop();
-  const path = `${entityId}/cover.${ext}`;
+  const path = `${entityId}/cover-${Date.now()}.${ext}`;
   return uploadFile("covers", path, file);
 }
 
