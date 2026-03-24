@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert } from "lucide-react";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
+import { DeleteConfirmModal } from "@/components/shared/delete-confirm-modal";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
@@ -193,6 +194,7 @@ export default function FamilyPage() {
   // Member modal state
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
+  const [showDeleteFamilyModal, setShowDeleteFamilyModal] = useState(false);
   const [memberProfile, setMemberProfile] = useState<Profile | null>(null);
   const [memberCoords, setMemberCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [relationPicker, setRelationPicker] = useState(false);
@@ -1305,12 +1307,7 @@ export default function FamilyPage() {
             Permanently delete this family and all its data including posts, events, albums, conversations, and members. This cannot be undone.
           </p>
           <button
-            onClick={async () => {
-              if (!confirm(`Delete "${currentFamily.name}" and ALL its data? This cannot be undone.`)) return;
-              await supabase.rpc("admin_delete_family", { p_family_id: currentFamily.id });
-              refreshFamilies();
-              navigate("/feed");
-            }}
+            onClick={() => setShowDeleteFamilyModal(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
@@ -1320,6 +1317,21 @@ export default function FamilyPage() {
       )}
 
       </div>{/* end connected cards container */}
+
+      {/* Delete family confirmation modal */}
+      <DeleteConfirmModal
+        isOpen={showDeleteFamilyModal}
+        onClose={() => setShowDeleteFamilyModal(false)}
+        onConfirm={async () => {
+          await supabase.rpc("admin_delete_family", { p_family_id: currentFamily.id });
+          setShowDeleteFamilyModal(false);
+          refreshFamilies();
+          navigate("/feed");
+        }}
+        title="Delete Family"
+        itemName={currentFamily.name}
+        description={`This will permanently delete "${currentFamily.name}" and ALL its data including posts, events, albums, conversations, and members. This action cannot be undone.`}
+      />
       </div>{/* end right content */}
 
       {/* ===== Member Profile Modal ===== */}

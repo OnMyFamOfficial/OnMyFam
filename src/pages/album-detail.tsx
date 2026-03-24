@@ -5,6 +5,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { supabase } from "@/lib/supabase";
 import { uploadAlbumMedia } from "@/services/storage";
 import type { Album, AlbumMedia } from "@/lib/types";
+import { DeleteConfirmModal } from "@/components/shared/delete-confirm-modal";
 
 export default function AlbumDetailPage() {
   const { albumId } = useParams<{ albumId: string }>();
@@ -16,6 +17,7 @@ export default function AlbumDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [pickingCover, setPickingCover] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -72,8 +74,7 @@ export default function AlbumDetailPage() {
   }
 
   async function handleDeleteAlbum() {
-    if (!album || !user) return;
-    if (!confirm(`Delete "${album.title}" and all its photos? This cannot be undone.`)) return;
+    if (!album) return;
     await supabase.from("albums").delete().eq("id", album.id);
     navigate("/photos");
   }
@@ -145,7 +146,7 @@ export default function AlbumDetailPage() {
           )}
           {isCreator && (
             <button
-              onClick={handleDeleteAlbum}
+              onClick={() => setShowDeleteModal(true)}
               className="p-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 transition-colors cursor-pointer"
               title="Delete album"
             >
@@ -264,6 +265,16 @@ export default function AlbumDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Delete confirmation modal */}
+      <DeleteConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteAlbum}
+        title="Delete Album"
+        itemName={album.title}
+        description={`This will permanently delete "${album.title}" and all ${media.length} photo${media.length !== 1 ? "s" : ""} in it. This action cannot be undone.`}
+      />
     </div>
   );
 }
