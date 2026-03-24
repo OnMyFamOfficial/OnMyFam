@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert, Menu, Home, Star, Bell, Bookmark, Layers } from "lucide-react";
+import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert, Menu, Home } from "lucide-react";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { DeleteConfirmModal } from "@/components/shared/delete-confirm-modal";
 import { useAuth } from "@/components/auth/auth-provider";
