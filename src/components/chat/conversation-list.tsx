@@ -94,7 +94,7 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
 
       {/* DM member picker */}
       {showDmPicker ? (
-        <div className="flex-1 overflow-y-auto [scrollbar-width:thin]">
+        <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
             <span className="text-sm font-medium">Choose a person</span>
             <button
@@ -129,7 +129,7 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
         </div>
       ) : (
         /* Conversation list */
-        <div className="flex-1 overflow-y-auto p-1.5 [scrollbar-width:thin] chat-gradient-down">
+        <div className="flex-1 overflow-y-auto p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden chat-gradient-down">
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-[var(--muted-foreground)]">
               <Users className="w-8 h-8 mb-2 opacity-50" />
