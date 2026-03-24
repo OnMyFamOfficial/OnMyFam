@@ -16,7 +16,7 @@ export async function uploadFile(
   }
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  return `${data.publicUrl}?t=${Date.now()}`;
+  return data.publicUrl;
 }
 
 export async function uploadAvatar(userId: string, file: File): Promise<string | null> {
