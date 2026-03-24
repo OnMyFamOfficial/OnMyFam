@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert, Menu, Home, Star, Bell, Bookmark, Layers } from "lucide-react";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { DeleteConfirmModal } from "@/components/shared/delete-confirm-modal";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useTheme } from "@/components/shared/theme-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
@@ -116,6 +117,7 @@ function VerificationSection({ unverified, userId, refreshFamilies }: { unverifi
 export default function FamilyPage() {
   const navigate = useNavigate();
   const { user, profile, isGodMode } = useAuth();
+  const { theme } = useTheme();
   const { currentFamily, members, myMembership, refreshFamilies, refreshMembers } = useFamily();
   const [creating, setCreating] = useState(false);
 
@@ -207,6 +209,8 @@ export default function FamilyPage() {
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
   const [showDeleteFamilyModal, setShowDeleteFamilyModal] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
   const [memberProfile, setMemberProfile] = useState<Profile | null>(null);
   const [memberCoords, setMemberCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [relationPicker, setRelationPicker] = useState(false);
@@ -745,14 +749,19 @@ export default function FamilyPage() {
       </div>
 
       {/* Right: Everything else */}
-      <div className="flex-1 min-w-0 p-4 lg:p-6 lg:overflow-y-auto lg:h-[calc(100vh-4rem)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex-1 min-w-0 p-4 lg:p-6 space-y-6 lg:overflow-y-auto lg:h-[calc(100vh-4rem)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
-      {/* Connected cards container */}
-      <div className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)]">
-
-      {/* Family header */}
-      <div className="overflow-hidden">
-        <div className="h-32 bg-gradient-to-r from-gold-700 via-gold-500 to-gold-400" />
+      {/* Family header card */}
+      <div
+        className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] transition-all duration-500 ease-in-out"
+        style={{
+          maxHeight: menuOpen ? "0px" : "600px",
+          opacity: menuOpen ? 0 : 1,
+          marginBottom: menuOpen ? 0 : undefined,
+          overflow: "hidden",
+        }}
+      >
+        <div className="bg-gradient-to-r from-gold-700 via-gold-500 to-gold-400" style={{ height: "400px", maxWidth: "1200px", width: "100%" }} />
         <div className="px-6 py-4">
           <h1 className="text-2xl font-bold">{currentFamily.name}</h1>
           {currentFamily.description && (
@@ -760,20 +769,122 @@ export default function FamilyPage() {
               {currentFamily.description}
             </p>
           )}
-          <div className="mt-2 flex items-center gap-4 text-sm text-[var(--muted-foreground)]">
-            <span className="flex items-center gap-1">
-              <Users className="w-4 h-4" />
-              {currentFamily.member_count} member{currentFamily.member_count !== 1 ? "s" : ""}
-            </span>
-            {currentFamily.established_year && (
-              <span>Est. {currentFamily.established_year}</span>
-            )}
+          <div className="mt-2 flex items-center justify-between text-sm text-[var(--muted-foreground)]">
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1">
+                <Users className="w-4 h-4" />
+                {currentFamily.member_count} member{currentFamily.member_count !== 1 ? "s" : ""}
+              </span>
+              {currentFamily.established_year && (
+                <span>Est. {currentFamily.established_year}</span>
+              )}
+            </div>
+            <button
+              onClick={() => { setMenuOpen(true); setActiveSection("invitations"); }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-medium transition-colors cursor-pointer shadow-lg hover:opacity-90"
+              style={{
+                background: theme === "dark"
+                  ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                  : "#000000",
+              }}
+            >
+              <Menu className="w-5 h-5" />
+              Menu
+            </button>
           </div>
         </div>
       </div>
 
+      {/* Slide-in menu bar */}
+      <div
+        className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] transition-all duration-500 ease-in-out"
+        style={{
+          maxHeight: menuOpen ? "200px" : "0px",
+          opacity: menuOpen ? 1 : 0,
+          overflow: "hidden",
+        }}
+      >
+        <div className="flex items-center gap-2 px-4 py-3">
+          <button
+            onClick={() => { setActiveSection(null); setMenuOpen(false); }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+              activeSection === null ? "text-white shadow-lg" : "bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            }`}
+            style={activeSection === null ? {
+              background: theme === "dark"
+                ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                : "#000000",
+            } : undefined}
+          >
+            <Home className="w-4 h-4" />
+            Home
+          </button>
+          <div className="flex-1 flex items-center gap-1 bg-[var(--accent)] rounded-lg p-1">
+            <button
+              onClick={() => { setActiveSection("invitations"); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer ${
+                activeSection === "invitations" ? "text-white font-medium shadow-lg" : "hover:bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+              style={activeSection === "invitations" ? {
+                background: theme === "dark"
+                  ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                  : "#000000",
+              } : undefined}
+            >
+              <Mail className="w-4 h-4" />
+              <span className="hidden sm:inline">Invitations</span>
+            </button>
+            <button
+              onClick={() => { setActiveSection("settings"); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer ${
+                activeSection === "settings" ? "text-white font-medium shadow-lg" : "hover:bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+              style={activeSection === "settings" ? {
+                background: theme === "dark"
+                  ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                  : "#000000",
+              } : undefined}
+            >
+              <Settings className="w-4 h-4" />
+              <span className="hidden sm:inline">Fam Settings</span>
+            </button>
+            <button
+              onClick={() => { setActiveSection("connections"); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer ${
+                activeSection === "connections" ? "text-white font-medium shadow-lg" : "hover:bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+              style={activeSection === "connections" ? {
+                background: theme === "dark"
+                  ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                  : "#000000",
+              } : undefined}
+            >
+              <GitBranch className="w-4 h-4" />
+              <span className="hidden sm:inline">Connections</span>
+            </button>
+            <button
+              onClick={() => { setActiveSection("danger"); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer ${
+                activeSection === "danger" ? "text-white font-medium shadow-lg" : "hover:bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+              style={activeSection === "danger" ? {
+                background: theme === "dark"
+                  ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                  : "#000000",
+              } : undefined}
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span className="hidden sm:inline">Danger Zone</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Connected cards container */}
+      <div className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)]" style={{ display: activeSection === null ? "none" : undefined }}>
+
       {/* Incoming relation requests */}
-      {incomingRequests.length > 0 && (
+      {activeSection === "invitations" && incomingRequests.length > 0 && (
         <div className="border-b border-gold-500/30 p-4">
           <h3 className="font-semibold text-sm flex items-center gap-2 mb-3">
             <Heart className="w-4 h-4 text-gold-500" />
@@ -818,6 +929,7 @@ export default function FamilyPage() {
       )}
 
       {/* Mobile: Members list (hidden on desktop since sidebar handles it) */}
+      {activeSection === "invitations" && (
       <div className="lg:hidden border-b border-[var(--border)] p-4">
         <h3 className="font-semibold mb-3">Members ({members.length})</h3>
         <div className="space-y-2">
@@ -839,8 +951,16 @@ export default function FamilyPage() {
           })}
         </div>
       </div>
+      )}
 
-      {/* Invite section - visible to all members */}
+      {/* ===== Invitations section ===== */}
+      {activeSection === "invitations" && (
+      <div id="section-invitations">
+        <div className="flex items-center gap-2 p-4 border-b border-[var(--border)]">
+          <Mail className="w-4 h-4 text-[var(--muted-foreground)]" />
+          <h3 className="font-semibold">Invitations</h3>
+        </div>
+
       <div className="border-b border-[var(--border)] p-4">
         <div className="flex items-center justify-between">
           <div>
@@ -973,9 +1093,12 @@ export default function FamilyPage() {
         );
       })()}
 
+      </div>
+      )}
+
       {/* Family Settings - admin or god mode */}
-      {(isAdmin || currentFamily.created_by === user?.id) && (
-        <div className="border-b border-[var(--border)] p-4">
+      {activeSection === "settings" && (isAdmin || currentFamily.created_by === user?.id) && (
+        <div id="section-settings" className="border-b border-[var(--border)] p-4">
           <div className="flex items-center gap-2 mb-3">
             <Settings className="w-4 h-4 text-[var(--muted-foreground)]" />
             <h3 className="font-semibold">Family Settings</h3>
@@ -1067,12 +1190,16 @@ export default function FamilyPage() {
         </div>
       )}
 
-      {/* Family Hierarchy */}
-      <div className="border-b border-[var(--border)] p-4">
-        <div className="flex items-center gap-2 mb-3">
+      {/* ===== Connections section ===== */}
+      {activeSection === "connections" && (
+      <div id="section-connections">
+        <div className="flex items-center gap-2 p-4 border-b border-[var(--border)]">
           <GitBranch className="w-4 h-4 text-[var(--muted-foreground)]" />
-          <h3 className="font-semibold">Family Tree</h3>
+          <h3 className="font-semibold">Connections</h3>
         </div>
+
+      <div className="border-b border-[var(--border)] p-4">
+        <h3 className="font-semibold mb-3">Family Tree</h3>
 
         {/* Parent family */}
         <div className="mb-3">
@@ -1310,9 +1437,12 @@ export default function FamilyPage() {
         )}
       </div>
 
+      </div>
+      )}
+
       {/* Delete Family - admin/creator or God Mode */}
-      {(isAdmin || currentFamily.created_by === user?.id || isGodMode) && (
-        <div className="bg-red-500/5 p-4">
+      {activeSection === "danger" && (isAdmin || currentFamily.created_by === user?.id || isGodMode) && (
+        <div id="section-danger" className="bg-red-500/5 p-4">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-red-400" />
             <h3 className="font-semibold text-red-400">Danger Zone</h3>
