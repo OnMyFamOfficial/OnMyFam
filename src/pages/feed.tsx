@@ -1528,7 +1528,7 @@ export default function FeedPage() {
             </div>{/* end scrollable content + comments */}
 
             {/* Fixed bottom: reply indicator + toolbar + comment input */}
-            <div className="flex-shrink-0 border-t border-[var(--border)] bg-[var(--card)]">
+            <div className="flex-shrink-0 border-t border-[var(--border)] bg-[var(--card)] relative">
               {replyingTo && replyingTo.postId === post.id && (
                 <div className="flex items-center gap-2 px-4 pt-2 text-xs text-gold-500">
                   <Reply className="w-3 h-3" />
@@ -1849,7 +1849,7 @@ export default function FeedPage() {
             </div>
 
             {/* Fixed input - uses sticky so keyboard pushes it up naturally */}
-            <div className="flex-shrink-0 border-t border-[var(--border)] bg-[var(--card)]">
+            <div className="flex-shrink-0 border-t border-[var(--border)] bg-[var(--card)] relative">
               {replyingTo && replyingTo.postId === post.id && (
                 <div className="flex items-center gap-2 px-4 pt-2 text-xs text-gold-500">
                   <Reply className="w-3 h-3" />
