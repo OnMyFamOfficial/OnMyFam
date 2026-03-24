@@ -7,7 +7,19 @@ import { supabase } from "@/lib/supabase";
 import { EVENT_CATEGORIES } from "@/lib/constants";
 import { CalendarPicker } from "@/components/shared/calendar-picker";
 import { format, formatDistanceToNow } from "date-fns";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import type { FamilyEvent, EventRsvp, EventChatMessage, Profile } from "@/lib/types";
+
+const goldIcon = L.icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
 
 type FullEvent = FamilyEvent & {
   creator: Profile;
@@ -84,6 +96,21 @@ export default function EventDetailPage() {
   const editCoverRef = useRef<HTMLInputElement>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [mapCoords, setMapCoords] = useState<[number, number] | null>(null);
+
+  // Geocode location when event loads
+  useEffect(() => {
+    if (!event) return;
+    const query = event.address || event.location;
+    if (!query) { setMapCoords(null); return; }
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.[0]) setMapCoords([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+        else setMapCoords(null);
+      })
+      .catch(() => setMapCoords(null));
+  }, [event?.address, event?.location]);
 
   useEffect(() => {
     if (id) {
@@ -305,7 +332,7 @@ export default function EventDetailPage() {
   const maybeList = event.rsvps.filter((r) => r.status === "maybe");
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Back button */}
       <button
         onClick={() => navigate("/events")}
@@ -314,6 +341,10 @@ export default function EventDetailPage() {
         <ArrowLeft className="w-4 h-4" />
         Back to Events
       </button>
+
+      <div className="flex flex-col lg:flex-row gap-6">
+      {/* Left column */}
+      <div className="flex-1 space-y-6">
 
       {/* Header */}
       <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden">
@@ -708,6 +739,111 @@ export default function EventDetailPage() {
           </button>
         </div>
       </div>
+
+      </div>{/* end left column */}
+
+      {/* Right column */}
+      <div className="lg:w-80 flex-shrink-0 space-y-6 lg:sticky lg:top-4 lg:self-start">
+        {/* Map */}
+        {mapCoords ? (
+          <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden">
+            <div className="h-64 rounded-t-lg overflow-hidden">
+              <MapContainer center={mapCoords} zoom={14} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }} key={mapCoords.join(",")}>
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+                <Marker position={mapCoords} icon={goldIcon}>
+                  <Popup>{event.address || event.location}</Popup>
+                </Marker>
+              </MapContainer>
+            </div>
+            <div className="p-3 space-y-1">
+              {event.location && (
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5 text-gold-500 flex-shrink-0" />
+                  {event.location}
+                </p>
+              )}
+              {event.address && (
+                <p className="text-xs text-[var(--muted-foreground)] flex items-center gap-2">
+                  <Navigation className="w-3.5 h-3.5 flex-shrink-0" />
+                  {event.address}
+                </p>
+              )}
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address || event.location || "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-gold-500 hover:text-gold-400 mt-1 cursor-pointer"
+              >
+                <Navigation className="w-3 h-3" />
+                Get Directions
+              </a>
+            </div>
+          </div>
+        ) : (event.location || event.address) ? (
+          <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <MapPin className="w-4 h-4 text-gold-500" />
+              <h3 className="font-semibold text-sm">Location</h3>
+            </div>
+            {event.location && <p className="text-sm">{event.location}</p>}
+            {event.address && <p className="text-xs text-[var(--muted-foreground)] mt-1">{event.address}</p>}
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address || event.location || "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-gold-500 hover:text-gold-400 mt-2 cursor-pointer"
+            >
+              <Navigation className="w-3 h-3" />
+              Get Directions
+            </a>
+          </div>
+        ) : null}
+
+        {/* Event details card */}
+        <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4 space-y-3">
+          <h3 className="font-semibold text-sm">Details</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+              <Calendar className="w-4 h-4 text-gold-500 flex-shrink-0" />
+              <span>
+                {event.is_all_day
+                  ? format(new Date(event.starts_at), "MMM d, yyyy")
+                  : format(new Date(event.starts_at), "MMM d, yyyy 'at' h:mm a")}
+                {event.ends_at && event.is_all_day && ` - ${format(new Date(event.ends_at), "MMM d, yyyy")}`}
+                {event.ends_at && !event.is_all_day && ` - ${format(new Date(event.ends_at), "h:mm a")}`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+              <Users className="w-4 h-4 text-gold-500 flex-shrink-0" />
+              <span>{goingList.length} going{maybeList.length > 0 && ` \u00B7 ${maybeList.length} maybe`}</span>
+            </div>
+            {event.hosts && event.hosts.length > 0 && (
+              <div className="flex items-start gap-2 text-[var(--muted-foreground)]">
+                <UserCheck className="w-4 h-4 text-gold-500 flex-shrink-0 mt-0.5" />
+                <div className="flex flex-wrap gap-1">
+                  {event.hosts.map((host) => (
+                    <span key={host.id} className="inline-flex items-center gap-1">
+                      <div className="w-5 h-5 rounded-full bg-gold-500/20 overflow-hidden flex items-center justify-center flex-shrink-0">
+                        {host.avatar_url ? (
+                          <img src={host.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-[8px] font-medium text-gold-500">{host.display_name?.charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <span className="text-xs font-medium text-[var(--foreground)]">{host.display_name}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-[var(--muted-foreground)]">
+              Created by {event.creator?.display_name || "Unknown"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      </div>{/* end 2-column layout */}
     </div>
   );
 }
