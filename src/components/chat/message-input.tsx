@@ -497,8 +497,8 @@ export function MessageInput({ conversationId, replyTo, onClearReply, onTyping, 
                 <div className="flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <div className="grid grid-cols-8 gap-0.5">
                     {(() => {
-                      const emojis = emojiSearch
-                        ? EMOJI_CATEGORIES.flatMap((c) => c.emojis).filter((e) => e.name.includes(emojiSearch.toLowerCase()))
+                      const emojis: any[] = emojiSearch
+                        ? EMOJI_CATEGORIES.flatMap((c) => c.emojis).filter((e: any) => e.name?.includes(emojiSearch.toLowerCase()))
                         : emojiCategory === 0
                           ? (() => { const recent = getRecentEmojis(); return recent.length > 0 ? recent.map((e: string) => ({ emoji: e, name: e })) : EMOJI_CATEGORIES[0]?.emojis || []; })()
                           : EMOJI_CATEGORIES[emojiCategory]?.emojis || [];
