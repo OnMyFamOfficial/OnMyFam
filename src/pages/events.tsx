@@ -373,10 +373,10 @@ export default function EventsPage() {
                 <img
                   src={event.cover_url}
                   alt=""
-                  className="w-full h-32 object-cover"
+                  className="w-full h-44 object-cover"
                 />
               ) : (
-                <div className="w-full h-32 bg-gradient-to-r from-gold-600/30 to-gold-400/30 flex items-center justify-center">
+                <div className="w-full h-44 bg-gradient-to-r from-gold-600/30 to-gold-400/30 flex items-center justify-center">
                   <Calendar className="w-10 h-10 text-gold-500/50" />
                 </div>
               )}
