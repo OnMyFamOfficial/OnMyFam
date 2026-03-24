@@ -752,11 +752,11 @@ export default function EventDetailPage() {
       </div>{/* end left column */}
 
       {/* Right column */}
-      <div className="lg:w-80 flex-shrink-0 space-y-6 lg:sticky lg:top-4 lg:self-start">
+      <div className="lg:w-[22rem] flex-shrink-0 space-y-6 lg:sticky lg:top-4 lg:self-start">
         {/* Map */}
         {mapCoords ? (
           <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden">
-            <div className="h-64 rounded-t-lg overflow-hidden">
+            <div className="h-72 rounded-t-lg overflow-hidden">
               <MapContainer center={mapCoords} zoom={14} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }} key={mapCoords.join(",")}>
                 <MapResizer />
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
