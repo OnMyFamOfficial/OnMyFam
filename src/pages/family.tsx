@@ -50,7 +50,7 @@ interface SearchResult {
 function VerificationSection({ unverified, userId, refreshFamilies }: { unverified: any[]; userId?: string; refreshFamilies: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
-    <div className="bg-[var(--card)] rounded-lg border border-gold-500/30 p-4">
+    <div className="border-b border-gold-500/30 p-4">
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="w-full flex items-center gap-2 cursor-pointer text-left"
@@ -729,10 +729,13 @@ export default function FamilyPage() {
       </div>
 
       {/* Right: Everything else */}
-      <div className="flex-1 min-w-0 p-4 lg:p-6 space-y-6 lg:overflow-y-auto lg:h-[calc(100vh-4rem)]  [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex-1 min-w-0 p-4 lg:p-6 lg:overflow-y-auto lg:h-[calc(100vh-4rem)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+
+      {/* Connected cards container */}
+      <div className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)]">
 
       {/* Family header */}
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden">
+      <div className="overflow-hidden">
         <div className="h-32 bg-gradient-to-r from-gold-700 via-gold-500 to-gold-400" />
         <div className="px-6 py-4">
           <h1 className="text-2xl font-bold">{currentFamily.name}</h1>
@@ -755,7 +758,7 @@ export default function FamilyPage() {
 
       {/* Incoming relation requests */}
       {incomingRequests.length > 0 && (
-        <div className="bg-[var(--card)] rounded-lg border border-gold-500/30 p-4">
+        <div className="border-b border-gold-500/30 p-4">
           <h3 className="font-semibold text-sm flex items-center gap-2 mb-3">
             <Heart className="w-4 h-4 text-gold-500" />
             Pending Relation Requests ({incomingRequests.length})
@@ -799,7 +802,7 @@ export default function FamilyPage() {
       )}
 
       {/* Mobile: Members list (hidden on desktop since sidebar handles it) */}
-      <div className="lg:hidden bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+      <div className="lg:hidden border-b border-[var(--border)] p-4">
         <h3 className="font-semibold mb-3">Members ({members.length})</h3>
         <div className="space-y-2">
           {members.map((member) => {
@@ -822,7 +825,7 @@ export default function FamilyPage() {
       </div>
 
       {/* Invite section - visible to all members */}
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+      <div className="border-b border-[var(--border)] p-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold">Invite Family Members</h3>
@@ -863,7 +866,7 @@ export default function FamilyPage() {
       </div>
 
       {/* Claim an Account */}
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+      <div className="border-b border-[var(--border)] p-4">
         <h3 className="font-semibold mb-2">Claim an Account</h3>
         <p className="text-xs text-[var(--muted-foreground)] mb-3">Have a claim code from a family admin? Enter it to join.</p>
         <div className="flex gap-2">
@@ -888,7 +891,7 @@ export default function FamilyPage() {
 
       {/* Create Accounts for Family - admin only */}
       {isAdmin && (
-        <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+        <div className="border-b border-[var(--border)] p-4">
           <h3 className="font-semibold mb-1">Create Member Accounts</h3>
           <p className="text-xs text-[var(--muted-foreground)] mb-3">Create placeholder accounts for family members. They can claim them with a code.</p>
           <div className="flex gap-2 mb-3">
@@ -956,7 +959,7 @@ export default function FamilyPage() {
 
       {/* Family Settings - admin or god mode */}
       {(isAdmin || currentFamily.created_by === user?.id) && (
-        <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+        <div className="border-b border-[var(--border)] p-4">
           <div className="flex items-center gap-2 mb-3">
             <Settings className="w-4 h-4 text-[var(--muted-foreground)]" />
             <h3 className="font-semibold">Family Settings</h3>
@@ -1049,7 +1052,7 @@ export default function FamilyPage() {
       )}
 
       {/* Family Hierarchy */}
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+      <div className="border-b border-[var(--border)] p-4">
         <div className="flex items-center gap-2 mb-3">
           <GitBranch className="w-4 h-4 text-[var(--muted-foreground)]" />
           <h3 className="font-semibold">Family Tree</h3>
@@ -1161,7 +1164,7 @@ export default function FamilyPage() {
       </div>
 
       {/* Join Another Family */}
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+      <div className="border-b border-[var(--border)] p-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold">Join Another Family</h3>
@@ -1293,7 +1296,7 @@ export default function FamilyPage() {
 
       {/* Delete Family - admin/creator or God Mode */}
       {(isAdmin || currentFamily.created_by === user?.id || isGodMode) && (
-        <div className="bg-red-500/5 rounded-lg border border-red-500/20 p-4">
+        <div className="bg-red-500/5 p-4">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-red-400" />
             <h3 className="font-semibold text-red-400">Danger Zone</h3>
@@ -1316,6 +1319,7 @@ export default function FamilyPage() {
         </div>
       )}
 
+      </div>{/* end connected cards container */}
       </div>{/* end right content */}
 
       {/* ===== Member Profile Modal ===== */}
