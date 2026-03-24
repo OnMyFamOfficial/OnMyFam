@@ -447,7 +447,7 @@ export function RightSidebar({ mobileOpen = false, onMobileClose }: RightSidebar
 
         {/* Expandable content panel */}
         <aside className={cn(
-          "h-full light-gradient dark:bg-[var(--sidebar-background)] border-l border-[var(--border)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-all duration-300 flex flex-col",
+          "h-full bg-[var(--sidebar-background)] border-l border-[var(--border)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-all duration-300 flex flex-col",
           collapsed ? "w-0 opacity-0 overflow-hidden" : "w-[276px] opacity-100"
         )}>
 
