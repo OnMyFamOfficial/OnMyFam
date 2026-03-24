@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, X, MapPin, Phone, Calendar, Heart, Send } from "lucide-react";
+import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
@@ -39,7 +39,7 @@ interface SearchResult {
 
 export default function FamilyPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isGodMode } = useAuth();
   const { currentFamily, members, myMembership, refreshFamilies, refreshMembers } = useFamily();
   const [creating, setCreating] = useState(false);
 
@@ -1180,6 +1180,31 @@ export default function FamilyPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Family - admin/creator or God Mode */}
+      {(isAdmin || currentFamily.created_by === user?.id || isGodMode) && (
+        <div className="bg-red-500/5 rounded-lg border border-red-500/20 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4 text-red-400" />
+            <h3 className="font-semibold text-red-400">Danger Zone</h3>
+          </div>
+          <p className="text-xs text-[var(--muted-foreground)] mb-3">
+            Permanently delete this family and all its data including posts, events, albums, conversations, and members. This cannot be undone.
+          </p>
+          <button
+            onClick={async () => {
+              if (!confirm(`Delete "${currentFamily.name}" and ALL its data? This cannot be undone.`)) return;
+              await supabase.rpc("admin_delete_family", { p_family_id: currentFamily.id });
+              refreshFamilies();
+              navigate("/feed");
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Family
+          </button>
+        </div>
+      )}
 
       </div>{/* end right content */}
 
