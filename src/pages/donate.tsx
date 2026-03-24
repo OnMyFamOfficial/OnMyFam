@@ -116,7 +116,7 @@ export default function DonatePage() {
         </div>
 
         {/* Right: Donation widget + recent supporters */}
-        <div className="lg:w-80 flex-shrink-0 space-y-4">
+        <div className="lg:w-80 flex-shrink-0 space-y-6">
           <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] p-6 lg:sticky lg:top-4 space-y-4">
             {/* Amount selection */}
             <div>
@@ -264,8 +264,8 @@ export default function DonatePage() {
                       <span className="text-sm font-semibold text-gold-500">${d.amount}</span>
                     </div>
                     {d.comment && (
-                      <div className="mt-2 ml-12 flex items-start gap-1.5">
-                        <MessageSquare className="w-3 h-3 text-[var(--muted-foreground)] mt-0.5 flex-shrink-0" />
+                      <div className="mt-2 ml-12 flex items-start gap-1.5 bg-[var(--accent)]/50 rounded-lg px-3 py-2">
+                        <MessageSquare className="w-3 h-3 text-gold-500 mt-0.5 flex-shrink-0" />
                         <p className="text-xs text-[var(--muted-foreground)] italic">"{d.comment}"</p>
                       </div>
                     )}
