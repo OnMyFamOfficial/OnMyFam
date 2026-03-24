@@ -7,9 +7,18 @@ import { supabase } from "@/lib/supabase";
 import { EVENT_CATEGORIES } from "@/lib/constants";
 import { CalendarPicker } from "@/components/shared/calendar-picker";
 import { format, formatDistanceToNow } from "date-fns";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+
+function MapResizer() {
+  const map = useMap();
+  useEffect(() => {
+    setTimeout(() => map.invalidateSize(), 100);
+    setTimeout(() => map.invalidateSize(), 500);
+  }, [map]);
+  return null;
+}
 import type { FamilyEvent, EventRsvp, EventChatMessage, Profile } from "@/lib/types";
 
 const goldIcon = L.icon({
@@ -749,6 +758,7 @@ export default function EventDetailPage() {
           <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden">
             <div className="h-64 rounded-t-lg overflow-hidden">
               <MapContainer center={mapCoords} zoom={14} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }} key={mapCoords.join(",")}>
+                <MapResizer />
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
                 <Marker position={mapCoords} icon={goldIcon}>
                   <Popup>{event.address || event.location}</Popup>
