@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert, Menu, Home } from "lucide-react";
+import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert, Menu, Home, Camera } from "lucide-react";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { DeleteConfirmModal } from "@/components/shared/delete-confirm-modal";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTheme } from "@/components/shared/theme-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
+import { uploadCover } from "@/services/storage";
 import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -158,6 +159,21 @@ export default function FamilyPage() {
       .then(({ data }) => setClaimableAccounts(data || []));
   }, [currentFamily]);
 
+  const canEditCover = isAdmin || currentFamily?.created_by === user?.id;
+
+  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !currentFamily) return;
+    setUploadingCover(true);
+    const url = await uploadCover("family", currentFamily.id, file);
+    if (url) {
+      await supabase.from("families").update({ cover_url: url }).eq("id", currentFamily.id);
+      refreshFamilies();
+    }
+    setUploadingCover(false);
+    e.target.value = "";
+  }
+
   async function createClaimableAccount() {
     if (!user || !currentFamily || !newClaimName.trim()) return;
     setCreatingClaim(true);
@@ -212,6 +228,7 @@ export default function FamilyPage() {
   const [showDeleteMemberModal, setShowDeleteMemberModal] = useState(false);
   const [showRemoveVerificationModal, setShowRemoveVerificationModal] = useState(false);
   const [dangerTargetMember, setDangerTargetMember] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [memberProfile, setMemberProfile] = useState<Profile | null>(null);
@@ -764,7 +781,28 @@ export default function FamilyPage() {
           overflow: "hidden",
         }}
       >
-        <div className="bg-gradient-to-r from-gold-700 via-gold-500 to-gold-400" style={{ height: "400px", maxWidth: "1200px", width: "100%" }} />
+        <div className="relative group" style={{ height: "400px", maxWidth: "1200px", width: "100%" }}>
+          {currentFamily.cover_url ? (
+            <img src={currentFamily.cover_url} alt="Family cover" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-r from-gold-700 via-gold-500 to-gold-400" />
+          )}
+          {canEditCover && (
+            <label className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors cursor-pointer">
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center gap-2 text-white">
+                <Camera className="w-8 h-8" />
+                <span className="text-sm font-medium">{uploadingCover ? "Uploading..." : currentFamily.cover_url ? "Change Cover Photo" : "Upload Cover Photo"}</span>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleCoverUpload}
+                disabled={uploadingCover}
+                className="hidden"
+              />
+            </label>
+          )}
+        </div>
         <div className="px-6 py-4">
           <h1 className="text-2xl font-bold">{currentFamily.name}</h1>
           {currentFamily.description && (
