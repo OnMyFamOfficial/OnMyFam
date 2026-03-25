@@ -209,6 +209,9 @@ export default function FamilyPage() {
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
   const [showDeleteFamilyModal, setShowDeleteFamilyModal] = useState(false);
+  const [showDeleteMemberModal, setShowDeleteMemberModal] = useState(false);
+  const [showRemoveVerificationModal, setShowRemoveVerificationModal] = useState(false);
+  const [dangerTargetMember, setDangerTargetMember] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [memberProfile, setMemberProfile] = useState<Profile | null>(null);
@@ -1440,27 +1443,116 @@ export default function FamilyPage() {
       </div>
       )}
 
-      {/* Delete Family - admin/creator or God Mode */}
+      {/* Danger Zone sections */}
       {activeSection === "danger" && (isAdmin || currentFamily.created_by === user?.id || isGodMode) && (
-        <div id="section-danger" className="bg-red-500/5 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4 text-red-400" />
-            <h3 className="font-semibold text-red-400">Danger Zone</h3>
+        <div id="section-danger">
+
+          {/* Remove Verification */}
+          <div className="bg-red-500/5 border-b border-[var(--border)] p-4">
+            <p className="text-xs text-[var(--muted-foreground)] mb-3">
+              Remove a member's verified status. They will need to be re-verified by an admin or verified member.
+            </p>
+            <div className="flex gap-2">
+              <select
+                value={dangerTargetMember || ""}
+                onChange={(e) => setDangerTargetMember(e.target.value || null)}
+                className="flex-1 rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50"
+              >
+                <option value="">Select a member...</option>
+                {members.filter((m) => m.is_verified && m.user_id !== user?.id).map((m) => (
+                  <option key={m.id} value={m.id}>{m.profile?.display_name || "Unknown"}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => { if (dangerTargetMember) setShowRemoveVerificationModal(true); }}
+                disabled={!dangerTargetMember}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <ShieldAlert className="w-4 h-4" />
+                Remove Verification
+              </button>
+            </div>
           </div>
-          <p className="text-xs text-[var(--muted-foreground)] mb-3">
-            Permanently delete this family and all its data including posts, events, albums, conversations, and members. This cannot be undone.
-          </p>
-          <button
-            onClick={() => setShowDeleteFamilyModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete Family
-          </button>
+
+          {/* Delete Member */}
+          <div className="bg-red-500/5 border-b border-[var(--border)] p-4">
+            <p className="text-xs text-[var(--muted-foreground)] mb-3">
+              Permanently remove a member from this family. They will need a new invite to rejoin.
+            </p>
+            <div className="flex gap-2">
+              <select
+                value={dangerTargetMember || ""}
+                onChange={(e) => setDangerTargetMember(e.target.value || null)}
+                className="flex-1 rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50"
+              >
+                <option value="">Select a member...</option>
+                {members.filter((m) => m.user_id !== user?.id).map((m) => (
+                  <option key={m.id} value={m.id}>{m.profile?.display_name || "Unknown"}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => { if (dangerTargetMember) setShowDeleteMemberModal(true); }}
+                disabled={!dangerTargetMember}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Member
+              </button>
+            </div>
+          </div>
+
+          {/* Delete Family */}
+          <div className="bg-red-500/5 p-4">
+            <p className="text-xs text-[var(--muted-foreground)] mb-3">
+              Permanently delete this family and all its data including posts, events, albums, conversations, and members. This cannot be undone.
+            </p>
+            <button
+              onClick={() => setShowDeleteFamilyModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Family
+            </button>
+          </div>
+
         </div>
       )}
 
       </div>{/* end connected cards container */}
+
+      {/* Remove verification confirmation modal */}
+      <DeleteConfirmModal
+        isOpen={showRemoveVerificationModal}
+        onClose={() => setShowRemoveVerificationModal(false)}
+        onConfirm={async () => {
+          if (!dangerTargetMember) return;
+          await supabase.from("family_members").update({ is_verified: false, verified_by: null, verified_at: null }).eq("id", dangerTargetMember);
+          setShowRemoveVerificationModal(false);
+          setDangerTargetMember(null);
+          refreshFamilies();
+          refreshMembers();
+        }}
+        title="Remove Verification"
+        itemName={members.find((m) => m.id === dangerTargetMember)?.profile?.display_name || "this member"}
+        description={`This will remove the verified status from "${members.find((m) => m.id === dangerTargetMember)?.profile?.display_name || "this member"}". They will need to be re-verified.`}
+      />
+
+      {/* Delete member confirmation modal */}
+      <DeleteConfirmModal
+        isOpen={showDeleteMemberModal}
+        onClose={() => setShowDeleteMemberModal(false)}
+        onConfirm={async () => {
+          if (!dangerTargetMember) return;
+          await supabase.from("family_members").delete().eq("id", dangerTargetMember);
+          setShowDeleteMemberModal(false);
+          setDangerTargetMember(null);
+          refreshFamilies();
+          refreshMembers();
+        }}
+        title="Delete Member"
+        itemName={members.find((m) => m.id === dangerTargetMember)?.profile?.display_name || "this member"}
+        description={`This will permanently remove "${members.find((m) => m.id === dangerTargetMember)?.profile?.display_name || "this member"}" from this family. They will need a new invite to rejoin.`}
+      />
 
       {/* Delete family confirmation modal */}
       <DeleteConfirmModal

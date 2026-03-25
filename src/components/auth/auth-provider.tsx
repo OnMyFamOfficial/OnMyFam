@@ -67,6 +67,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!error && data) {
       setProfile(data as Profile);
+    } else if (error?.code === "PGRST116") {
+      // No profile row found — create one (trigger may have failed)
+      console.warn("[Auth] No profile found for user, attempting to create one");
+      const { data: userData } = await supabase.auth.getUser();
+      const meta = userData?.user?.user_metadata;
+      const displayName = meta?.display_name || meta?.full_name || userData?.user?.email?.split("@")[0] || "New User";
+      const { data: newProfile, error: insertErr } = await supabase
+        .from("profiles")
+        .insert({ id: userId, display_name: displayName, avatar_url: meta?.avatar_url || null })
+        .select()
+        .single();
+      if (newProfile) {
+        setProfile(newProfile as Profile);
+      } else {
+        console.error("[Auth] Failed to create profile:", insertErr);
+      }
     }
     setLoading(false);
   }
