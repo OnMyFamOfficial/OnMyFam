@@ -41,6 +41,16 @@ export function VideoCallProvider({ children }: { children: ReactNode }) {
           const call = payload.new as VideoCall;
           // Only show incoming calls not initiated by us
           if (call.initiated_by !== user.id && call.status === "ringing") {
+            // Check if we're a participant in this conversation
+            const { data: participant } = await supabase
+              .from("conversation_participants")
+              .select("id")
+              .eq("conversation_id", call.conversation_id)
+              .eq("user_id", user.id)
+              .maybeSingle();
+
+            if (!participant) return; // Not our conversation
+
             // Fetch initiator profile
             const { data: profile } = await supabase
               .from("profiles")
