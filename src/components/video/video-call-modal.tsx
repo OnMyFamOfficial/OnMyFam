@@ -199,7 +199,12 @@ function RoomContent({
             participants.length >= 10 && "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
           )}
         >
-          {participants.map((participant) => {
+          {/* Sort: others first, self last (bottom row) */}
+          {[...participants].sort((a, b) => {
+            const aIsSelf = a.identity === localParticipant.identity ? 1 : 0;
+            const bIsSelf = b.identity === localParticipant.identity ? 1 : 0;
+            return aIsSelf - bIsSelf;
+          }).map((participant) => {
             const videoTrack = videoTracks.find(
               (t) =>
                 t.participant.identity === participant.identity &&
@@ -214,11 +219,17 @@ function RoomContent({
             );
             const isSelf = participant.identity === localParticipant.identity;
             const participantMuted = !participant.isMicrophoneEnabled;
+            const othersCount = participants.length - 1;
+            // Self tile spans full width if others fill an even row above
+            const selfSpanFull = isSelf && othersCount > 0 && othersCount % 2 === 0;
 
             return (
               <div
                 key={participant.identity}
-                className="relative bg-gray-800 rounded-xl overflow-hidden flex items-center justify-center"
+                className={cn(
+                  "relative bg-gray-800 rounded-xl overflow-hidden flex items-center justify-center",
+                  selfSpanFull && "col-span-2"
+                )}
                 style={{ aspectRatio: "16/9", minHeight: "120px" }}
               >
                 {screenTrack?.publication?.track ? (
