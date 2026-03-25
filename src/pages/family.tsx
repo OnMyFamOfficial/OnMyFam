@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert, Menu, Home, Camera } from "lucide-react";
+import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert, Menu, Home, Camera, Maximize2 } from "lucide-react";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { DeleteConfirmModal } from "@/components/shared/delete-confirm-modal";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -227,6 +227,7 @@ export default function FamilyPage() {
   const [showRemoveVerificationModal, setShowRemoveVerificationModal] = useState(false);
   const [dangerTargetMember, setDangerTargetMember] = useState<string | null>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [showCoverModal, setShowCoverModal] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [memberProfile, setMemberProfile] = useState<Profile | null>(null);
@@ -479,7 +480,9 @@ export default function FamilyPage() {
   }
 
   const isAdmin = myMembership?.role === "admin" || myMembership?.role === "moderator";
-  const canEditCover = isAdmin || currentFamily?.created_by === user?.id;
+  const canEditCover = currentFamily?.created_by === user?.id
+    || myMembership?.role === "admin"
+    || (currentFamily?.cover_edit_mode === "admin_and_moderators" && myMembership?.role === "moderator");
   const [savingPrivacy, setSavingPrivacy] = useState(false);
 
   // Hierarchy state
@@ -786,21 +789,43 @@ export default function FamilyPage() {
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-gold-700 via-gold-500 to-gold-400" />
           )}
-          {canEditCover && (
-            <label className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors cursor-pointer">
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center gap-2 text-white">
-                <Camera className="w-8 h-8" />
-                <span className="text-sm font-medium">{uploadingCover ? "Uploading..." : currentFamily.cover_url ? "Change Cover Photo" : "Upload Cover Photo"}</span>
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleCoverUpload}
-                disabled={uploadingCover}
-                className="hidden"
-              />
-            </label>
-          )}
+          {/* Hover overlay */}
+          <div
+            className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center cursor-pointer"
+            onClick={() => { if (currentFamily.cover_url) setShowCoverModal(true); }}
+          >
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-4">
+              {canEditCover && (
+                <label className="flex flex-col items-center gap-1.5 text-white cursor-pointer hover:scale-105 transition-transform">
+                  <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-medium">{uploadingCover ? "Uploading..." : "Change"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCoverUpload}
+                    disabled={uploadingCover}
+                    className="hidden"
+                  />
+                </label>
+              )}
+              {currentFamily.cover_url && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowCoverModal(true); }}
+                  className="flex flex-col items-center gap-1.5 text-white cursor-pointer hover:scale-105 transition-transform"
+                >
+                  <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                    <Maximize2 className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-medium">View</span>
+                </button>
+              )}
+              {!currentFamily.cover_url && canEditCover && (
+                <span className="text-white text-sm font-medium ml-2">Upload Cover Photo</span>
+              )}
+            </div>
+          </div>
         </div>
         <div className="px-6 pt-2 pb-4">
           <h1 className="text-2xl font-bold">{currentFamily.name}</h1>
@@ -1227,6 +1252,68 @@ export default function FamilyPage() {
               ))}
             </div>
           </div>
+
+          {/* Photo edit mode */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium mb-2">Who can edit photos & delete albums (besides the creator)?</label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              {[
+                { value: "admin_only", label: "Admins Only", desc: "Only admins can edit photos and delete albums", icon: Crown, color: "text-gold-500" },
+                { value: "admin_and_moderators", label: "Admins & Moderators", desc: "Admins and moderators can edit photos and delete albums", icon: Shield, color: "text-blue-400" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={async () => {
+                    await supabase.from("families").update({ photo_edit_mode: opt.value }).eq("id", currentFamily.id);
+                    refreshFamilies();
+                  }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors cursor-pointer flex-1 text-left ${
+                    currentFamily.photo_edit_mode === opt.value || (!(currentFamily.photo_edit_mode) && opt.value === "admin_only")
+                      ? "border-gold-500 bg-gold-500/10"
+                      : "border-[var(--border)] hover:border-gold-500/50"
+                  }`}
+                >
+                  <opt.icon className={`w-5 h-5 flex-shrink-0 ${opt.color}`} />
+                  <div>
+                    <p className="text-sm font-medium">{opt.label}</p>
+                    <p className="text-[10px] text-[var(--muted-foreground)]">{opt.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cover photo edit mode */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium mb-2">Who can change the cover photo?</label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              {[
+                { value: "admin_only", label: "Admins Only", desc: "Only admins can change the cover photo", icon: Crown, color: "text-gold-500" },
+                { value: "admin_and_moderators", label: "Admins & Moderators", desc: "Admins and moderators can change the cover photo", icon: Shield, color: "text-blue-400" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={async () => {
+                    await supabase.from("families").update({ cover_edit_mode: opt.value }).eq("id", currentFamily.id);
+                    refreshFamilies();
+                  }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors cursor-pointer flex-1 text-left ${
+                    currentFamily.cover_edit_mode === opt.value || (!(currentFamily.cover_edit_mode) && opt.value === "admin_only")
+                      ? "border-gold-500 bg-gold-500/10"
+                      : "border-[var(--border)] hover:border-gold-500/50"
+                  }`}
+                >
+                  <opt.icon className={`w-5 h-5 flex-shrink-0 ${opt.color}`} />
+                  <div>
+                    <p className="text-sm font-medium">{opt.label}</p>
+                    <p className="text-[10px] text-[var(--muted-foreground)]">{opt.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1556,6 +1643,27 @@ export default function FamilyPage() {
       )}
 
       </div>{/* end connected cards container */}
+
+      {/* Cover photo lightbox */}
+      {showCoverModal && currentFamily.cover_url && (
+        <div
+          className="fixed inset-0 z-[80] bg-black/90 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setShowCoverModal(false)}
+        >
+          <button
+            onClick={() => setShowCoverModal(false)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors cursor-pointer"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={currentFamily.cover_url}
+            alt="Family cover"
+            className="w-[95vw] h-[90vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       {/* Remove verification confirmation modal */}
       <DeleteConfirmModal

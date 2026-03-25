@@ -63,6 +63,8 @@ export interface Family {
   established_year: number | null;
   privacy_level: "private" | "invite_only" | "public";
   verification_mode: "verified_can_verify" | "admin_only";
+  photo_edit_mode: "admin_only" | "admin_and_moderators";
+  cover_edit_mode: "admin_only" | "admin_and_moderators";
   parent_family_id: string | null;
   member_count: number;
   created_by: string;
