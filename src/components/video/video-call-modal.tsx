@@ -47,7 +47,10 @@ export function VideoCallModal() {
           }),
         });
 
-        if (!res.ok) throw new Error("Failed to get token");
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Token request failed (${res.status})`);
+        }
         const data = await res.json();
         setToken(data.token);
       } catch (err: any) {
