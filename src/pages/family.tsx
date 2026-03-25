@@ -1013,14 +1013,14 @@ export default function FamilyPage() {
             value={claimCode}
             onChange={(e) => setClaimCode(e.target.value)}
             placeholder="Enter claim code..."
-            className="flex-1 rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+            className="w-[85%] rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
           />
           <button
             onClick={claimAccount}
             disabled={claiming || !claimCode.trim()}
-            className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 cursor-pointer"
+            className="w-[15%] py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 cursor-pointer"
           >
-            {claiming ? "Claiming..." : "Claim"}
+            {claiming ? "..." : "Claim"}
           </button>
         </div>
         {claimResult && (
@@ -1039,12 +1039,12 @@ export default function FamilyPage() {
               onChange={(e) => setNewClaimName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") createClaimableAccount(); }}
               placeholder="Member name (e.g. Aunt Rose)"
-              className="flex-1 rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+              className="w-[85%] rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
             />
             <button
               onClick={createClaimableAccount}
               disabled={creatingClaim || !newClaimName.trim()}
-              className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              className="w-[15%] py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
               Create
