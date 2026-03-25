@@ -780,7 +780,7 @@ export default function FamilyPage() {
           overflow: "hidden",
         }}
       >
-        <div className="relative group" style={{ height: "400px", maxWidth: "1200px", width: "100%" }}>
+        <div className="relative group" style={{ height: "480px", maxWidth: "1200px", width: "100%" }}>
           {currentFamily.cover_url ? (
             <img src={currentFamily.cover_url} alt="Family cover" className="w-full h-full object-cover" />
           ) : (
@@ -802,14 +802,14 @@ export default function FamilyPage() {
             </label>
           )}
         </div>
-        <div className="px-6 py-4">
+        <div className="px-6 pt-2 pb-4">
           <h1 className="text-2xl font-bold">{currentFamily.name}</h1>
           {currentFamily.description && (
-            <p className="mt-1 text-[var(--muted-foreground)]">
+            <p className="mt-0.5 text-[var(--muted-foreground)]">
               {currentFamily.description}
             </p>
           )}
-          <div className="mt-2 flex items-center justify-between text-sm text-[var(--muted-foreground)]">
+          <div className="mt-1 flex items-center justify-between text-sm text-[var(--muted-foreground)]">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Users className="w-4 h-4" />
