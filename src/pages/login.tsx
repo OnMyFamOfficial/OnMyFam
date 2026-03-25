@@ -26,7 +26,8 @@ export default function LoginPage() {
       setError(err.message);
       setLoading(false);
     } else {
-      navigate("/feed");
+      const pendingInvite = localStorage.getItem("omf-pending-invite");
+      navigate(pendingInvite ? `/invite/${pendingInvite}` : "/feed");
     }
   }
 

@@ -44,6 +44,9 @@ export default function InviteClaimPage() {
 
     setFamilyName((invite as any).family?.name || "a family");
     setStatus("valid");
+
+    // Save invite token so it survives sign-up/sign-in flow
+    localStorage.setItem("omf-pending-invite", token!);
   }
 
   async function handleClaim() {
@@ -70,6 +73,7 @@ export default function InviteClaimPage() {
       .single();
 
     if (existing) {
+      localStorage.removeItem("omf-pending-invite");
       setStatus("already_member");
       return;
     }
@@ -114,6 +118,7 @@ export default function InviteClaimPage() {
       );
     }
 
+    localStorage.removeItem("omf-pending-invite");
     setStatus("success");
     setTimeout(() => navigate("/feed"), 2000);
   }

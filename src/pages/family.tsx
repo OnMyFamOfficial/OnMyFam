@@ -1227,8 +1227,8 @@ export default function FamilyPage() {
             <label className="block text-sm font-medium mb-2">Who can verify new members?</label>
             <div className="flex flex-col sm:flex-row gap-2">
               {[
-                { value: "verified_can_verify", label: "Verified Members", desc: "Any verified member can verify others", icon: ShieldCheck, color: "text-green-400" },
                 { value: "admin_only", label: "Admins Only", desc: "Only admins can verify new members", icon: Crown, color: "text-gold-500" },
+                { value: "verified_can_verify", label: "Verified Members", desc: "Any verified member can verify others", icon: ShieldCheck, color: "text-green-400" },
               ].map((opt) => (
                 <button
                   key={opt.value}
@@ -1580,7 +1580,7 @@ export default function FamilyPage() {
               <select
                 value={dangerTargetMember || ""}
                 onChange={(e) => setDangerTargetMember(e.target.value || null)}
-                className="flex-1 rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                className="w-[85%] rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50"
               >
                 <option value="">Select a member...</option>
                 {members.filter((m) => m.is_verified && m.user_id !== user?.id).map((m) => (
@@ -1590,10 +1590,9 @@ export default function FamilyPage() {
               <button
                 onClick={() => { if (dangerTargetMember) setShowRemoveVerificationModal(true); }}
                 disabled={!dangerTargetMember}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer disabled:opacity-50"
+                className="w-[15%] py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
               >
-                <ShieldAlert className="w-4 h-4" />
-                Remove Verification
+                Remove
               </button>
             </div>
           </div>
@@ -1607,7 +1606,7 @@ export default function FamilyPage() {
               <select
                 value={dangerTargetMember || ""}
                 onChange={(e) => setDangerTargetMember(e.target.value || null)}
-                className="flex-1 rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                className="w-[85%] rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50"
               >
                 <option value="">Select a member...</option>
                 {members.filter((m) => m.user_id !== user?.id).map((m) => (
@@ -1617,10 +1616,9 @@ export default function FamilyPage() {
               <button
                 onClick={() => { if (dangerTargetMember) setShowDeleteMemberModal(true); }}
                 disabled={!dangerTargetMember}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer disabled:opacity-50"
+                className="w-[15%] py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
               >
-                <Trash2 className="w-4 h-4" />
-                Delete Member
+                Delete
               </button>
             </div>
           </div>

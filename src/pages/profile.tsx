@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Camera, MapPin, Phone, ImagePlus, Calendar, Shield, User, Users, Heart, X } from "lucide-react";
+import { Camera, MapPin, Phone, ImagePlus, Calendar, Shield, User, Users, Heart, X, Maximize2 } from "lucide-react";
 import { sanitizeForStorage } from "@/lib/sanitize";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { uploadAvatar, uploadCover } from "@/services/storage";
-import { MapContainer, TileLayer, Marker, Popup, Tooltip } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-markercluster";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -34,12 +34,22 @@ const goldIcon = L.icon({
   shadowSize: [41, 41],
 });
 
+function MapResizer() {
+  const map = useMap();
+  useEffect(() => {
+    setTimeout(() => map.invalidateSize(), 100);
+    setTimeout(() => map.invalidateSize(), 500);
+  }, [map]);
+  return null;
+}
+
 function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
   const { members } = useFamily();
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [showFamily, setShowFamily] = useState(false);
   const [familyMarkers, setFamilyMarkers] = useState<{ name: string; avatar: string | null; lat: number; lon: number }[]>([]);
   const [hiddenMembers, setHiddenMembers] = useState<Set<string>>(new Set());
+  const [mapFullscreen, setMapFullscreen] = useState(false);
 
   // Geocode the profile location
   useEffect(() => {
@@ -140,7 +150,14 @@ function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
               Family Map
             </button>
           </div>
-          <div style={{ height: 450 }}>
+          <div style={{ height: 450 }} className="relative">
+            <button
+              onClick={() => setMapFullscreen(true)}
+              className="absolute top-3 right-3 z-[1000] w-9 h-9 rounded-lg bg-[var(--card)] border border-[var(--border)] flex items-center justify-center hover:bg-[var(--accent)] transition-colors cursor-pointer shadow-md"
+              title="Full screen"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
             <MapContainer
               center={[coords.lat, coords.lon]}
               zoom={showFamily && familyMarkers.length > 0 ? 4 : 4}
@@ -235,6 +252,79 @@ function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Fullscreen map modal */}
+      {mapFullscreen && coords && (
+        <div className="fixed inset-0 z-[80] bg-black/95 flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 bg-[var(--card)] border-b border-[var(--border)]">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-gold-500" />
+              <h3 className="font-semibold text-sm">{p.display_name}'s Location</h3>
+            </div>
+            <button
+              onClick={() => setMapFullscreen(false)}
+              className="w-9 h-9 rounded-lg hover:bg-[var(--accent)] flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex-1">
+            <MapContainer
+              center={[coords.lat, coords.lon]}
+              zoom={showFamily && familyMarkers.length > 0 ? 4 : 4}
+              style={{ height: "100%", width: "100%" }}
+              scrollWheelZoom={true}
+            >
+              <MapResizer />
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <MarkerClusterGroup
+                showCoverageOnHover={false}
+                maxClusterRadius={40}
+                spiderfyOnMaxZoom={true}
+                iconCreateFunction={(cluster: any) => {
+                  const count = cluster.getChildCount();
+                  return L.divIcon({
+                    html: `<div style="background:linear-gradient(135deg,#b8860b,#daa520);color:white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.4);border:2px solid white;">${count}</div>`,
+                    className: "",
+                    iconSize: L.point(36, 36),
+                    iconAnchor: L.point(18, 18),
+                  });
+                }}
+              >
+                {!hiddenMembers.has(p.display_name) && (
+                  <Marker position={[coords.lat, coords.lon]} icon={goldIcon}>
+                    <Tooltip direction="top" offset={[0, -35]} permanent className="leaflet-name-tooltip">
+                      {p.display_name}
+                    </Tooltip>
+                    <Popup>
+                      <div className="text-center">
+                        <strong>{p.display_name}</strong>
+                        <br />
+                        <span className="text-xs">{p.location}</span>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )}
+                {showFamily && familyMarkers.filter((fm) => !hiddenMembers.has(fm.name)).map((fm, i) => (
+                  <Marker key={i} position={[fm.lat, fm.lon]} icon={defaultIcon}>
+                    <Tooltip direction="top" offset={[0, -35]} permanent className="leaflet-name-tooltip">
+                      {fm.name}
+                    </Tooltip>
+                    <Popup>
+                      <div className="text-center">
+                        <strong>{fm.name}</strong>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MarkerClusterGroup>
+            </MapContainer>
+          </div>
         </div>
       )}
     </div>

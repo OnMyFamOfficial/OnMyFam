@@ -9,7 +9,8 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/feed", { replace: true });
+        const pendingInvite = localStorage.getItem("omf-pending-invite");
+        navigate(pendingInvite ? `/invite/${pendingInvite}` : "/feed", { replace: true });
       } else {
         navigate("/login", { replace: true });
       }
