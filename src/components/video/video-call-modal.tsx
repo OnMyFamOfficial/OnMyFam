@@ -218,7 +218,7 @@ function RoomContent({
             return (
               <div
                 key={participant.identity}
-                className="relative bg-gray-800 rounded-xl overflow-hidden aspect-video flex items-center justify-center"
+                className="relative bg-gray-800 rounded-xl overflow-hidden aspect-video flex items-center justify-center md:max-h-[calc(50vh-5rem)]"
               >
                 {screenTrack?.publication?.track ? (
                   <VideoTrack
