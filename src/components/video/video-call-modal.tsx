@@ -188,23 +188,18 @@ function RoomContent({
       </div>
 
       {/* Participant grid */}
-      <div className="flex-1 p-4 overflow-y-auto flex items-center justify-center">
+      <div className="flex-1 p-4 overflow-y-auto">
         <div
           className={cn(
-            "grid gap-3 w-full",
-            participants.length <= 1 && "grid-cols-1 max-w-2xl mx-auto",
-            participants.length === 2 && "grid-cols-2 max-w-5xl mx-auto",
-            participants.length >= 3 && participants.length <= 4 && "grid-cols-2 max-w-5xl mx-auto",
-            participants.length >= 5 && participants.length <= 9 && "grid-cols-2 md:grid-cols-3",
-            participants.length >= 10 && "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+            "grid gap-3 h-full",
+            participants.length <= 1 && "grid-cols-1",
+            participants.length === 2 && "grid-cols-1 md:grid-cols-2",
+            participants.length >= 3 && participants.length <= 4 && "grid-cols-2",
+            participants.length >= 5 && participants.length <= 9 && "grid-cols-3",
+            participants.length >= 10 && "grid-cols-4"
           )}
         >
-          {/* Sort: others first, self last (bottom row) */}
-          {[...participants].sort((a, b) => {
-            const aIsSelf = a.identity === localParticipant.identity ? 1 : 0;
-            const bIsSelf = b.identity === localParticipant.identity ? 1 : 0;
-            return aIsSelf - bIsSelf;
-          }).map((participant) => {
+          {participants.map((participant) => {
             const videoTrack = videoTracks.find(
               (t) =>
                 t.participant.identity === participant.identity &&
@@ -219,18 +214,11 @@ function RoomContent({
             );
             const isSelf = participant.identity === localParticipant.identity;
             const participantMuted = !participant.isMicrophoneEnabled;
-            const othersCount = participants.length - 1;
-            // Self tile spans full width if others fill an even row above
-            const selfSpanFull = isSelf && othersCount > 0 && othersCount % 2 === 0;
 
             return (
               <div
                 key={participant.identity}
-                className={cn(
-                  "relative bg-gray-800 rounded-xl overflow-hidden flex items-center justify-center",
-                  selfSpanFull && "col-span-2"
-                )}
-                style={{ aspectRatio: "16/9", minHeight: "120px" }}
+                className="relative bg-gray-800 rounded-xl overflow-hidden aspect-video flex items-center justify-center"
               >
                 {screenTrack?.publication?.track ? (
                   <VideoTrack
