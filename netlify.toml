@@ -14,7 +14,7 @@
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(self), microphone=(self), geolocation=(self)"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' blob: https://*.supabase.co; font-src 'self' data: https://js.stripe.com https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nominatim.openstreetmap.org https://api.stripe.com; frame-src 'self' https://www.openstreetmap.org https://js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' blob: https://*.supabase.co https://*.livekit.cloud; font-src 'self' data: https://js.stripe.com https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nominatim.openstreetmap.org https://api.stripe.com wss://*.livekit.cloud https://*.livekit.cloud; frame-src 'self' https://www.openstreetmap.org https://js.stripe.com https://hooks.stripe.com; worker-src 'self' blob:;"
 
 [[redirects]]
   from = "/api/*"
