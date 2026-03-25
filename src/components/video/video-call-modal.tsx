@@ -188,13 +188,13 @@ function RoomContent({
       </div>
 
       {/* Participant grid */}
-      <div className="flex-1 p-4 overflow-y-auto">
+      <div className="flex-1 p-4 overflow-y-auto flex items-center justify-center">
         <div
           className={cn(
-            "grid gap-3 h-full",
-            participants.length <= 1 && "grid-cols-1",
-            participants.length === 2 && "grid-cols-1 md:grid-cols-2",
-            participants.length >= 3 && participants.length <= 4 && "grid-cols-2",
+            "grid gap-3 w-full max-h-full",
+            participants.length <= 1 && "grid-cols-1 max-w-2xl",
+            participants.length === 2 && "grid-cols-1 md:grid-cols-2 max-w-5xl",
+            participants.length >= 3 && participants.length <= 4 && "grid-cols-2 max-w-5xl",
             participants.length >= 5 && participants.length <= 9 && "grid-cols-3",
             participants.length >= 10 && "grid-cols-4"
           )}
@@ -218,7 +218,8 @@ function RoomContent({
             return (
               <div
                 key={participant.identity}
-                className="relative bg-gray-800 rounded-xl overflow-hidden aspect-video flex items-center justify-center"
+                className="relative bg-gray-800 rounded-xl overflow-hidden flex items-center justify-center"
+                style={{ aspectRatio: "16/9", minHeight: "120px" }}
               >
                 {screenTrack?.publication?.track ? (
                   <VideoTrack
