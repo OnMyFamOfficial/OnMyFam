@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   LiveKitRoom,
   VideoTrack,
+  RoomAudioRenderer,
   useParticipants,
   useTracks,
   useLocalParticipant,
@@ -103,6 +104,7 @@ export function VideoCallModal() {
       className="fixed inset-0 z-[90]"
       onDisconnected={() => endCall()}
     >
+      <RoomAudioRenderer />
       <RoomContent activeCall={activeCall} onHangUp={endCall} />
     </LiveKitRoom>
   );
