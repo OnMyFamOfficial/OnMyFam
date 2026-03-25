@@ -2,13 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import {
   LiveKitRoom,
   VideoTrack,
-  AudioTrack,
   useParticipants,
   useTracks,
   useLocalParticipant,
   useRoomContext,
 } from "@livekit/components-react";
-import { Track, RoomEvent } from "livekit-client";
+import { Track } from "livekit-client";
 import { Mic, MicOff, VideoIcon, VideoOff, Monitor, PhoneOff, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVideoCall } from "./video-call-provider";
