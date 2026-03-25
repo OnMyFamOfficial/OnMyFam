@@ -7,9 +7,14 @@ export default async (req: Request, _context: Context) => {
   if (req.method === "OPTIONS") return corsResponse();
 
   try {
+    console.log("[livekit-token] SUPABASE_URL:", process.env.SUPABASE_URL ? "set" : "MISSING");
+    console.log("[livekit-token] SUPABASE_ANON_KEY:", process.env.SUPABASE_ANON_KEY ? "set" : "MISSING");
+    console.log("[livekit-token] Auth header present:", !!req.headers.get("Authorization"));
+
     const user = await getUser(req);
+    console.log("[livekit-token] User:", user ? user.id : "null");
     if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      return new Response(JSON.stringify({ error: "Unauthorized — could not verify user session" }), {
         status: 401,
         headers: getCorsHeaders(),
       });
