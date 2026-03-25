@@ -1,41 +1,56 @@
 import type { Context } from "@netlify/functions";
 import { AccessToken } from "livekit-server-sdk";
-import { getUser } from "./_shared/auth";
+import { createClient } from "@supabase/supabase-js";
 import { getCorsHeaders, corsResponse } from "./_shared/cors";
 
 export default async (req: Request, _context: Context) => {
   if (req.method === "OPTIONS") return corsResponse();
 
   try {
-    console.log("[livekit-token] SUPABASE_URL:", process.env.SUPABASE_URL ? "set" : "MISSING");
-    console.log("[livekit-token] SUPABASE_ANON_KEY:", process.env.SUPABASE_ANON_KEY ? "set" : "MISSING");
-    console.log("[livekit-token] Auth header present:", !!req.headers.get("Authorization"));
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-    const user = await getUser(req);
-    console.log("[livekit-token] User:", user ? user.id : "null");
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized — could not verify user session" }), {
-        status: 401,
-        headers: getCorsHeaders(),
+    if (!supabaseUrl || !supabaseKey) {
+      return new Response(JSON.stringify({
+        error: `Supabase config missing: URL=${supabaseUrl ? "ok" : "MISSING"}, KEY=${supabaseKey ? "ok" : "MISSING"}`
+      }), { status: 500, headers: getCorsHeaders() });
+    }
+
+    // Verify user auth
+    const authHeader = req.headers.get("Authorization") || "";
+    const bearerToken = authHeader.replace(/^Bearer\s+/i, "");
+
+    if (!bearerToken) {
+      return new Response(JSON.stringify({ error: "No auth token provided" }), {
+        status: 401, headers: getCorsHeaders(),
       });
     }
 
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(bearerToken);
+
+    if (authError || !user) {
+      return new Response(JSON.stringify({
+        error: `Auth failed: ${authError?.message || "no user returned"}`
+      }), { status: 401, headers: getCorsHeaders() });
+    }
+
+    // Parse request body
     const { roomName, participantName } = await req.json();
 
     if (!roomName) {
       return new Response(JSON.stringify({ error: "roomName is required" }), {
-        status: 400,
-        headers: getCorsHeaders(),
+        status: 400, headers: getCorsHeaders(),
       });
     }
 
+    // Generate LiveKit token
     const apiKey = process.env.LIVEKIT_API_KEY;
     const apiSecret = process.env.LIVEKIT_API_SECRET;
 
     if (!apiKey || !apiSecret) {
       return new Response(JSON.stringify({ error: "LiveKit not configured" }), {
-        status: 500,
-        headers: getCorsHeaders(),
+        status: 500, headers: getCorsHeaders(),
       });
     }
 
@@ -55,14 +70,11 @@ export default async (req: Request, _context: Context) => {
     const jwt = await token.toJwt();
 
     return new Response(JSON.stringify({ token: jwt }), {
-      status: 200,
-      headers: getCorsHeaders(),
+      status: 200, headers: getCorsHeaders(),
     });
   } catch (err: any) {
-    console.error("[livekit-token] Error:", err);
-    return new Response(JSON.stringify({ error: err.message || "Internal server error" }), {
-      status: 500,
-      headers: getCorsHeaders(),
+    return new Response(JSON.stringify({ error: `Server error: ${err.message}` }), {
+      status: 500, headers: getCorsHeaders(),
     });
   }
 };
