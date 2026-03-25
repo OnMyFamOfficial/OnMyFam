@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/auth/auth-provider";
+import { supabase } from "@/lib/supabase";
 import { APP_NAME } from "@/lib/constants";
 
 export default function LoginPage() {
@@ -10,6 +11,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,6 +31,24 @@ export default function LoginPage() {
   async function handleGoogle() {
     const { error: err } = await signInWithGoogle();
     if (err) setError(err.message);
+  }
+
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      setError("Enter your email address first, then click Forgot Password");
+      return;
+    }
+    setResetLoading(true);
+    setError("");
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    });
+    if (err) {
+      setError(err.message);
+    } else {
+      setResetSent(true);
+    }
+    setResetLoading(false);
   }
 
   return (
@@ -84,6 +105,12 @@ export default function LoginPage() {
               />
             </div>
 
+            {resetSent && (
+              <div className="bg-green-500/10 border border-green-500/20 text-green-400 rounded-lg p-3 text-sm">
+                Password reset email sent to <strong>{email}</strong>. Check your inbox.
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
@@ -91,6 +118,17 @@ export default function LoginPage() {
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
+
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={resetLoading}
+                className="text-xs text-gold-500 hover:text-gold-400 cursor-pointer disabled:opacity-50"
+              >
+                {resetLoading ? "Sending..." : "Forgot Password?"}
+              </button>
+            </div>
           </form>
 
           <div className="mt-6">

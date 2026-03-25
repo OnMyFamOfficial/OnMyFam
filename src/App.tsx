@@ -11,6 +11,7 @@ import { VideoCallModal } from "@/components/video/video-call-modal";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { AppLayout } from "@/components/layout/app-layout";
 import { OmfLoader } from "@/components/shared/omf-loader";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
 
 const LandingPage = lazy(() => import("@/pages/landing"));
 const LoginPage = lazy(() => import("@/pages/login"));
@@ -36,6 +37,7 @@ const DonatePayPage = lazy(() => import("@/pages/donate-pay"));
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <ThemeProvider>
       <AuthProvider>
         <FamilyProvider>
@@ -90,5 +92,6 @@ export default function App() {
         </FamilyProvider>
       </AuthProvider>
     </ThemeProvider>
+    </ErrorBoundary>
   );
 }
