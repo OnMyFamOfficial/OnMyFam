@@ -159,8 +159,6 @@ export default function FamilyPage() {
       .then(({ data }) => setClaimableAccounts(data || []));
   }, [currentFamily]);
 
-  const canEditCover = isAdmin || currentFamily?.created_by === user?.id;
-
   async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !currentFamily) return;
@@ -481,6 +479,7 @@ export default function FamilyPage() {
   }
 
   const isAdmin = myMembership?.role === "admin" || myMembership?.role === "moderator";
+  const canEditCover = isAdmin || currentFamily?.created_by === user?.id;
   const [savingPrivacy, setSavingPrivacy] = useState(false);
 
   // Hierarchy state
