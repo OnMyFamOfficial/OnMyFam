@@ -16,10 +16,16 @@ import "leaflet/dist/leaflet.css";
 function MapResizer() {
   const map = useMap();
   useEffect(() => {
-    setTimeout(() => map.invalidateSize(), 100);
-    setTimeout(() => map.invalidateSize(), 300);
-    setTimeout(() => map.invalidateSize(), 800);
-    setTimeout(() => map.invalidateSize(), 1500);
+    const timers = [100, 300, 600, 1000, 2000].map((ms) =>
+      setTimeout(() => map.invalidateSize(), ms)
+    );
+    const container = map.getContainer();
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+    return () => {
+      timers.forEach(clearTimeout);
+      observer.disconnect();
+    };
   }, [map]);
   return null;
 }

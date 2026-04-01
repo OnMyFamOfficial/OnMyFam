@@ -40,8 +40,18 @@ const goldIcon = L.icon({
 function MapResizer() {
   const map = useMap();
   useEffect(() => {
-    setTimeout(() => map.invalidateSize(), 100);
-    setTimeout(() => map.invalidateSize(), 500);
+    // Fire invalidateSize at multiple intervals to handle layout transitions
+    const timers = [100, 300, 600, 1000, 2000].map((ms) =>
+      setTimeout(() => map.invalidateSize(), ms)
+    );
+    // Also watch for container resize
+    const container = map.getContainer();
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+    return () => {
+      timers.forEach(clearTimeout);
+      observer.disconnect();
+    };
   }, [map]);
   return null;
 }
