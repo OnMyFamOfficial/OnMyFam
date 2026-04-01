@@ -6,6 +6,7 @@ import { FamilyProvider } from "@/lib/hooks/use-family";
 import { ChatProvider } from "@/components/chat/chat-provider";
 import { VideoCallProvider } from "@/components/video/video-call-provider";
 import { NotificationProvider } from "@/components/notifications/notification-provider";
+import { TourProvider } from "@/components/shared/tour-provider";
 import { IncomingCallToast } from "@/components/video/incoming-call-toast";
 import { VideoCallModal } from "@/components/video/video-call-modal";
 import { ProtectedRoute } from "@/components/auth/protected-route";
@@ -42,6 +43,7 @@ export default function App() {
       <AuthProvider>
         <FamilyProvider>
           <NotificationProvider>
+          <TourProvider>
           <ChatProvider>
           <VideoCallProvider>
           <BrowserRouter>
@@ -88,6 +90,7 @@ export default function App() {
           <VideoCallModal />
           </VideoCallProvider>
           </ChatProvider>
+          </TourProvider>
           </NotificationProvider>
         </FamilyProvider>
       </AuthProvider>

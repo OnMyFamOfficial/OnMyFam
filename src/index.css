@@ -143,6 +143,22 @@ button, a, [role="button"], input[type="submit"], input[type="button"], select, 
 .leaflet-container {
   z-index: 0 !important;
 }
+.leaflet-container img.leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+  width: 256px !important;
+  height: 256px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  object-fit: unset !important;
+}
+.leaflet-container img.leaflet-marker-icon,
+.leaflet-container img.leaflet-marker-shadow {
+  max-width: none !important;
+  max-height: none !important;
+}
 
 /* Leaflet name tooltips */
 .leaflet-name-tooltip {

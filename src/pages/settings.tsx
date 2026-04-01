@@ -3,6 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useTheme } from "@/components/shared/theme-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { supabase } from "@/lib/supabase";
+import { TourList } from "@/components/shared/tour-provider";
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
@@ -137,6 +138,15 @@ export default function SettingsPage() {
             {pwSaving ? "Changing..." : "Change Password"}
           </button>
         </form>
+      </div>
+
+      {/* Guided Tours */}
+      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-6">
+        <h2 className="text-lg font-semibold mb-4">Help & Tutorials</h2>
+        <p className="text-sm text-[var(--muted-foreground)] mb-4">
+          Need a refresher? Replay any guided tour to learn about features.
+        </p>
+        <TourList />
       </div>
 
       {/* Notifications placeholder */}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Calendar, MapPin, Users, Send, Pencil, Save, X, Trash2, Navigation, UserCheck, ImagePlus, UserPlus } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, Send, Pencil, Save, X, Trash2, Navigation, UserCheck, ImagePlus, UserPlus, ExternalLink, Menu, Home, Info, MessageSquare, Star, Download, Luggage } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
@@ -8,9 +8,11 @@ import { EVENT_CATEGORIES } from "@/lib/constants";
 import { CalendarPicker } from "@/components/shared/calendar-picker";
 import { EventDetailsForm, parseDetails, detailsToJson, type EventDetails } from "@/components/shared/event-details-form";
 import { format, formatDistanceToNow } from "date-fns";
+import { useTheme } from "@/components/shared/theme-provider";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { US_AIRPORTS } from "@/lib/airports";
 
 function MapResizer() {
   const map = useMap();
@@ -25,10 +27,12 @@ import type { FamilyEvent, EventRsvp, EventChatMessage, Profile } from "@/lib/ty
 const goldIcon = L.icon({
   iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
+  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
+});
+const blueIcon = L.icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
 });
 
 type FullEvent = FamilyEvent & {
@@ -89,7 +93,13 @@ export default function EventDetailPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { members } = useFamily();
+  const { theme } = useTheme();
   const [event, setEvent] = useState<FullEvent | null>(null);
+  const [eventMenuOpen, setEventMenuOpen] = useState(false);
+  const [eventSection, setEventSection] = useState<string | null>(null);
+  const [showEventPin, setShowEventPin] = useState(true);
+  const [showLodgingPin, setShowLodgingPin] = useState(true);
+  const [showAirportPins, setShowAirportPins] = useState(true);
   const [messages, setMessages] = useState<(EventChatMessage & { user: Profile })[]>([]);
   const [chatText, setChatText] = useState("");
   const [editing, setEditing] = useState(searchParams.get("edit") === "true");
@@ -99,6 +109,8 @@ export default function EventDetailPage() {
   const [editStartTime, setEditStartTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
   const [editAllDay, setEditAllDay] = useState(false);
+  const [editAllowGuests, setEditAllowGuests] = useState(false);
+  const [editReportAccess, setEditReportAccess] = useState("creator_admin");
   const [editHosts, setEditHosts] = useState<string[]>([]);
   const [showEditHostPicker, setShowEditHostPicker] = useState(false);
   const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
@@ -235,6 +247,8 @@ export default function EventDetailPage() {
     setEditStartTime(eventData.is_all_day ? "" : dateToTimeString(eventData.starts_at));
     setEditEndTime(eventData.ends_at && !eventData.is_all_day ? dateToTimeString(eventData.ends_at) : "");
     setEditAllDay(eventData.is_all_day);
+    setEditAllowGuests((eventData as any).allow_guests || false);
+    setEditReportAccess((eventData as any).report_access || "creator_admin");
     setEditHosts(eventData.hosted_by || []);
     setEditDetails(parseDetails(eventData.details));
     setEditCoverPreview(null);
@@ -284,6 +298,8 @@ export default function EventDetailPage() {
       starts_at: startsAt,
       ends_at: endsAt,
       is_all_day: editAllDay,
+      allow_guests: editAllowGuests,
+      report_access: editReportAccess,
       hosted_by: editHosts,
       details: detailsToJson(editDetails),
     }).eq("id", id);
@@ -318,23 +334,40 @@ export default function EventDetailPage() {
     );
   }
 
+  const [guestInput, setGuestInput] = useState(0);
+
   async function handleRsvp(status: "going" | "maybe" | "cant_make_it") {
     if (!user || !id) return;
 
     const existing = event?.rsvps.find((r) => r.user_id === user.id);
+    const guestCount = status === "going" ? guestInput : 0;
     if (existing) {
       await supabase
         .from("event_rsvps")
-        .update({ status })
+        .update({ status, guest_count: guestCount })
         .eq("id", existing.id);
     } else {
       await supabase.from("event_rsvps").insert({
         event_id: id,
         user_id: user.id,
         status,
+        guest_count: guestCount,
       });
     }
     await loadEvent();
+  }
+
+  async function updateGuestCount(count: number) {
+    if (!user || !id) return;
+    setGuestInput(count);
+    const existing = event?.rsvps.find((r) => r.user_id === user.id);
+    if (existing && existing.status === "going") {
+      await supabase
+        .from("event_rsvps")
+        .update({ guest_count: count })
+        .eq("id", existing.id);
+      await loadEvent();
+    }
   }
 
   async function sendMessage() {
@@ -349,12 +382,55 @@ export default function EventDetailPage() {
     setChatText("");
   }
 
+  async function generateAttendeeReport() {
+    if (!event) return;
+    const going = event.rsvps.filter((r) => r.status === "going");
+    if (going.length === 0) { alert("No attendees to report."); return; }
+
+    const rows: string[][] = [["Name", "Phone", "Location", "Email", "RSVP Status"]];
+    let totalCount = 0;
+    for (const r of going) {
+      const p = r.user;
+      const name = p?.display_name || "Unknown";
+      const guests = Number((r as any).guest_count) || 0;
+      rows.push([name, (p as any)?.phone || "", p?.location || "", (p as any)?.email || "", "Going"]);
+      totalCount++;
+      for (let g = 1; g <= guests; g++) {
+        rows.push([`${name} Guest ${g}`, "", "", "", "Going"]);
+        totalCount++;
+      }
+    }
+    const maybe = event.rsvps.filter((r) => r.status === "maybe");
+    for (const r of maybe) {
+      const p = r.user;
+      rows.push([p?.display_name || "Unknown", (p as any)?.phone || "", p?.location || "", (p as any)?.email || "", "Maybe"]);
+      totalCount++;
+    }
+    rows.push([]);
+    rows.push([`Total: ${totalCount}`, "", "", "", ""]);
+
+    const csv = rows.map((row) => row.map((cell) => `"${(cell || "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${event.title.replace(/[^a-zA-Z0-9]/g, "_")}_Attendees.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function handleCancelEvent() {
     if (!id || !user) return;
     if (!confirm("Are you sure you want to cancel this event? This cannot be undone.")) return;
     await supabase.from("events").delete().eq("id", id).eq("created_by", user.id);
     navigate("/events");
   }
+
+  // Sync guest input with current RSVP (must be before early returns)
+  const currentMyRsvp = event?.rsvps.find((r) => r.user_id === user?.id);
+  useEffect(() => {
+    if (currentMyRsvp) setGuestInput(Number((currentMyRsvp as any).guest_count) || 0);
+  }, [currentMyRsvp?.id]);
 
   if (loading) {
     return (
@@ -375,32 +451,81 @@ export default function EventDetailPage() {
   const myRsvp = event.rsvps.find((r) => r.user_id === user?.id);
   const goingList = event.rsvps.filter((r) => r.status === "going");
   const maybeList = event.rsvps.filter((r) => r.status === "maybe");
+  const totalGoing = goingList.reduce((sum, r) => sum + 1 + (Number((r as any).guest_count) || 0), 0);
+
+  // Report access check
+  const reportAccess = (event as any).report_access || "creator_admin";
+  const myMemberRole = members.find((m) => m.user_id === user?.id)?.role;
+  const canGenerateReport =
+    reportAccess === "creator_only" ? event.created_by === user?.id :
+    reportAccess === "creator_admin" ? (event.created_by === user?.id || myMemberRole === "admin") :
+    reportAccess === "verified_members" ? !!myMemberRole :
+    false;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Back button */}
-      <button
-        onClick={() => navigate("/events")}
-        className="flex items-center gap-1.5 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+      {/* Back button + RSVP row */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <button
+          onClick={() => navigate("/events")}
+          className="flex items-center gap-1.5 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Events
+        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium mr-1 hidden sm:inline">Are you going?</span>
+          {(["going", "maybe", "cant_make_it"] as const).map((status) => (
+            <button
+              key={status}
+              onClick={() => handleRsvp(status)}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                myRsvp?.status === status
+                  ? "bg-gold-500 text-white"
+                  : "border border-[var(--border)] hover:bg-[var(--accent)]"
+              }`}
+            >
+              {status === "going"
+                ? "Going"
+                : status === "maybe"
+                  ? "Maybe"
+                  : "Can't Make It"}
+            </button>
+          ))}
+          {(event as any).allow_guests && myRsvp?.status === "going" && (
+            <div className="flex items-center gap-1.5 ml-1">
+              <span className="text-xs text-[var(--muted-foreground)]">+Guests:</span>
+              <input
+                type="number"
+                min={0}
+                max={20}
+                value={guestInput}
+                onChange={(e) => updateGuestCount(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-14 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Event header card — folds up when menu is open */}
+      <div
+        className="bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-md dark:shadow-black/30 transition-all duration-500 ease-in-out"
+        style={{
+          maxHeight: eventMenuOpen ? "0px" : "none",
+          opacity: eventMenuOpen ? 0 : 1,
+          marginBottom: eventMenuOpen ? 0 : undefined,
+          overflow: eventMenuOpen ? "hidden" : "visible",
+        }}
       >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Events
-      </button>
-
-      <div className="flex flex-col lg:flex-row gap-6">
-      {/* Left column */}
-      <div className="flex-1 space-y-6">
-
-      {/* Header */}
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden">
         {event.cover_url ? (
           <img
             src={event.cover_url}
             alt=""
-            className="w-full h-64 object-cover"
+            className="w-full h-64 object-cover rounded-t-2xl"
           />
         ) : (
-          <div className="w-full h-64 bg-gradient-to-r from-gold-600/30 to-gold-400/30 flex items-center justify-center">
+          <div className="w-full h-64 bg-gradient-to-r from-gold-600/30 to-gold-400/30 flex items-center justify-center rounded-t-2xl">
             <Calendar className="w-16 h-16 text-gold-500/30" />
           </div>
         )}
@@ -538,11 +663,29 @@ export default function EventDetailPage() {
                 )}
               </div>
 
-              {/* All day toggle */}
+              {/* Toggles */}
+              <div className="flex flex-wrap gap-6">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="checkbox" checked={editAllDay} onChange={(e) => setEditAllDay(e.target.checked)} className="rounded border-[var(--input)] accent-gold-500" />
                 All day event
               </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={editAllowGuests} onChange={(e) => setEditAllowGuests(e.target.checked)} className="rounded border-[var(--input)] accent-gold-500" />
+                Allow guests
+              </label>
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Attendee Report Access</label>
+                <select
+                  value={editReportAccess}
+                  onChange={(e) => setEditReportAccess(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                >
+                  <option value="creator_admin">Creator & Family Admin</option>
+                  <option value="creator_only">Creator Only</option>
+                  <option value="verified_members">All Verified Members</option>
+                </select>
+              </div>
 
               {/* Date pickers */}
               <div className="space-y-4">
@@ -569,7 +712,13 @@ export default function EventDetailPage() {
               </div>
 
               {/* Additional Details */}
-              <EventDetailsForm details={editDetails} onChange={setEditDetails} />
+              <EventDetailsForm
+                details={editDetails}
+                onChange={setEditDetails}
+                eventLat={editForm.latitude ? parseFloat(editForm.latitude) : (event as any)?.latitude || null}
+                eventLon={editForm.longitude ? parseFloat(editForm.longitude) : (event as any)?.longitude || null}
+                eventAddress={editForm.address || editForm.location || event?.address || event?.location || ""}
+              />
 
               <div className="flex gap-2 pt-2">
                 <button onClick={handleEditSave} disabled={editSaving || !editForm.title.trim() || !editStartDate} className="px-3 py-1.5 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 disabled:opacity-50 cursor-pointer flex items-center gap-1">
@@ -624,17 +773,17 @@ export default function EventDetailPage() {
                   </div>
                 )}
               </div>
-              <h1 className="mt-2 text-2xl font-bold">{event.title}</h1>
+              <h1 className="mt-2 text-3xl font-bold">{event.title}</h1>
               {event.description && (
-                <p className="mt-2 text-[var(--muted-foreground)]">
+                <p className="mt-2 text-base text-[var(--foreground)]/80">
                   {event.description}
                 </p>
               )}
             </>
           )}
-          <div className="mt-4 space-y-2 text-sm text-[var(--muted-foreground)]">
+          <div className="mt-4 space-y-2.5 text-base text-[var(--foreground)]/70">
             <p className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
+              <Calendar className="w-5 h-5 text-gold-500 flex-shrink-0" />
               {event.is_all_day
                 ? format(new Date(event.starts_at), "EEEE, MMMM d, yyyy") + " (All Day)"
                 : format(new Date(event.starts_at), "EEEE, MMMM d, yyyy 'at' h:mm a")}
@@ -643,25 +792,25 @@ export default function EventDetailPage() {
               {event.ends_at && event.is_all_day &&
                 ` - ${format(new Date(event.ends_at), "MMMM d, yyyy")}`}
             </p>
-            <p className="flex items-center gap-2 text-xs">
-              <span className="w-4" />
+            <p className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
+              <span className="w-5 text-center text-gold-500 font-mono text-xs flex-shrink-0">TZ</span>
               {Intl.DateTimeFormat().resolvedOptions().timeZone}
             </p>
             {event.location && (
               <p className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
+                <MapPin className="w-5 h-5 text-gold-500 flex-shrink-0" />
                 {event.location}
               </p>
             )}
             {event.address && (
               <p className="flex items-center gap-2">
-                <Navigation className="w-4 h-4" />
+                <Navigation className="w-5 h-5 text-gold-500 flex-shrink-0" />
                 {event.address}
               </p>
             )}
             {event.hosts && event.hosts.length > 0 && (
               <div className="flex items-center gap-2">
-                <UserCheck className="w-4 h-4 flex-shrink-0" />
+                <UserCheck className="w-5 h-5 text-gold-500 flex-shrink-0" />
                 <span>Hosted by </span>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {event.hosts.map((host, i) => (
@@ -681,50 +830,532 @@ export default function EventDetailPage() {
               </div>
             )}
             <p className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
+              <Users className="w-5 h-5 text-gold-500 flex-shrink-0" />
               {goingList.length} going
               {maybeList.length > 0 && ` \u00B7 ${maybeList.length} maybe`}
             </p>
           </div>
+          {/* Menu button — bottom right of card */}
+          <div className="flex justify-end mt-4">
+            <button
+              onClick={() => { setEventMenuOpen(true); setEventSection("details"); }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-colors cursor-pointer shadow-lg hover:brightness-105"
+              style={{
+                background: "linear-gradient(135deg, #f8e8a0, #f5b8d0, #c8b8f5, #a0e8f0, #b0f0c8, #f5b8d0)",
+                color: "#2e303f",
+              }}
+            >
+              <Menu className="w-4 h-4" />
+              Menu
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* RSVP */}
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
-        <h3 className="font-semibold mb-3">Are you going?</h3>
-        <div className="flex gap-2">
-          {(["going", "maybe", "cant_make_it"] as const).map((status) => (
-            <button
-              key={status}
-              onClick={() => handleRsvp(status)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                myRsvp?.status === status
-                  ? "bg-gold-500 text-white"
-                  : "border border-[var(--border)] hover:bg-[var(--accent)]"
-              }`}
-            >
-              {status === "going"
-                ? "Going"
-                : status === "maybe"
-                  ? "Maybe"
-                  : "Can't Make It"}
-            </button>
-          ))}
+      {/* Slide-in event menu bar */}
+      <div
+        className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] transition-all duration-500 ease-in-out"
+        style={{
+          maxHeight: eventMenuOpen ? "200px" : "0px",
+          opacity: eventMenuOpen ? 1 : 0,
+          overflow: "hidden",
+        }}
+      >
+        <div className="flex items-center gap-2 px-4 py-3">
+          <button
+            onClick={() => { setEventSection(null); setEventMenuOpen(false); }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+              eventSection === null ? "text-white shadow-lg" : "bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            }`}
+            style={eventSection === null ? {
+              background: theme === "dark"
+                ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                : "#000000",
+            } : undefined}
+          >
+            <Home className="w-4 h-4" />
+            Home
+          </button>
+          <div className="flex-1 flex items-center gap-1 bg-[var(--accent)] rounded-lg p-1">
+            {[
+              { key: "details", icon: Info, label: "Details" },
+              { key: "travel", icon: Luggage, label: "Travel" },
+              { key: "attending", icon: Users, label: "Attending" },
+              { key: "chat", icon: MessageSquare, label: "Chat" },
+              { key: "more", icon: Star, label: "More" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setEventSection(tab.key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer ${
+                  eventSection === tab.key ? "text-white font-medium shadow-lg" : "hover:bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                }`}
+                style={eventSection === tab.key ? {
+                  background: theme === "dark"
+                    ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                    : "#000000",
+                } : undefined}
+              >
+                <tab.icon className="w-4 h-4" />
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
+      {/* Event section content */}
+      {eventSection && (
+        <div className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] shadow-md dark:shadow-black/30">
+          {eventSection === "details" && (
+            <div className="p-6 space-y-6">
+              {/* Map */}
+              {mapCoords ? (
+                <div className="rounded-lg border border-[var(--border)] overflow-hidden shadow-md dark:shadow-black/30">
+                  <div className="h-72 rounded-t-lg overflow-hidden">
+                    <MapContainer center={mapCoords} zoom={14} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }} key={mapCoords.join(",")}>
+                      <MapResizer />
+                      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://carto.com/">CARTO</a>' />
+                      <Marker position={mapCoords} icon={goldIcon}>
+                        <Popup>{event.address || event.location}</Popup>
+                      </Marker>
+                    </MapContainer>
+                  </div>
+                  <div className="p-3 space-y-1">
+                    {event.location && (
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5 text-gold-500 flex-shrink-0" />
+                        {event.location}
+                      </p>
+                    )}
+                    {event.address && (
+                      <p className="text-xs text-[var(--muted-foreground)] flex items-center gap-2">
+                        <Navigation className="w-3.5 h-3.5 flex-shrink-0" />
+                        {event.address}
+                      </p>
+                    )}
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address || event.location || "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-gold-500 hover:text-gold-400 mt-1 cursor-pointer"
+                    >
+                      <Navigation className="w-3 h-3" />
+                      Get Directions
+                    </a>
+                  </div>
+                </div>
+              ) : (event.location || event.address) ? (
+                <div className="rounded-lg border border-[var(--border)] shadow-md dark:shadow-black/30 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPin className="w-4 h-4 text-gold-500" />
+                    <h3 className="font-semibold text-sm">Location</h3>
+                  </div>
+                  {event.location && <p className="text-sm">{event.location}</p>}
+                  {event.address && <p className="text-xs text-[var(--muted-foreground)] mt-1">{event.address}</p>}
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address || event.location || "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-gold-500 hover:text-gold-400 mt-2 cursor-pointer"
+                  >
+                    <Navigation className="w-3 h-3" />
+                    Get Directions
+                  </a>
+                </div>
+              ) : null}
+
+              {/* Two-column: Event Info (left) + Additional Info (right) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left: Event Info */}
+                <div className="rounded-lg border border-[var(--border)] shadow-md dark:shadow-black/30 p-4 space-y-3">
+                  <h3 className="font-semibold text-sm">Event Info</h3>
+                  <h2 className="text-xl font-bold">{event.title}</h2>
+                  {event.description && (
+                    <p className="text-sm text-[var(--muted-foreground)]">{event.description}</p>
+                  )}
+                  <div className="space-y-2 text-sm text-[var(--muted-foreground)]">
+                    <p className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gold-500 flex-shrink-0" />
+                      {event.is_all_day
+                        ? format(new Date(event.starts_at), "EEEE, MMMM d, yyyy") + " (All Day)"
+                        : format(new Date(event.starts_at), "EEEE, MMMM d, yyyy 'at' h:mm a")}
+                      {event.ends_at && !event.is_all_day && ` - ${format(new Date(event.ends_at), "h:mm a")}`}
+                      {event.ends_at && event.is_all_day && ` - ${format(new Date(event.ends_at), "MMMM d, yyyy")}`}
+                    </p>
+                    {event.location && (
+                      <p className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-gold-500 flex-shrink-0" />
+                        {event.location}
+                      </p>
+                    )}
+                    {event.address && (
+                      <p className="flex items-center gap-2">
+                        <Navigation className="w-4 h-4 text-gold-500 flex-shrink-0" />
+                        {event.address}
+                      </p>
+                    )}
+                    {event.hosts && event.hosts.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <UserCheck className="w-4 h-4 text-gold-500 flex-shrink-0" />
+                        <span>Hosted by </span>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {event.hosts.map((host, i) => (
+                            <span key={host.id} className="inline-flex items-center gap-1">
+                              <div className="w-5 h-5 rounded-full bg-gold-500/20 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                {host.avatar_url ? (
+                                  <img src={host.avatar_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-[8px] font-medium text-gold-500">{host.display_name?.charAt(0).toUpperCase()}</span>
+                                )}
+                              </div>
+                              <span className="font-medium text-[var(--foreground)]">{host.display_name}</span>
+                              {i < event.hosts!.length - 1 && <span>,</span>}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <p className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-gold-500 flex-shrink-0" />
+                      {goingList.length} going{maybeList.length > 0 && ` \u00B7 ${maybeList.length} maybe`}
+                    </p>
+                    <p className="flex items-center gap-2 text-xs">
+                      <span className="text-gold-500 font-medium">{event.category}</span>
+                      <span>{"\u00B7"}</span>
+                      <span>Created by {event.creator?.display_name || "Unknown"}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right: Additional Info */}
+                {(() => {
+                  const d = parseDetails((event as any).details);
+                  const hasAny = d.cost || d.dress_code || d.nearby_airports || d.websites.length > 0 || d.contact_name || d.contact_phone || d.contact_email || d.additional_notes;
+                  if (!hasAny) return <div />;
+                  return (
+                    <div className="rounded-lg border border-[var(--border)] shadow-md dark:shadow-black/30 p-4 space-y-3">
+                      <h3 className="font-semibold text-sm">Additional Info</h3>
+                      <div className="space-y-2 text-sm">
+                        {d.cost && (
+                          <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+                            <span className="text-green-400 font-medium">$</span>
+                            <span>{d.cost}</span>
+                          </div>
+                        )}
+                        {d.dress_code && (
+                          <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+                            <span className="text-gold-500 text-xs">Dress:</span>
+                            <span>{d.dress_code}</span>
+                          </div>
+                        )}
+                        {d.nearby_airports && (
+                          <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+                            <span className="text-gold-500 text-xs">Airports:</span>
+                            <span>{d.nearby_airports}</span>
+                          </div>
+                        )}
+                        {d.websites.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                            <span className="text-gold-500 text-xs">Websites:</span>
+                            {d.websites.filter((w) => w.url).map((w, i) => (
+                              <a key={i} href={w.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-gold-500 hover:text-gold-400 text-sm underline underline-offset-2">
+                                <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+                                <span>{w.label || w.url}</span>
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                        {(d.contact_name || d.contact_phone || d.contact_email) && (
+                          <div className="border-t border-[var(--border)] pt-2 space-y-1 text-xs text-[var(--muted-foreground)]">
+                            <p className="text-[var(--foreground)] font-medium text-sm">Contact</p>
+                            {d.contact_name && <p>{d.contact_name}</p>}
+                            {d.contact_phone && <p>{d.contact_phone}</p>}
+                            {d.contact_email && <a href={`mailto:${d.contact_email}`} className="text-gold-500 hover:text-gold-400">{d.contact_email}</a>}
+                          </div>
+                        )}
+                        {d.additional_notes && (
+                          <div className="border-t border-[var(--border)] pt-2">
+                            <p className="text-xs text-[var(--muted-foreground)] whitespace-pre-wrap">{d.additional_notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
+          {eventSection === "travel" && (() => {
+            const d = parseDetails((event as any).details);
+            const hasLodging = d.lodging_hotel || d.lodging_address || d.lodging_phone || d.lodging_website || d.lodging_checkin || d.lodging_checkout || d.lodging_rate || d.lodging_notes || d.lodging_has_shuttle;
+            const hasTransport = d.transport_airports || d.transport_rental || d.transport_parking || d.transport_rideshare || d.transport_shuttle || d.transport_notes;
+            const lodgingAddr = d.lodging_same_address ? (event.address || event.location || "") : d.lodging_address;
+
+            // Parse airport codes from transport_airports string
+            const airportCodes = d.transport_airports ? d.transport_airports.split(",").map((s: string) => s.trim().split(" ")[0].replace(/[()]/g, "")).filter(Boolean) : [];
+            const airportMarkers = airportCodes.map((code: string) => US_AIRPORTS.find((a) => a.code === code)).filter(Boolean);
+
+            // Directions URL from first airport to lodging/event
+            const destAddr = lodgingAddr || event.address || event.location || "";
+            const firstAirport = airportMarkers[0];
+
+            return (
+            <div className="p-6 space-y-6">
+              {/* Map */}
+              {mapCoords && (
+                <div className="rounded-lg border border-[var(--border)] shadow-md dark:shadow-black/30 overflow-hidden">
+                  <div className="h-72 overflow-hidden">
+                    <MapContainer center={mapCoords} zoom={10} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }} key={`travel-${mapCoords.join(",")}`}>
+                      <MapResizer />
+                      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://carto.com/">CARTO</a>' />
+                      {showEventPin && <Marker position={mapCoords} icon={goldIcon}><Popup>{event.title}<br />{event.address || event.location}</Popup></Marker>}
+                      {showAirportPins && airportMarkers.map((a: any) => (
+                        <Marker key={a.code} position={[a.lat, a.lon]} icon={blueIcon}><Popup>{a.code} - {a.name}<br />{a.city}, {a.state}</Popup></Marker>
+                      ))}
+                    </MapContainer>
+                  </div>
+                  {/* Pin toggles */}
+                  <div className="flex flex-wrap items-center gap-3 px-3 py-2 text-xs">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input type="checkbox" checked={showEventPin} onChange={(e) => setShowEventPin(e.target.checked)} className="accent-gold-500" />
+                      <span className="text-gold-500 font-medium">Event</span>
+                    </label>
+                    {airportMarkers.length > 0 && (
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" checked={showAirportPins} onChange={(e) => setShowAirportPins(e.target.checked)} className="accent-blue-500" />
+                        <span className="text-blue-400 font-medium">Airports</span>
+                      </label>
+                    )}
+                    {hasLodging && lodgingAddr && (
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" checked={showLodgingPin} onChange={(e) => setShowLodgingPin(e.target.checked)} className="accent-purple-500" />
+                        <span className="text-purple-400 font-medium">Lodging</span>
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {!hasLodging && !hasTransport && (
+                <p className="text-[var(--muted-foreground)] text-sm text-center py-8">No lodging or transportation info has been added for this event yet.</p>
+              )}
+
+              {hasLodging && (
+                <div className="rounded-lg border border-[var(--border)] shadow-md dark:shadow-black/30 p-4 space-y-3">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    <span className="text-lg">🏨</span> Lodging
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    {d.lodging_hotel && (
+                      <div><span className="text-gold-500 text-xs">Hotel:</span> <span className="ml-1 font-medium">{d.lodging_hotel}</span></div>
+                    )}
+                    {lodgingAddr && (
+                      <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+                        <MapPin className="w-3.5 h-3.5 text-gold-500 flex-shrink-0" />
+                        <span>{lodgingAddr}{d.lodging_same_address ? " (same as event)" : ""}</span>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      {d.lodging_phone && <div><span className="text-gold-500 text-xs">Phone:</span> <span className="ml-1">{d.lodging_phone}</span></div>}
+                      {d.lodging_rate && <div><span className="text-gold-500 text-xs">Rate:</span> <span className="ml-1">{d.lodging_rate}</span></div>}
+                    </div>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      {d.lodging_checkin && <div><span className="text-gold-500 text-xs">Check-in:</span> <span className="ml-1">{d.lodging_checkin}</span></div>}
+                      {d.lodging_checkout && <div><span className="text-gold-500 text-xs">Check-out:</span> <span className="ml-1">{d.lodging_checkout}</span></div>}
+                    </div>
+                    {d.lodging_has_shuttle && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-green-400 text-xs font-medium">✓ Shuttle Available</span>
+                        {d.lodging_shuttle_info && <span className="text-[var(--muted-foreground)]">— {d.lodging_shuttle_info}</span>}
+                      </div>
+                    )}
+                    {d.lodging_website && (
+                      <a href={d.lodging_website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-gold-500 hover:text-gold-400 text-sm underline underline-offset-2">
+                        <ExternalLink className="w-3.5 h-3.5" /> Website
+                      </a>
+                    )}
+                    {d.lodging_notes && <p className="text-[var(--muted-foreground)] text-xs whitespace-pre-wrap border-t border-[var(--border)] pt-2 mt-2">{d.lodging_notes}</p>}
+                  </div>
+                </div>
+              )}
+
+              {hasTransport && (
+                <div className="rounded-lg border border-[var(--border)] shadow-md dark:shadow-black/30 p-4 space-y-3">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    <span className="text-lg">🚗</span> Transportation
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    {d.transport_airports && <div><span className="text-gold-500 text-xs">Airports:</span> <span className="ml-1">{d.transport_airports}</span></div>}
+                    {firstAirport && destAddr && (
+                      <a
+                        href={`https://www.google.com/maps/dir/${encodeURIComponent(firstAirport.name + " " + firstAirport.city + " " + firstAirport.state)}/${encodeURIComponent(destAddr)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-gold-500 hover:text-gold-400 text-sm underline underline-offset-2"
+                      >
+                        <Navigation className="w-3.5 h-3.5" />
+                        Directions from {firstAirport.code} to {lodgingAddr ? "hotel" : "event"}
+                      </a>
+                    )}
+                    {d.transport_rental && <div><span className="text-gold-500 text-xs">Car Rental:</span> <span className="ml-1">{d.transport_rental}</span></div>}
+                    {d.transport_parking && <div><span className="text-gold-500 text-xs">Parking:</span> <span className="ml-1">{d.transport_parking}</span></div>}
+                    {d.transport_rideshare && <div><span className="text-gold-500 text-xs">Rideshare:</span> <span className="ml-1">{d.transport_rideshare}</span></div>}
+                    {d.transport_shuttle && <div><span className="text-gold-500 text-xs">Shuttle:</span> <span className="ml-1">{d.transport_shuttle}</span></div>}
+                    {d.transport_notes && <p className="text-[var(--muted-foreground)] text-xs whitespace-pre-wrap border-t border-[var(--border)] pt-2 mt-2">{d.transport_notes}</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+            );
+          })()}
+
+          {eventSection === "attending" && (
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Attending ({totalGoing}{totalGoing !== goingList.length ? ` incl. ${totalGoing - goingList.length} guest${totalGoing - goingList.length !== 1 ? 's' : ''}` : ''})
+                </h3>
+                {canGenerateReport && goingList.length > 0 && (
+                  <button
+                    onClick={generateAttendeeReport}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Export Report
+                  </button>
+                )}
+              </div>
+              {goingList.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {goingList.map((r) => {
+                    const guests = Number((r as any).guest_count) || 0;
+                    return (
+                    <div key={r.id} className="flex items-center gap-2 bg-[var(--background)] rounded-full px-3 py-1">
+                      <div className="relative">
+                        <div className="w-6 h-6 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
+                          {r.user?.avatar_url ? (
+                            <img src={r.user.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[10px] font-medium text-gold-500">{r.user?.display_name?.charAt(0).toUpperCase()}</span>
+                          )}
+                        </div>
+                        {guests > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-gold-500 text-white text-[9px] font-bold flex items-center justify-center">+{guests}</span>
+                        )}
+                      </div>
+                      <span className="text-sm">{r.user?.display_name}</span>
+                    </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[var(--muted-foreground)] text-sm">No one has RSVP'd yet.</p>
+              )}
+              {maybeList.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2 text-[var(--muted-foreground)]">Maybe ({maybeList.length})</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {maybeList.map((r) => (
+                      <div key={r.id} className="flex items-center gap-2 bg-[var(--background)] rounded-full px-3 py-1">
+                        <div className="w-6 h-6 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
+                          {r.user?.avatar_url ? (
+                            <img src={r.user.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[10px] font-medium text-gold-500">{r.user?.display_name?.charAt(0).toUpperCase()}</span>
+                          )}
+                        </div>
+                        <span className="text-sm">{r.user?.display_name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {eventSection === "chat" && (
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                Event Chat
+              </h3>
+              <div className="space-y-3 max-h-80 overflow-y-auto mb-3">
+                {messages.length === 0 ? (
+                  <p className="text-sm text-[var(--muted-foreground)] text-center py-4">
+                    No messages yet. Start the conversation!
+                  </p>
+                ) : (
+                  messages.map((msg) => (
+                    <div key={msg.id} className="flex gap-2">
+                      <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {msg.user?.avatar_url ? (
+                          <img src={msg.user.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xs font-medium text-gold-500">{msg.user?.display_name?.charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-sm font-medium">{msg.user?.display_name}</span>
+                          <span className="text-[10px] text-[var(--muted-foreground)]">
+                            {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                          </span>
+                        </div>
+                        <p className="text-sm mt-0.5">{msg.content}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={chatText}
+                  onChange={(e) => setChatText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                  placeholder="Type a message..."
+                  className="flex-1 rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                />
+                <button onClick={sendMessage} className="p-2 rounded-lg bg-gold-500 text-white hover:bg-gold-600 transition-colors cursor-pointer">
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {eventSection === "more" && (
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Star className="w-5 h-5" />
+                More
+              </h3>
+              <p className="text-[var(--muted-foreground)] text-sm">More content coming soon.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Original content — hidden when menu is open */}
+      {!eventMenuOpen && (
+        <div className="space-y-6">
 
       {/* Attendees */}
       {goingList.length > 0 && (
-        <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+        <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] shadow-md dark:shadow-black/30 p-4">
           <h3 className="font-semibold mb-3">
-            Attending ({goingList.length})
+            Attending ({totalGoing}{totalGoing !== goingList.length ? ` incl. ${totalGoing - goingList.length} guest${totalGoing - goingList.length !== 1 ? 's' : ''}` : ''})
           </h3>
           <div className="flex flex-wrap gap-2">
-            {goingList.map((r) => (
+            {goingList.map((r) => {
+              const guests = Number((r as any).guest_count) || 0;
+              return (
               <div
                 key={r.id}
                 className="flex items-center gap-2 bg-[var(--background)] rounded-full px-3 py-1"
               >
+                <div className="relative">
                 <div className="w-6 h-6 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden">
                   {r.user?.avatar_url ? (
                     <img
@@ -738,15 +1369,20 @@ export default function EventDetailPage() {
                     </span>
                   )}
                 </div>
+                {guests > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-gold-500 text-white text-[9px] font-bold flex items-center justify-center">+{guests}</span>
+                )}
+                </div>
                 <span className="text-sm">{r.user?.display_name}</span>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
       {/* Event chat */}
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
+      <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] shadow-md dark:shadow-black/30 p-4">
         <h3 className="font-semibold mb-3">Event Chat</h3>
         <div className="space-y-3 max-h-80 overflow-y-auto mb-3">
           {messages.length === 0 ? (
@@ -809,165 +1445,9 @@ export default function EventDetailPage() {
         </div>
       </div>
 
-      </div>{/* end left column */}
-
-      {/* Right column */}
-      <div className="lg:w-[22rem] flex-shrink-0 space-y-6 lg:sticky lg:top-4 lg:self-start">
-        {/* Map */}
-        {mapCoords ? (
-          <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden">
-            <div className="h-72 rounded-t-lg overflow-hidden">
-              <MapContainer center={mapCoords} zoom={14} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }} key={mapCoords.join(",")}>
-                <MapResizer />
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
-                <Marker position={mapCoords} icon={goldIcon}>
-                  <Popup>{event.address || event.location}</Popup>
-                </Marker>
-              </MapContainer>
-            </div>
-            <div className="p-3 space-y-1">
-              {event.location && (
-                <p className="text-sm font-medium flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 text-gold-500 flex-shrink-0" />
-                  {event.location}
-                </p>
-              )}
-              {event.address && (
-                <p className="text-xs text-[var(--muted-foreground)] flex items-center gap-2">
-                  <Navigation className="w-3.5 h-3.5 flex-shrink-0" />
-                  {event.address}
-                </p>
-              )}
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address || event.location || "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-gold-500 hover:text-gold-400 mt-1 cursor-pointer"
-              >
-                <Navigation className="w-3 h-3" />
-                Get Directions
-              </a>
-            </div>
-          </div>
-        ) : (event.location || event.address) ? (
-          <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <MapPin className="w-4 h-4 text-gold-500" />
-              <h3 className="font-semibold text-sm">Location</h3>
-            </div>
-            {event.location && <p className="text-sm">{event.location}</p>}
-            {event.address && <p className="text-xs text-[var(--muted-foreground)] mt-1">{event.address}</p>}
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address || event.location || "")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-gold-500 hover:text-gold-400 mt-2 cursor-pointer"
-            >
-              <Navigation className="w-3 h-3" />
-              Get Directions
-            </a>
-          </div>
-        ) : null}
-
-        {/* Event details card */}
-        <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4 space-y-3">
-          <h3 className="font-semibold text-sm">Details</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
-              <Calendar className="w-4 h-4 text-gold-500 flex-shrink-0" />
-              <span>
-                {event.is_all_day
-                  ? format(new Date(event.starts_at), "MMM d, yyyy")
-                  : format(new Date(event.starts_at), "MMM d, yyyy 'at' h:mm a")}
-                {event.ends_at && event.is_all_day && ` - ${format(new Date(event.ends_at), "MMM d, yyyy")}`}
-                {event.ends_at && !event.is_all_day && ` - ${format(new Date(event.ends_at), "h:mm a")}`}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
-              <Users className="w-4 h-4 text-gold-500 flex-shrink-0" />
-              <span>{goingList.length} going{maybeList.length > 0 && ` \u00B7 ${maybeList.length} maybe`}</span>
-            </div>
-            {event.hosts && event.hosts.length > 0 && (
-              <div className="flex items-start gap-2 text-[var(--muted-foreground)]">
-                <UserCheck className="w-4 h-4 text-gold-500 flex-shrink-0 mt-0.5" />
-                <div className="flex flex-wrap gap-1">
-                  {event.hosts.map((host) => (
-                    <span key={host.id} className="inline-flex items-center gap-1">
-                      <div className="w-5 h-5 rounded-full bg-gold-500/20 overflow-hidden flex items-center justify-center flex-shrink-0">
-                        {host.avatar_url ? (
-                          <img src={host.avatar_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-[8px] font-medium text-gold-500">{host.display_name?.charAt(0).toUpperCase()}</span>
-                        )}
-                      </div>
-                      <span className="text-xs font-medium text-[var(--foreground)]">{host.display_name}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            <p className="text-xs text-[var(--muted-foreground)]">
-              Created by {event.creator?.display_name || "Unknown"}
-            </p>
-          </div>
-        </div>
-
-        {/* Additional details from JSONB */}
-        {(() => {
-          const d = parseDetails((event as any).details);
-          const hasAny = d.cost || d.dress_code || d.nearby_airports || d.websites.length > 0 || d.contact_name || d.contact_phone || d.contact_email || d.additional_notes;
-          if (!hasAny) return null;
-          return (
-            <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-4 space-y-3">
-              <h3 className="font-semibold text-sm">Additional Info</h3>
-              <div className="space-y-2 text-sm">
-                {d.cost && (
-                  <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
-                    <span className="text-green-400 font-medium">$</span>
-                    <span>{d.cost}</span>
-                  </div>
-                )}
-                {d.dress_code && (
-                  <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
-                    <span className="text-purple-400 text-xs">Dress:</span>
-                    <span>{d.dress_code}</span>
-                  </div>
-                )}
-                {d.nearby_airports && (
-                  <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
-                    <span className="text-sky-400 text-xs">Airports:</span>
-                    <span>{d.nearby_airports}</span>
-                  </div>
-                )}
-                {d.websites.length > 0 && (
-                  <div className="space-y-1">
-                    {d.websites.filter((w) => w.url).map((w, i) => (
-                      <a key={i} href={w.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-gold-500 hover:text-gold-400 text-xs">
-                        <span>{w.label || w.url}</span>
-                      </a>
-                    ))}
-                  </div>
-                )}
-                {(d.contact_name || d.contact_phone || d.contact_email) && (
-                  <div className="border-t border-[var(--border)] pt-2 space-y-1 text-xs text-[var(--muted-foreground)]">
-                    <p className="text-[var(--foreground)] font-medium text-sm">Contact</p>
-                    {d.contact_name && <p>{d.contact_name}</p>}
-                    {d.contact_phone && <p>{d.contact_phone}</p>}
-                    {d.contact_email && <a href={`mailto:${d.contact_email}`} className="text-gold-500 hover:text-gold-400">{d.contact_email}</a>}
-                  </div>
-                )}
-                {d.additional_notes && (
-                  <div className="border-t border-[var(--border)] pt-2">
-                    <p className="text-xs text-[var(--muted-foreground)] whitespace-pre-wrap">{d.additional_notes}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-      </div>{/* end right column */}
-
-      </div>{/* end 2-column layout */}
+      </div>
+      )}
+      {/* end original content */}
     </div>
   );
 }

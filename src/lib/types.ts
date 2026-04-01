@@ -42,6 +42,9 @@ export type Database = {
 export interface Profile {
   id: string;
   display_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  display_preference: "display_name" | "first_last" | "first_only";
   avatar_url: string | null;
   cover_url: string | null;
   email: string | null;
@@ -49,6 +52,11 @@ export interface Profile {
   date_of_birth: string | null;
   phone: string | null;
   location: string | null;
+  street_address: string | null;
+  city: string | null;
+  state: string | null;
+  gender: string | null;
+  pronouns: string | null;
   privacy_level: "public" | "family" | "private";
   is_god_mode: boolean;
   created_at: string;

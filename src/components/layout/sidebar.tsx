@@ -100,6 +100,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
       {/* Sidebar */}
       <aside
+        data-tour="sidebar"
         className={cn(
           "fixed inset-y-0 left-0 z-50 bg-[var(--sidebar-background)] border-r border-[var(--sidebar-border)] transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col shadow-xl shadow-black/10 dark:shadow-black/30",
           collapsed ? "w-16" : "w-48",
@@ -228,6 +229,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         : undefined
                     }
                     title={collapsed ? item.label : undefined}
+                    data-tour={item.path === "/profile" ? "profile-link" : item.path === "/settings" ? "settings-link" : undefined}
                   >
                     <span className="relative flex-shrink-0">
                       <item.icon className="w-5 h-5" />

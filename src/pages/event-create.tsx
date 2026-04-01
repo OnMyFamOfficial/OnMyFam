@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ImagePlus, X, UserPlus } from "lucide-react";
+import { InfoTip } from "@/components/shared/info-tip";
 import { EventDetailsForm, emptyDetails, detailsToJson, type EventDetails } from "@/components/shared/event-details-form";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
@@ -92,6 +93,8 @@ export default function EventCreatePage() {
     start_time: "",
     end_time: "",
     is_all_day: false,
+    allow_guests: false,
+    report_access: "creator_admin",
   });
   const [details, setDetails] = useState<EventDetails>({ ...emptyDetails });
   const [hosts, setHosts] = useState<string[]>([]);
@@ -166,6 +169,8 @@ export default function EventCreatePage() {
         starts_at: startsAt,
         ends_at: endsAt,
         is_all_day: form.is_all_day,
+        allow_guests: form.allow_guests,
+        report_access: form.report_access,
         details: detailsToJson(details),
       })
       .select()
@@ -377,16 +382,42 @@ export default function EventCreatePage() {
           )}
         </div>
 
-        {/* All day toggle */}
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input
-            type="checkbox"
-            checked={form.is_all_day}
-            onChange={(e) => setForm({ ...form, is_all_day: e.target.checked })}
-            className="rounded border-[var(--input)] accent-gold-500"
-          />
-          All day event
-        </label>
+        {/* Toggles */}
+        <div className="flex flex-wrap gap-6">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.is_all_day}
+              onChange={(e) => setForm({ ...form, is_all_day: e.target.checked })}
+              className="rounded border-[var(--input)] accent-gold-500"
+            />
+            All day event
+          </label>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.allow_guests}
+              onChange={(e) => setForm({ ...form, allow_guests: e.target.checked })}
+              className="rounded border-[var(--input)] accent-gold-500"
+            />
+            Allow attendees to bring guests
+          </label>
+        </div>
+
+        {/* Report access */}
+        <div>
+          <label className="flex items-center text-sm font-medium mb-1">Attendee Report Access <InfoTip text="Controls who can download a CSV report of attendees with their contact info. Creator Only: just you. Creator & Admin: you and family admins. Verified Members: any verified family member." /></label>
+          <select
+            value={form.report_access}
+            onChange={(e) => setForm({ ...form, report_access: e.target.value })}
+            className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+          >
+            <option value="creator_admin">Creator & Family Admin</option>
+            <option value="creator_only">Creator Only</option>
+            <option value="verified_members">All Verified Members</option>
+          </select>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1">Controls who can download the attendee report</p>
+        </div>
 
         {/* Date pickers */}
         <div className="space-y-6">
@@ -424,8 +455,17 @@ export default function EventCreatePage() {
           </div>
         </div>
 
-        {/* Additional Details */}
-        <EventDetailsForm details={details} onChange={setDetails} />
+        {/* Event Details Tabs */}
+        <div>
+          <h3 className="text-sm font-medium mb-2">Event Details <span className="text-xs text-[var(--muted-foreground)] font-normal">(optional)</span></h3>
+          <EventDetailsForm
+            details={details}
+            onChange={setDetails}
+            eventLat={form.latitude ? parseFloat(form.latitude) : null}
+            eventLon={form.longitude ? parseFloat(form.longitude) : null}
+            eventAddress={form.address || form.location}
+          />
+        </div>
 
         {/* Submit */}
         <div className="flex gap-2 pt-2">

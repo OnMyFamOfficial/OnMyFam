@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Camera, MapPin, Phone, ImagePlus, Calendar, Shield, User, Users, Heart, X, Maximize2 } from "lucide-react";
+import { Camera, MapPin, Phone, ImagePlus, Calendar, Shield, User, Users, Heart, X, Maximize2, Menu, Home, Image, FileText, Star, Mail } from "lucide-react";
+import { InfoTip } from "@/components/shared/info-tip";
+import { useTour } from "@/components/shared/tour-provider";
 import { sanitizeForStorage } from "@/lib/sanitize";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { uploadAvatar, uploadCover } from "@/services/storage";
+import { useTheme } from "@/components/shared/theme-provider";
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-markercluster";
 import L from "leaflet";
@@ -43,7 +46,7 @@ function MapResizer() {
   return null;
 }
 
-function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
+function ProfileMapAndDetails({ profile: p, canViewDetails = true }: { profile: Profile; canViewDetails?: boolean }) {
   const { members } = useFamily();
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [showFamily, setShowFamily] = useState(false);
@@ -100,10 +103,23 @@ function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
     return () => { cancelled = true; };
   }, [showFamily, members, p.id]);
 
+  // Build full name based on preference
+  const pref = (p as any).display_preference || "display_name";
+  const displayedName = pref === "first_last" && (p as any).first_name
+    ? `${(p as any).first_name} ${(p as any).last_name || ""}`.trim()
+    : pref === "first_only" && (p as any).first_name
+      ? (p as any).first_name
+      : p.display_name;
+
+  // Build location string from parts if available
+  const locationStr = [(p as any).street_address, (p as any).city, (p as any).state].filter(Boolean).join(", ") || p.location;
+
   const details = [
-    p.display_name && { icon: User, label: "Name", value: p.display_name },
-    p.location && { icon: MapPin, label: "Location", value: p.location },
+    displayedName && { icon: User, label: "Name", value: displayedName },
+    p.pronouns && { icon: User, label: "Pronouns", value: p.pronouns },
+    locationStr && { icon: MapPin, label: "Location", value: locationStr },
     p.phone && { icon: Phone, label: "Phone", value: p.phone },
+    p.email && { icon: Mail, label: "Email", value: p.email },
     p.date_of_birth && { icon: Calendar, label: "Birthday", value: new Date(p.date_of_birth).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }) },
     p.privacy_level && { icon: Shield, label: "Privacy", value: p.privacy_level.charAt(0).toUpperCase() + p.privacy_level.slice(1) },
     { icon: Calendar, label: "Joined", value: new Date(p.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" }) },
@@ -117,6 +133,14 @@ function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
           <span className="font-semibold text-sm">About</span>
         </div>
         <div className="p-4 space-y-3">
+          {!canViewDetails ? (
+            <div className="text-center py-6">
+              <Shield className="w-8 h-8 text-[var(--muted-foreground)] mx-auto mb-2" />
+              <p className="text-sm text-[var(--muted-foreground)]">This profile is private</p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-1">Only visible to {p.privacy_level === "private" ? "the owner and family admins" : "verified family members"}</p>
+            </div>
+          ) : (
+            <>
           {p.bio && (
             <p className="text-sm text-[var(--muted-foreground)] italic mb-4">{p.bio}</p>
           )}
@@ -129,6 +153,8 @@ function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
               </div>
             </div>
           ))}
+            </>
+          )}
         </div>
       </div>
 
@@ -165,8 +191,8 @@ function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
               scrollWheelZoom={true}
             >
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
               />
               <MarkerClusterGroup
                 showCoverageOnHover={false}
@@ -279,8 +305,8 @@ function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
             >
               <MapResizer />
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
               />
               <MarkerClusterGroup
                 showCoverageOnHover={false}
@@ -334,12 +360,28 @@ function ProfileMapAndDetails({ profile: p }: { profile: Profile }) {
 export default function ProfilePage() {
   const { userId } = useParams<{ userId?: string }>();
   const { user, profile: myProfile, updateProfile, refreshProfile } = useAuth();
+  const { theme } = useTheme();
   const [viewingProfile, setViewingProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileSection, setProfileSection] = useState<string | null>(null);
 
   // If viewing someone else's profile
+  const { members: famMembers } = useFamily();
+  const { triggerPageTour } = useTour();
+  useEffect(() => { triggerPageTour("profile"); }, [triggerPageTour]);
   const isOwnProfile = !userId || userId === user?.id;
   const profile = isOwnProfile ? myProfile : viewingProfile;
+
+  // Privacy check — can the viewer see this profile's details?
+  const viewerMembership = famMembers.find((m) => m.user_id === user?.id);
+  const isViewerAdmin = viewerMembership?.role === "admin";
+  const isViewerFamilyMember = !!viewerMembership;
+  const privacyLevel = profile?.privacy_level || "family";
+  const canViewDetails = isOwnProfile
+    || privacyLevel === "public"
+    || (privacyLevel === "family" && isViewerFamilyMember)
+    || (privacyLevel === "private" && isViewerAdmin);
 
   useEffect(() => {
     if (userId && userId !== user?.id) {
@@ -361,9 +403,19 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     display_name: profile?.display_name || "",
+    first_name: (profile as any)?.first_name || "",
+    last_name: (profile as any)?.last_name || "",
+    display_preference: (profile as any)?.display_preference || "display_name",
     bio: profile?.bio || "",
+    gender: profile?.gender || "",
+    pronouns: profile?.pronouns || "",
     location: profile?.location || "",
+    street_address: (profile as any)?.street_address || "",
+    city: (profile as any)?.city || "",
+    state: (profile as any)?.state || "",
     phone: profile?.phone || "",
+    email: profile?.email || "",
+    privacy_level: profile?.privacy_level || "family",
   });
   const avatarRef = useRef<HTMLInputElement>(null);
   const coverRef = useRef<HTMLInputElement>(null);
@@ -395,9 +447,19 @@ export default function ProfilePage() {
   function startEditing() {
     setForm({
       display_name: profile?.display_name || "",
+      first_name: (profile as any)?.first_name || "",
+      last_name: (profile as any)?.last_name || "",
+      display_preference: (profile as any)?.display_preference || "display_name",
       bio: profile?.bio || "",
+      gender: profile?.gender || "",
+      pronouns: profile?.pronouns || "",
       location: profile?.location || "",
+      street_address: (profile as any)?.street_address || "",
+      city: (profile as any)?.city || "",
+      state: (profile as any)?.state || "",
       phone: profile?.phone || "",
+      email: profile?.email || "",
+      privacy_level: profile?.privacy_level || "family",
     });
     setAvatarPreview(null);
     setAvatarFile(null);
@@ -423,11 +485,25 @@ export default function ProfilePage() {
   async function handleSave() {
     if (!user) return;
     setSaving(true);
+    // Build location from parts if street/city/state are filled
+    const locationParts = [form.street_address, form.city, form.state].filter(Boolean).join(", ");
+    const finalLocation = locationParts || (form.location ? form.location : null);
+
     const updates: Record<string, string | null> = {
       display_name: sanitizeForStorage(form.display_name),
+      first_name: form.first_name ? sanitizeForStorage(form.first_name) : null,
+      last_name: form.last_name ? sanitizeForStorage(form.last_name) : null,
+      display_preference: form.display_preference,
       bio: form.bio ? sanitizeForStorage(form.bio) : null,
-      location: form.location ? sanitizeForStorage(form.location) : null,
+      gender: form.gender || null,
+      pronouns: form.pronouns ? sanitizeForStorage(form.pronouns) : null,
+      location: finalLocation ? sanitizeForStorage(finalLocation) : null,
+      street_address: form.street_address ? sanitizeForStorage(form.street_address) : null,
+      city: form.city ? sanitizeForStorage(form.city) : null,
+      state: form.state ? sanitizeForStorage(form.state) : null,
       phone: form.phone ? sanitizeForStorage(form.phone) : null,
+      email: form.email ? sanitizeForStorage(form.email) : null,
+      privacy_level: form.privacy_level,
     };
 
     if (avatarFile) {
@@ -470,8 +546,16 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      {/* Profile header — full width */}
-      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)]">
+      {/* Profile header — full width, folds up when menu is open */}
+      <div
+        className="bg-[var(--card)] rounded-2xl border border-[var(--border)] transition-all duration-500 ease-in-out"
+        style={{
+          maxHeight: profileMenuOpen ? "0px" : "none",
+          opacity: profileMenuOpen ? 0 : 1,
+          marginBottom: profileMenuOpen ? 0 : undefined,
+          overflow: profileMenuOpen ? "hidden" : "visible",
+        }}
+      >
         {/* Cover photo with black surround */}
         <div className="p-3 rounded-t-2xl bg-[var(--card)]">
           <div className="relative h-72 sm:h-80 lg:h-88 group rounded-2xl overflow-hidden">
@@ -551,91 +635,122 @@ export default function ProfilePage() {
                 <h1 className="text-3xl font-bold">
                   {profile?.display_name || "Family Member"}
                 </h1>
-                {profile?.bio && (
-                  <p className="mt-1 text-[var(--muted-foreground)] text-base">
-                    {profile.bio}
-                  </p>
-                )}
-                <div className="mt-2 flex flex-wrap justify-start items-center gap-3 text-sm text-[var(--muted-foreground)]">
-                  {profile?.location && (
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4" />
-                      {profile.location}
-                    </span>
-                  )}
-                  {profile?.phone && (
-                    <span className="flex items-center gap-1.5">
-                      <Phone className="w-4 h-4" />
-                      {profile.phone}
-                    </span>
-                  )}
-                </div>
               </div>
-              {isOwnProfile && (
-                <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-2">
+                {isOwnProfile && (
                   <button
                     onClick={startEditing}
                     className="px-5 py-2 rounded-lg border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] transition-colors"
                   >
                     Edit Profile
                   </button>
-                </div>
-              )}
+                )}
+                <button
+                  onClick={() => { setProfileMenuOpen(true); setProfileSection("about"); }}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-medium transition-colors cursor-pointer shadow-lg hover:opacity-90"
+                  style={{
+                    background: theme === "dark"
+                      ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                      : "#000000",
+                  }}
+                >
+                  <Menu className="w-5 h-5" />
+                  Menu
+                </button>
+              </div>
             </div>
           )}
 
           {isOwnProfile && editing && (
-            <div className="mt-4 space-y-4 max-w-xl px-6 lg:px-8">
+            <div className="mt-4 space-y-4 max-w-2xl px-6 lg:px-8">
+              {/* Name fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">First Name</label>
+                  <input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50" placeholder="First name" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Last Name</label>
+                  <input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50" placeholder="Last name" />
+                </div>
+              </div>
               <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  Display Name
-                </label>
-                <input
-                  value={form.display_name}
-                  onChange={(e) =>
-                    setForm({ ...form, display_name: e.target.value })
-                  }
-                  className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-                />
+                <label className="block text-sm font-medium mb-1.5">Display Name</label>
+                <input value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50" placeholder="How you want to be known" />
+              </div>
+              <div>
+                <label className="flex items-center text-sm font-medium mb-1.5">Name Display Preference <InfoTip text="Choose how your name appears across the app. 'Display Name' uses your custom name, 'First & Last' uses your real name, and 'First Only' shows just your first name." /></label>
+                <select value={form.display_preference} onChange={(e) => setForm({ ...form, display_preference: e.target.value })} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50">
+                  <option value="display_name">Display Name ({form.display_name || "—"})</option>
+                  <option value="first_last">First & Last ({form.first_name} {form.last_name})</option>
+                  <option value="first_only">First Name Only ({form.first_name || "—"})</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1.5">Bio</label>
-                <textarea
-                  value={form.bio}
-                  onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                  rows={3}
-                  className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50 resize-none"
-                  placeholder="Tell your family about yourself..."
-                />
+                <textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} rows={3} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50 resize-none" placeholder="Tell your family about yourself..." />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1.5">
-                    Location
-                  </label>
-                  <input
-                    value={form.location}
-                    onChange={(e) =>
-                      setForm({ ...form, location: e.target.value })
-                    }
-                    className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-                    placeholder="City, State"
-                  />
+                  <label className="block text-sm font-medium mb-1.5">Gender</label>
+                  <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50">
+                    <option value="">Prefer not to say</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Non-binary">Non-binary</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1.5">
-                    Phone
-                  </label>
-                  <input
-                    value={form.phone}
-                    onChange={(e) =>
-                      setForm({ ...form, phone: e.target.value })
-                    }
-                    className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-                    placeholder="(555) 123-4567"
-                  />
+                  <label className="block text-sm font-medium mb-1.5">Display Pronouns <span className="text-[var(--muted-foreground)] font-normal">(optional)</span></label>
+                  <select value={form.pronouns} onChange={(e) => setForm({ ...form, pronouns: e.target.value })} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50">
+                    <option value="">None</option>
+                    <option value="he/him">he/him</option>
+                    <option value="she/her">she/her</option>
+                    <option value="they/them">they/them</option>
+                    <option value="he/they">he/they</option>
+                    <option value="she/they">she/they</option>
+                    <option value="any pronouns">any pronouns</option>
+                  </select>
                 </div>
               </div>
+              {/* Address fields */}
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Street Address</label>
+                <input value={form.street_address} onChange={(e) => setForm({ ...form, street_address: e.target.value })} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50" placeholder="123 Main St" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">City</label>
+                  <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50" placeholder="City" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">State</label>
+                  <input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50" placeholder="State" />
+                </div>
+              </div>
+              {/* Contact fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Phone</label>
+                  <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50" placeholder="(555) 123-4567" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Email</label>
+                  <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50" placeholder="your@email.com" />
+                </div>
+              </div>
+              {/* Privacy */}
+              <div>
+                <label className="flex items-center text-sm font-medium mb-1.5">Profile Privacy <InfoTip text="Controls who can see your profile details (location, phone, email, bio). Public: anyone. Family: only verified family members. Private: only you and family admins. Admins can always see your info." /></label>
+                <select value={form.privacy_level} onChange={(e) => setForm({ ...form, privacy_level: e.target.value as "public" | "family" | "private" })} className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50">
+                  <option value="public">Public — Anyone can see your profile details</option>
+                  <option value="family">Family — Only verified family members can see details</option>
+                  <option value="private">Private — Only you and family admins can see details</option>
+                </select>
+                <p className="text-xs text-[var(--muted-foreground)] mt-1">Family admins can always view your information regardless of this setting.</p>
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleSave}
@@ -655,6 +770,99 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Slide-in profile menu bar */}
+      <div
+        className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] transition-all duration-500 ease-in-out"
+        style={{
+          maxHeight: profileMenuOpen ? "200px" : "0px",
+          opacity: profileMenuOpen ? 1 : 0,
+          overflow: "hidden",
+        }}
+      >
+        <div className="flex items-center gap-2 px-4 py-3">
+          <button
+            onClick={() => { setProfileSection(null); setProfileMenuOpen(false); }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+              profileSection === null ? "text-white shadow-lg" : "bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            }`}
+            style={profileSection === null ? {
+              background: theme === "dark"
+                ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                : "#000000",
+            } : undefined}
+          >
+            <Home className="w-4 h-4" />
+            Home
+          </button>
+          <div className="flex-1 flex items-center gap-1 bg-[var(--accent)] rounded-lg p-1">
+            {[
+              { key: "about", icon: User, label: "About" },
+              { key: "photos", icon: Image, label: "Photos" },
+              { key: "posts", icon: FileText, label: "Posts" },
+              { key: "more", icon: Star, label: "More" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setProfileSection(tab.key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer ${
+                  profileSection === tab.key ? "text-white font-medium shadow-lg" : "hover:bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                }`}
+                style={profileSection === tab.key ? {
+                  background: theme === "dark"
+                    ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                    : "#000000",
+                } : undefined}
+              >
+                <tab.icon className="w-4 h-4" />
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Profile section content */}
+      {profileSection && (
+        <div className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)]">
+          {profileSection === "about" && (
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <User className="w-5 h-5" />
+                About {profile?.display_name}
+              </h3>
+              {profile && <ProfileMapAndDetails profile={profile} canViewDetails={canViewDetails} />}
+            </div>
+          )}
+          {profileSection === "photos" && (
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Image className="w-5 h-5" />
+                Photos
+              </h3>
+              <p className="text-[var(--muted-foreground)] text-sm">Photo gallery coming soon.</p>
+            </div>
+          )}
+          {profileSection === "posts" && (
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Posts
+              </h3>
+              <p className="text-[var(--muted-foreground)] text-sm">Posts feed coming soon.</p>
+            </div>
+          )}
+          {profileSection === "more" && (
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Star className="w-5 h-5" />
+                More
+              </h3>
+              <p className="text-[var(--muted-foreground)] text-sm">More content coming soon.</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Incoming relation requests */}
       {isOwnProfile && profileRelationRequests.length > 0 && (
@@ -707,8 +915,8 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Details & Map */}
-      {profile && <ProfileMapAndDetails profile={profile} />}
+      {/* Details & Map — hidden when menu is open (shown in About tab instead) */}
+      {!profileMenuOpen && profile && <ProfileMapAndDetails profile={profile} />}
 
       {/* Image lightbox */}
       {lightboxImage && (

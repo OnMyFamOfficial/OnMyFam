@@ -8,6 +8,7 @@ import { EVENT_CATEGORIES } from "@/lib/constants";
 import { format } from "date-fns";
 import { CalendarPicker } from "@/components/shared/calendar-picker";
 import type { FamilyEvent, Profile } from "@/lib/types";
+import { useTour } from "@/components/shared/tour-provider";
 
 type FullEvent = FamilyEvent & { creator: Profile };
 
@@ -15,6 +16,8 @@ export default function EventsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentFamily } = useFamily();
+  const { triggerPageTour } = useTour();
+  useEffect(() => { triggerPageTour("events"); }, [triggerPageTour]);
   const [events, setEvents] = useState<FullEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -427,20 +430,30 @@ export default function EventsPage() {
                   <div className="flex items-center gap-2 mt-3">
                     {(() => {
                       const goingRsvps = (event.rsvps || []).filter((r: any) => r.status === "going");
+                      const totalWithGuests = goingRsvps.reduce((sum: number, r: any) => sum + 1 + (Number(r.guest_count) || 0), 0);
+                      const guestCount = totalWithGuests - goingRsvps.length;
                       const shown = goingRsvps.slice(0, 5);
                       const extra = goingRsvps.length - 5;
                       return (
                         <>
                           <div className="flex -space-x-2">
-                            {shown.map((r: any, i: number) => (
-                              <div key={r.id} className="w-9 h-9 rounded-full border-2 border-[var(--card)] bg-gold-500/20 overflow-hidden flex items-center justify-center flex-shrink-0" style={{ zIndex: 5 - i }}>
-                                {r.user?.avatar_url ? (
-                                  <img src={r.user.avatar_url} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                  <span className="text-[10px] font-medium text-gold-500">{r.user?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                            {shown.map((r: any, i: number) => {
+                              const guests = Number(r.guest_count) || 0;
+                              return (
+                              <div key={r.id} className="relative" style={{ zIndex: 5 - i }}>
+                                <div className="w-9 h-9 rounded-full border-2 border-[var(--card)] bg-gold-500/20 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                  {r.user?.avatar_url ? (
+                                    <img src={r.user.avatar_url} alt="" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="text-[10px] font-medium text-gold-500">{r.user?.display_name?.charAt(0).toUpperCase() || "?"}</span>
+                                  )}
+                                </div>
+                                {guests > 0 && (
+                                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gold-500 text-white text-[9px] font-bold flex items-center justify-center">+{guests}</span>
                                 )}
                               </div>
-                            ))}
+                              );
+                            })}
                             {extra > 0 && (
                               <div className="w-9 h-9 rounded-full border-2 border-[var(--card)] bg-[var(--accent)] flex items-center justify-center flex-shrink-0 z-0">
                                 <span className="text-[10px] font-medium text-[var(--muted-foreground)]">+{extra}</span>
@@ -448,7 +461,7 @@ export default function EventsPage() {
                             )}
                           </div>
                           <span className="text-xs text-[var(--muted-foreground)]">
-                            {goingRsvps.length} going{event.maybe_count > 0 ? ` \u00B7 ${event.maybe_count} maybe` : ""}
+                            {totalWithGuests} going{guestCount > 0 ? ` (${guestCount} guest${guestCount !== 1 ? 's' : ''})` : ""}{event.maybe_count > 0 ? ` \u00B7 ${event.maybe_count} maybe` : ""}
                           </span>
                         </>
                       );

@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert, Menu, Home, Camera, Maximize2 } from "lucide-react";
+import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert, Menu, Home, Camera, Maximize2, LogOut } from "lucide-react";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { DeleteConfirmModal } from "@/components/shared/delete-confirm-modal";
+import { useTour } from "@/components/shared/tour-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTheme } from "@/components/shared/theme-provider";
 import { useFamily } from "@/lib/hooks/use-family";
@@ -16,7 +17,9 @@ function MapResizer() {
   const map = useMap();
   useEffect(() => {
     setTimeout(() => map.invalidateSize(), 100);
-    setTimeout(() => map.invalidateSize(), 500);
+    setTimeout(() => map.invalidateSize(), 300);
+    setTimeout(() => map.invalidateSize(), 800);
+    setTimeout(() => map.invalidateSize(), 1500);
   }, [map]);
   return null;
 }
@@ -40,6 +43,47 @@ const RELATION_OPTIONS = [
   "Daughter-in-law", "Son-in-law", "Stepmom", "Stepdad",
   "Stepdaughter", "Stepson", "Godmother", "Godfather",
 ];
+
+// Given "they are my X" and my gender, return "I am their Y"
+function getReverseRelation(relation: string, myGender: string | null | undefined): string | null {
+  if (!myGender || (myGender !== "Male" && myGender !== "Female")) return null;
+  const m = myGender === "Male";
+  const map: Record<string, string> = {
+    "Mother": m ? "Son" : "Daughter",
+    "Father": m ? "Son" : "Daughter",
+    "Sister": m ? "Brother" : "Sister",
+    "Brother": m ? "Brother" : "Sister",
+    "Daughter": m ? "Father" : "Mother",
+    "Son": m ? "Father" : "Mother",
+    "Grandmother": m ? "Grandson" : "Granddaughter",
+    "Grandfather": m ? "Grandson" : "Granddaughter",
+    "Granddaughter": m ? "Grandfather" : "Grandmother",
+    "Grandson": m ? "Grandfather" : "Grandmother",
+    "Aunt": m ? "Nephew" : "Niece",
+    "Uncle": m ? "Nephew" : "Niece",
+    "Niece": m ? "Uncle" : "Aunt",
+    "Nephew": m ? "Uncle" : "Aunt",
+    "Cousin": "Cousin",
+    "Wife": "Husband",
+    "Husband": "Wife",
+    "Partner": "Partner",
+    "Fiancée": "Fiancé",
+    "Fiancé": "Fiancée",
+    "Mother-in-law": m ? "Son-in-law" : "Daughter-in-law",
+    "Father-in-law": m ? "Son-in-law" : "Daughter-in-law",
+    "Sister-in-law": m ? "Brother-in-law" : "Sister-in-law",
+    "Brother-in-law": m ? "Brother-in-law" : "Sister-in-law",
+    "Daughter-in-law": m ? "Father-in-law" : "Mother-in-law",
+    "Son-in-law": m ? "Father-in-law" : "Mother-in-law",
+    "Stepmom": m ? "Stepson" : "Stepdaughter",
+    "Stepdad": m ? "Stepson" : "Stepdaughter",
+    "Stepdaughter": m ? "Stepdad" : "Stepmom",
+    "Stepson": m ? "Stepdad" : "Stepmom",
+    "Godmother": m ? "Godfather" : "Godmother",
+    "Godfather": m ? "Godfather" : "Godmother",
+  };
+  return map[relation] || null;
+}
 
 interface SearchResult {
   id: string;
@@ -119,8 +163,10 @@ export default function FamilyPage() {
   const navigate = useNavigate();
   const { user, profile, isGodMode } = useAuth();
   const { theme } = useTheme();
-  const { currentFamily, members, myMembership, refreshFamilies, refreshMembers } = useFamily();
+  const { currentFamily, members, myMembership, refreshFamilies, refreshMembers, setCurrentFamily } = useFamily();
   const [creating, setCreating] = useState(false);
+  const { triggerPageTour } = useTour();
+  useEffect(() => { triggerPageTour("family"); }, [triggerPageTour]);
 
   // Refresh data when page loads
   useEffect(() => {
@@ -225,6 +271,7 @@ export default function FamilyPage() {
   const [showDeleteFamilyModal, setShowDeleteFamilyModal] = useState(false);
   const [showDeleteMemberModal, setShowDeleteMemberModal] = useState(false);
   const [showRemoveVerificationModal, setShowRemoveVerificationModal] = useState(false);
+  const [showLeaveFamilyModal, setShowLeaveFamilyModal] = useState(false);
   const [dangerTargetMember, setDangerTargetMember] = useState<string | null>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [showCoverModal, setShowCoverModal] = useState(false);
@@ -405,6 +452,7 @@ export default function FamilyPage() {
     }
 
     await refreshFamilies();
+    setCurrentFamily(family as any);
     setCreating(false);
     setSaving(false);
     setForm({ name: "", description: "", established_year: "" });
@@ -1193,6 +1241,61 @@ export default function FamilyPage() {
             </div>
           </div>}
 
+          {/* Description - admin only */}
+          {myMembership?.role === "admin" && <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Description</label>
+            <div className="flex gap-2">
+              <textarea
+                defaultValue={currentFamily.description || ""}
+                id="family-description-input"
+                rows={3}
+                placeholder="Describe your family..."
+                className="flex-1 rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50 resize-none"
+              />
+              <button
+                onClick={async () => {
+                  const input = document.getElementById("family-description-input") as HTMLTextAreaElement;
+                  const newDesc = input?.value.trim() || null;
+                  if (newDesc === (currentFamily.description || null)) return;
+                  await supabase.from("families").update({ description: newDesc }).eq("id", currentFamily.id);
+                  refreshFamilies();
+                }}
+                className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors cursor-pointer self-end"
+              >
+                Save
+              </button>
+            </div>
+          </div>}
+
+          {/* Established Year - admin only */}
+          {myMembership?.role === "admin" && <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Year Established</label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                defaultValue={currentFamily.established_year || ""}
+                id="family-year-input"
+                placeholder="e.g. 1990"
+                min="1000"
+                max={new Date().getFullYear()}
+                className="flex-1 rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+              />
+              <button
+                onClick={async () => {
+                  const input = document.getElementById("family-year-input") as HTMLInputElement;
+                  const val = input?.value.trim();
+                  const newYear = val ? parseInt(val) : null;
+                  if (newYear === (currentFamily.established_year || null)) return;
+                  await supabase.from("families").update({ established_year: newYear }).eq("id", currentFamily.id);
+                  refreshFamilies();
+                }}
+                className="px-4 py-2 rounded-lg bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors cursor-pointer"
+              >
+                Save
+              </button>
+            </div>
+          </div>}
+
           {/* Privacy */}
           <div>
             <label className="block text-sm font-medium mb-2">Who can find and join this family?</label>
@@ -1545,6 +1648,16 @@ export default function FamilyPage() {
                 placeholder="Short description"
               />
             </div>
+            <div>
+              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Established Year</label>
+              <input
+                value={form.established_year}
+                onChange={(e) => setForm({ ...form, established_year: e.target.value })}
+                type="number"
+                className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                placeholder="1990"
+              />
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={handleCreateFamily}
@@ -1568,74 +1681,95 @@ export default function FamilyPage() {
       )}
 
       {/* Danger Zone sections */}
-      {activeSection === "danger" && (isAdmin || currentFamily.created_by === user?.id || isGodMode) && (
+      {activeSection === "danger" && (
         <div id="section-danger">
 
-          {/* Remove Verification */}
-          <div className="bg-red-500/5 border-b border-[var(--border)] p-4">
-            <p className="text-xs text-[var(--muted-foreground)] mb-3">
-              Remove a member's verified status. They will need to be re-verified by an admin or verified member.
-            </p>
-            <div className="flex gap-2">
-              <select
-                value={dangerTargetMember || ""}
-                onChange={(e) => setDangerTargetMember(e.target.value || null)}
-                className="w-[85%] rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50"
-              >
-                <option value="">Select a member...</option>
-                {members.filter((m) => m.is_verified && m.user_id !== user?.id).map((m) => (
-                  <option key={m.id} value={m.id}>{m.profile?.display_name || "Unknown"}</option>
-                ))}
-              </select>
+          {/* Leave Family - visible to all members except the family creator */}
+          {currentFamily.created_by !== user?.id && (
+            <div className="bg-red-500/5 border-b border-[var(--border)] p-4">
+              <p className="text-xs text-[var(--muted-foreground)] mb-3">
+                Leave this family. Your posts, comments, and other contributions will remain but you will lose access. You'll need a new invite to rejoin.
+              </p>
               <button
-                onClick={() => { if (dangerTargetMember) setShowRemoveVerificationModal(true); }}
-                disabled={!dangerTargetMember}
-                className="w-[15%] py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                onClick={() => setShowLeaveFamilyModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer"
               >
-                Remove
+                <LogOut className="w-4 h-4" />
+                Leave Family
               </button>
             </div>
-          </div>
+          )}
 
-          {/* Delete Member */}
-          <div className="bg-red-500/5 border-b border-[var(--border)] p-4">
-            <p className="text-xs text-[var(--muted-foreground)] mb-3">
-              Permanently remove a member from this family. They will need a new invite to rejoin.
-            </p>
-            <div className="flex gap-2">
-              <select
-                value={dangerTargetMember || ""}
-                onChange={(e) => setDangerTargetMember(e.target.value || null)}
-                className="w-[85%] rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50"
-              >
-                <option value="">Select a member...</option>
-                {members.filter((m) => m.user_id !== user?.id).map((m) => (
-                  <option key={m.id} value={m.id}>{m.profile?.display_name || "Unknown"}</option>
-                ))}
-              </select>
-              <button
-                onClick={() => { if (dangerTargetMember) setShowDeleteMemberModal(true); }}
-                disabled={!dangerTargetMember}
-                className="w-[15%] py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
+          {/* Admin-only danger actions */}
+          {(isAdmin || currentFamily.created_by === user?.id || isGodMode) && (
+            <>
+              {/* Remove Verification */}
+              <div className="bg-red-500/5 border-b border-[var(--border)] p-4">
+                <p className="text-xs text-[var(--muted-foreground)] mb-3">
+                  Remove a member's verified status. They will need to be re-verified by an admin or verified member.
+                </p>
+                <div className="flex gap-2">
+                  <select
+                    value={dangerTargetMember || ""}
+                    onChange={(e) => setDangerTargetMember(e.target.value || null)}
+                    className="w-[85%] rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                  >
+                    <option value="">Select a member...</option>
+                    {members.filter((m) => m.is_verified && m.user_id !== user?.id).map((m) => (
+                      <option key={m.id} value={m.id}>{m.profile?.display_name || "Unknown"}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => { if (dangerTargetMember) setShowRemoveVerificationModal(true); }}
+                    disabled={!dangerTargetMember}
+                    className="w-[15%] py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
 
-          {/* Delete Family */}
-          <div className="bg-red-500/5 p-4">
-            <p className="text-xs text-[var(--muted-foreground)] mb-3">
-              Permanently delete this family and all its data including posts, events, albums, conversations, and members. This cannot be undone.
-            </p>
-            <button
-              onClick={() => setShowDeleteFamilyModal(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete Family
-            </button>
-          </div>
+              {/* Delete Member */}
+              <div className="bg-red-500/5 border-b border-[var(--border)] p-4">
+                <p className="text-xs text-[var(--muted-foreground)] mb-3">
+                  Permanently remove a member from this family. They will need a new invite to rejoin.
+                </p>
+                <div className="flex gap-2">
+                  <select
+                    value={dangerTargetMember || ""}
+                    onChange={(e) => setDangerTargetMember(e.target.value || null)}
+                    className="w-[85%] rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                  >
+                    <option value="">Select a member...</option>
+                    {members.filter((m) => m.user_id !== user?.id).map((m) => (
+                      <option key={m.id} value={m.id}>{m.profile?.display_name || "Unknown"}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => { if (dangerTargetMember) setShowDeleteMemberModal(true); }}
+                    disabled={!dangerTargetMember}
+                    className="w-[15%] py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+
+              {/* Delete Family */}
+              <div className="bg-red-500/5 p-4">
+                <p className="text-xs text-[var(--muted-foreground)] mb-3">
+                  Permanently delete this family and all its data including posts, events, albums, conversations, and members. This cannot be undone.
+                </p>
+                <button
+                  onClick={() => setShowDeleteFamilyModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Family
+                </button>
+              </div>
+            </>
+          )}
 
         </div>
       )}
@@ -1695,6 +1829,24 @@ export default function FamilyPage() {
         title="Delete Member"
         itemName={members.find((m) => m.id === dangerTargetMember)?.profile?.display_name || "this member"}
         description={`This will permanently remove "${members.find((m) => m.id === dangerTargetMember)?.profile?.display_name || "this member"}" from this family. They will need a new invite to rejoin.`}
+      />
+
+      {/* Leave family confirmation modal */}
+      <DeleteConfirmModal
+        isOpen={showLeaveFamilyModal}
+        onClose={() => setShowLeaveFamilyModal(false)}
+        onConfirm={async () => {
+          if (!myMembership) return;
+          await supabase.from("family_members").delete().eq("id", myMembership.id);
+          setShowLeaveFamilyModal(false);
+          refreshFamilies();
+          refreshMembers();
+          navigate("/feed");
+        }}
+        title="Leave Family"
+        itemName={currentFamily.name}
+        description={`You are about to leave "${currentFamily.name}". Your posts and comments will remain, but you will lose access to this family's feed, events, albums, and conversations. You'll need a new invite to rejoin.`}
+        confirmLabel="Leave Family"
       />
 
       {/* Delete family confirmation modal */}
@@ -1862,8 +2014,8 @@ export default function FamilyPage() {
                     >
                       <MapResizer />
                       <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                       />
                       <Marker position={[memberCoords.lat, memberCoords.lon]} icon={goldIcon}>
                         <Tooltip direction="top" offset={[0, -35]} permanent className="leaflet-name-tooltip">
@@ -2000,7 +2152,12 @@ export default function FamilyPage() {
                               {RELATION_OPTIONS.map((rel) => (
                                 <button
                                   key={rel}
-                                  onClick={() => { setSelectedRelation(rel); setRelationStep(2); }}
+                                  onClick={() => {
+                                    setSelectedRelation(rel);
+                                    const reverse = getReverseRelation(rel, profile?.gender);
+                                    if (reverse) setSelectedReverseRelation(reverse);
+                                    setRelationStep(2);
+                                  }}
                                   className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
                                     selectedRelation === rel
                                       ? "bg-gold-500 text-white"
@@ -2017,41 +2174,74 @@ export default function FamilyPage() {
                             <p className="text-xs text-[var(--muted-foreground)] mb-1">
                               {memberProfile.display_name} is your <span className="text-gold-500 font-medium">{selectedRelation}</span>
                             </p>
-                            <p className="text-xs text-[var(--muted-foreground)] mb-2">
-                              And I am {memberProfile.display_name}'s...
-                            </p>
-                            <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                              {RELATION_OPTIONS.map((rel) => (
-                                <button
-                                  key={rel}
-                                  onClick={() => setSelectedReverseRelation(rel)}
-                                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                                    selectedReverseRelation === rel
-                                      ? "bg-gold-500 text-white"
-                                      : "bg-[var(--card)] border border-[var(--border)] hover:border-gold-500/50"
-                                  }`}
-                                >
-                                  {rel}
-                                </button>
-                              ))}
-                            </div>
-                            {selectedReverseRelation && (
-                              <div className="flex items-center gap-2 mt-3">
-                                <button
-                                  onClick={() => sendRelationRequest(selectedMember.user_id, selectedRelation, selectedReverseRelation)}
-                                  disabled={relationSending}
-                                  className="px-4 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
-                                >
-                                  <Send className="w-3 h-3" />
-                                  {relationSending ? "Sending..." : "Send request"}
-                                </button>
-                                <button
-                                  onClick={() => { setRelationStep(1); setSelectedReverseRelation(""); }}
-                                  className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer"
-                                >
-                                  Back
-                                </button>
-                              </div>
+                            {selectedReverseRelation && getReverseRelation(selectedRelation, profile?.gender) === selectedReverseRelation ? (
+                              <>
+                                <p className="text-xs text-[var(--muted-foreground)] mb-2">
+                                  And you are {memberProfile.display_name}'s <span className="text-gold-500 font-medium">{selectedReverseRelation}</span>
+                                  <span className="text-[10px] text-[var(--muted-foreground)] ml-1">(based on your gender)</span>
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => sendRelationRequest(selectedMember.user_id, selectedRelation, selectedReverseRelation)}
+                                    disabled={relationSending}
+                                    className="px-4 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                    <Send className="w-3 h-3" />
+                                    {relationSending ? "Sending..." : "Send request"}
+                                  </button>
+                                  <button
+                                    onClick={() => setSelectedReverseRelation("")}
+                                    className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer"
+                                  >
+                                    Change
+                                  </button>
+                                  <button
+                                    onClick={() => { setRelationStep(1); setSelectedReverseRelation(""); }}
+                                    className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer"
+                                  >
+                                    Back
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-xs text-[var(--muted-foreground)] mb-2">
+                                  And I am {memberProfile.display_name}'s...
+                                </p>
+                                <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                  {RELATION_OPTIONS.map((rel) => (
+                                    <button
+                                      key={rel}
+                                      onClick={() => setSelectedReverseRelation(rel)}
+                                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                                        selectedReverseRelation === rel
+                                          ? "bg-gold-500 text-white"
+                                          : "bg-[var(--card)] border border-[var(--border)] hover:border-gold-500/50"
+                                      }`}
+                                    >
+                                      {rel}
+                                    </button>
+                                  ))}
+                                </div>
+                                {selectedReverseRelation && (
+                                  <div className="flex items-center gap-2 mt-3">
+                                    <button
+                                      onClick={() => sendRelationRequest(selectedMember.user_id, selectedRelation, selectedReverseRelation)}
+                                      disabled={relationSending}
+                                      className="px-4 py-1.5 rounded-lg bg-gold-500 text-white text-xs font-medium hover:bg-gold-600 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                      <Send className="w-3 h-3" />
+                                      {relationSending ? "Sending..." : "Send request"}
+                                    </button>
+                                    <button
+                                      onClick={() => { setRelationStep(1); setSelectedReverseRelation(""); }}
+                                      className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer"
+                                    >
+                                      Back
+                                    </button>
+                                  </div>
+                                )}
+                              </>
                             )}
                           </>
                         )}

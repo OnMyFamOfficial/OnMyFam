@@ -8,9 +8,10 @@ interface DeleteConfirmModalProps {
   title: string;
   itemName: string;
   description: string;
+  confirmLabel?: string;
 }
 
-export function DeleteConfirmModal({ isOpen, onClose, onConfirm, title, itemName, description }: DeleteConfirmModalProps) {
+export function DeleteConfirmModal({ isOpen, onClose, onConfirm, title, itemName, description, confirmLabel = "Delete Permanently" }: DeleteConfirmModalProps) {
   const [typed, setTyped] = useState("");
 
   if (!isOpen) return null;
@@ -50,7 +51,7 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, title, itemName
               disabled={!matches}
               className="flex-1 py-2.5 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
-              Delete Permanently
+              {confirmLabel}
             </button>
             <button
               onClick={() => { onClose(); setTyped(""); }}
