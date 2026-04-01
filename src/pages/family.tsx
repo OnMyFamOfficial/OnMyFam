@@ -609,7 +609,19 @@ export default function FamilyPage() {
 
         {!creating && !searching ? (
           <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-12 text-center">
-            <div className="text-5xl mb-4">&#x1F46A;</div>
+            <div className="flex items-center justify-center gap-1 mb-4 text-[var(--muted-foreground)]">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" className="w-20 h-14 fill-current opacity-60">
+                {/* Adult left */}
+                <circle cx="16" cy="10" r="5" />
+                <path d="M10 18h12a3 3 0 0 1 3 3v12a2 2 0 0 1-2 2h-2v10a2 2 0 0 1-4 0V35h-2v10a2 2 0 0 1-4 0V35h-2a2 2 0 0 1-2-2V21a3 3 0 0 1 3-3z" />
+                {/* Child center */}
+                <circle cx="32" cy="16" r="4" />
+                <path d="M27 23h10a2 2 0 0 1 2 2v8a1.5 1.5 0 0 1-1.5 1.5H38v8a1.5 1.5 0 0 1-3 0v-8h-6v8a1.5 1.5 0 0 1-3 0v-8h-1.5A1.5 1.5 0 0 1 23 33v-8a2 2 0 0 1 2-2z" />
+                {/* Adult right */}
+                <circle cx="48" cy="10" r="5" />
+                <path d="M42 18h12a3 3 0 0 1 3 3v12a2 2 0 0 1-2 2h-2v10a2 2 0 0 1-4 0V35h-2v10a2 2 0 0 1-4 0V35h-2a2 2 0 0 1-2-2V21a3 3 0 0 1 3-3z" />
+              </svg>
+            </div>
             <h2 className="text-xl font-semibold">No family set up yet</h2>
             <p className="text-[var(--muted-foreground)] mt-2">
               Create your family circle or find one to join.

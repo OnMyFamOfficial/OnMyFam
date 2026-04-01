@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { X, ChevronRight, ChevronLeft, RotateCcw } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
 
 export interface TourStep {
   target?: string; // CSS selector for element to highlight
@@ -92,6 +93,7 @@ export const useTour = () => useContext(TourContext);
 
 // ── Provider ──
 export function TourProvider({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
   const [activeTour, setActiveTour] = useState<TourDef | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [completedTours, setCompletedTours] = useState<string[]>(() => {
@@ -146,14 +148,14 @@ export function TourProvider({ children }: { children: ReactNode }) {
     if (stepIndex > 0) setStepIndex(stepIndex - 1);
   }
 
-  // Auto-start welcome tour for first-time users (only on initial load)
+  // Auto-start welcome tour for first-time users (only after login)
   useEffect(() => {
-    if (!completedTours.includes("welcome") && !activeTour) {
+    if (!loading && user && !completedTours.includes("welcome") && !activeTour) {
       const timer = setTimeout(() => startTour("welcome"), 1500);
       return () => clearTimeout(timer);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loading, user]);
 
   // Auto-start page-specific tours when visiting for the first time
   const triggerPageTour = useCallback((tourId: string) => {
