@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert, Menu, Home, Camera, Maximize2, LogOut } from "lucide-react";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
@@ -28,6 +28,30 @@ function MapResizer() {
     };
   }, [map]);
   return null;
+}
+
+function DeferredMap({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => {
+      if (el.offsetWidth > 0 && el.offsetHeight > 0) setReady(true);
+    };
+    check();
+    if (!ready) {
+      const observer = new ResizeObserver(check);
+      observer.observe(el);
+      const timer = setTimeout(() => setReady(true), 500);
+      return () => { observer.disconnect(); clearTimeout(timer); };
+    }
+  }, [ready]);
+  return (
+    <div ref={ref} style={style} className={className}>
+      {ready ? children : null}
+    </div>
+  );
 }
 import type { Profile } from "@/lib/types";
 
@@ -2022,7 +2046,7 @@ export default function FamilyPage() {
               {/* Map */}
               {memberCoords && (
                 <div className="mx-4 mb-4 rounded-lg overflow-hidden border border-[var(--border)]">
-                  <div style={{ height: 200 }}>
+                  <DeferredMap style={{ height: 200 }}>
                     <MapContainer
                       center={[memberCoords.lat, memberCoords.lon]}
                       zoom={12}
@@ -2041,7 +2065,7 @@ export default function FamilyPage() {
                         </Tooltip>
                       </Marker>
                     </MapContainer>
-                  </div>
+                  </DeferredMap>
                 </div>
               )}
 

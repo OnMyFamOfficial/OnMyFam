@@ -30,6 +30,30 @@ function MapResizer() {
   }, [map]);
   return null;
 }
+
+function DeferredMap({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => {
+      if (el.offsetWidth > 0 && el.offsetHeight > 0) setReady(true);
+    };
+    check();
+    if (!ready) {
+      const observer = new ResizeObserver(check);
+      observer.observe(el);
+      const timer = setTimeout(() => setReady(true), 500);
+      return () => { observer.disconnect(); clearTimeout(timer); };
+    }
+  }, [ready]);
+  return (
+    <div ref={ref} style={style} className={className}>
+      {ready ? children : null}
+    </div>
+  );
+}
 import type { FamilyEvent, EventRsvp, EventChatMessage, Profile } from "@/lib/types";
 
 const goldIcon = L.icon({
@@ -920,7 +944,7 @@ export default function EventDetailPage() {
               {/* Map */}
               {mapCoords ? (
                 <div className="rounded-lg border border-[var(--border)] overflow-hidden shadow-md dark:shadow-black/30">
-                  <div className="h-72 rounded-t-lg overflow-hidden">
+                  <DeferredMap className="h-72 rounded-t-lg overflow-hidden">
                     <MapContainer center={mapCoords} zoom={14} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }} key={mapCoords.join(",")}>
                       <MapResizer />
                       <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://carto.com/">CARTO</a>' />
@@ -928,7 +952,7 @@ export default function EventDetailPage() {
                         <Popup>{event.address || event.location}</Popup>
                       </Marker>
                     </MapContainer>
-                  </div>
+                  </DeferredMap>
                   <div className="p-3 space-y-1">
                     {event.location && (
                       <p className="text-sm font-medium flex items-center gap-2">
@@ -1114,7 +1138,7 @@ export default function EventDetailPage() {
               {/* Map */}
               {mapCoords && (
                 <div className="rounded-lg border border-[var(--border)] shadow-md dark:shadow-black/30 overflow-hidden">
-                  <div className="h-72 overflow-hidden">
+                  <DeferredMap className="h-72 overflow-hidden">
                     <MapContainer center={mapCoords} zoom={10} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }} key={`travel-${mapCoords.join(",")}`}>
                       <MapResizer />
                       <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://carto.com/">CARTO</a>' />
@@ -1123,7 +1147,7 @@ export default function EventDetailPage() {
                         <Marker key={a.code} position={[a.lat, a.lon]} icon={blueIcon}><Popup>{a.code} - {a.name}<br />{a.city}, {a.state}</Popup></Marker>
                       ))}
                     </MapContainer>
-                  </div>
+                  </DeferredMap>
                   {/* Pin toggles */}
                   <div className="flex flex-wrap items-center gap-3 px-3 py-2 text-xs">
                     <label className="flex items-center gap-1.5 cursor-pointer">

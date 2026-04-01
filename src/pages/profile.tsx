@@ -40,11 +40,9 @@ const goldIcon = L.icon({
 function MapResizer() {
   const map = useMap();
   useEffect(() => {
-    // Fire invalidateSize at multiple intervals to handle layout transitions
     const timers = [100, 300, 600, 1000, 2000].map((ms) =>
       setTimeout(() => map.invalidateSize(), ms)
     );
-    // Also watch for container resize
     const container = map.getContainer();
     const observer = new ResizeObserver(() => map.invalidateSize());
     observer.observe(container);
@@ -54,6 +52,36 @@ function MapResizer() {
     };
   }, [map]);
   return null;
+}
+
+// Delays mounting MapContainer until the wrapper div has real dimensions
+function DeferredMap({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Wait for the container to have non-zero dimensions
+    const check = () => {
+      if (el.offsetWidth > 0 && el.offsetHeight > 0) {
+        setReady(true);
+      }
+    };
+    // Check immediately, then observe
+    check();
+    if (!ready) {
+      const observer = new ResizeObserver(check);
+      observer.observe(el);
+      // Fallback timeout
+      const timer = setTimeout(() => setReady(true), 500);
+      return () => { observer.disconnect(); clearTimeout(timer); };
+    }
+  }, [ready]);
+  return (
+    <div ref={ref} style={style} className={className}>
+      {ready ? children : null}
+    </div>
+  );
 }
 
 function ProfileMapAndDetails({ profile: p, canViewDetails = true }: { profile: Profile; canViewDetails?: boolean }) {
@@ -186,7 +214,7 @@ function ProfileMapAndDetails({ profile: p, canViewDetails = true }: { profile: 
               Family Map
             </button>
           </div>
-          <div style={{ height: 450 }} className="relative">
+          <DeferredMap style={{ height: 450 }} className="relative">
             <button
               onClick={() => setMapFullscreen(true)}
               className="absolute top-3 right-3 z-[1000] w-9 h-9 rounded-lg bg-[var(--card)] border border-[var(--border)] flex items-center justify-center hover:bg-[var(--accent)] transition-colors cursor-pointer shadow-md"
@@ -248,7 +276,7 @@ function ProfileMapAndDetails({ profile: p, canViewDetails = true }: { profile: 
                 ))}
               </MarkerClusterGroup>
             </MapContainer>
-          </div>
+          </DeferredMap>
           {showFamily && familyMarkers.length === 0 && members.length > 1 && (
             <div className="px-4 py-2 text-xs text-[var(--muted-foreground)] text-center">
               Loading family locations...
@@ -306,7 +334,7 @@ function ProfileMapAndDetails({ profile: p, canViewDetails = true }: { profile: 
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex-1">
+          <DeferredMap className="flex-1">
             <MapContainer
               center={[coords.lat, coords.lon]}
               zoom={showFamily && familyMarkers.length > 0 ? 4 : 4}
@@ -360,7 +388,7 @@ function ProfileMapAndDetails({ profile: p, canViewDetails = true }: { profile: 
                 ))}
               </MarkerClusterGroup>
             </MapContainer>
-          </div>
+          </DeferredMap>
         </div>
       )}
     </div>
