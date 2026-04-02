@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/components/auth/auth-provider";
 import { supabase } from "@/lib/supabase";
 import { OmfLoader } from "@/components/shared/omf-loader";
+import { FamilyIcon } from "@/components/shared/family-icon";
 import { APP_NAME } from "@/lib/constants";
 
 export default function InviteClaimPage() {
@@ -159,7 +160,9 @@ export default function InviteClaimPage() {
 
           {status === "valid" && !user && (
             <>
-              <div className="text-4xl mb-4">&#x1F46A;</div>
+              <div className="flex justify-center mb-4 text-[var(--muted-foreground)]">
+                <FamilyIcon className="w-14 h-14" />
+              </div>
               <h2 className="text-xl font-semibold">
                 You're invited to join {familyName}!
               </h2>
@@ -185,7 +188,9 @@ export default function InviteClaimPage() {
 
           {status === "valid" && user && (
             <>
-              <div className="text-4xl mb-4">&#x1F46A;</div>
+              <div className="flex justify-center mb-4 text-[var(--muted-foreground)]">
+                <FamilyIcon className="w-14 h-14" />
+              </div>
               <h2 className="text-xl font-semibold">
                 Join {familyName}?
               </h2>
