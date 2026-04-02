@@ -90,14 +90,14 @@ export default function PhotosPage() {
 
   if (!currentFamily) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-16">
+      <div className="text-center py-16">
         <p className="text-[var(--muted-foreground)]">Create or join a family first.</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex justify-end">
         <button
           onClick={() => setCreating(true)}
@@ -167,27 +167,27 @@ export default function PhotosPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {albums.map((album) => (
             <div
               key={album.id}
               onClick={() => navigate(`/photos/${album.id}`)}
-              className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden cursor-pointer hover:border-gold-500/30 transition-colors"
+              className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden cursor-pointer hover:border-gold-500/30 transition-colors shadow-md dark:shadow-black/30"
             >
               {album.cover_url ? (
                 <img
                   src={album.cover_url}
                   alt=""
-                  className="w-full h-40 object-cover"
+                  className="w-full h-44 object-cover"
                 />
               ) : (
-                <div className="w-full h-40 bg-gradient-to-br from-gold-600/20 to-gold-400/20 flex items-center justify-center">
+                <div className="w-full h-44 bg-gradient-to-br from-gold-600/20 to-gold-400/20 flex items-center justify-center">
                   <Image className="w-10 h-10 text-gold-500/30" />
                 </div>
               )}
-              <div className="p-3">
-                <h3 className="font-semibold truncate">{album.title}</h3>
-                <p className="text-xs text-[var(--muted-foreground)] mt-1">
+              <div className="px-6 pt-4 pb-4">
+                <h3 className="font-semibold text-lg truncate">{album.title}</h3>
+                <p className="text-sm text-[var(--muted-foreground)] mt-1">
                   {album.media_count} photo{album.media_count !== 1 ? "s" : ""}{" "}
                   &middot; by {album.creator?.display_name}
                 </p>
