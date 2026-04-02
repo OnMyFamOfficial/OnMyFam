@@ -28,6 +28,7 @@ import { supabase } from "@/lib/supabase";
 import { uploadPostMedia } from "@/services/storage";
 import { sanitizeForStorage, validateMediaFile } from "@/lib/sanitize";
 import { CommentToolbar } from "@/components/shared/comment-toolbar";
+import { EMOJI_CATEGORIES, addRecentEmoji, getRecentEmojis } from "@/components/chat/emoji-data";
 import { LinkifyText, LinkPreviewFromText } from "@/components/shared/linkify-text";
 import { useRef as useRefFold, useState as useStateFold } from "react";
 
@@ -78,16 +79,6 @@ const REACTIONS = [
   { type: "laugh", emoji: "\u{1F602}", icon: Smile },
 ] as const;
 
-const EMOJI_GRID = [
-  "\u{1F600}", "\u{1F602}", "\u{1F60D}", "\u{1F970}", "\u{1F60A}", "\u{1F607}", "\u{1F917}", "\u{1F914}",
-  "\u{1F60E}", "\u{1F973}", "\u{1F929}", "\u{1F618}", "\u{1F644}", "\u{1F62D}", "\u{1F622}", "\u{1F621}",
-  "\u{1F525}", "\u{2764}\u{FE0F}", "\u{1F44D}", "\u{1F44F}", "\u{1F64F}", "\u{1F389}", "\u{1F4AA}", "\u{1F91D}",
-  "\u{1F4AF}", "\u{2728}", "\u{1F31F}", "\u{1F60B}", "\u{1FAC2}", "\u{1F642}", "\u{1F60F}", "\u{1F92F}",
-  "\u{1F971}", "\u{1F974}", "\u{1F47B}", "\u{1F4A5}", "\u{1F4A9}", "\u{1F921}", "\u{1F47C}", "\u{1F9D1}\u{200D}\u{1F373}",
-  "\u{1F37D}\u{FE0F}", "\u{1F382}", "\u{1F370}", "\u{2615}", "\u{1F3E0}", "\u{1F697}", "\u{2708}\u{FE0F}", "\u{1F3D6}\u{FE0F}",
-  "\u{1F305}", "\u{1F30D}", "\u{1F308}", "\u{26A1}", "\u{1F3B6}", "\u{1F3B5}", "\u{1F4F8}", "\u{1F381}",
-  "\u{1F48E}", "\u{1F451}", "\u{1F3C6}", "\u{1F947}", "\u{2705}", "\u{274C}", "\u{2757}", "\u{2753}",
-];
 
 type FullPost = Post & {
   author: Profile;
@@ -132,6 +123,8 @@ export default function FeedPage() {
   // Composer modal state
   const [composerOpen, setComposerOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [composerEmojiCategory, setComposerEmojiCategory] = useState(0);
+  const [composerEmojiSearch, setComposerEmojiSearch] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -184,11 +177,13 @@ export default function FeedPage() {
     setComposerOpen(false);
     setShowEmojiPicker(false);
     setShowDiscardConfirm(false);
+    setComposerEmojiCategory(0);
+    setComposerEmojiSearch("");
   }
 
   function insertEmoji(emoji: string) {
     setPostText((prev) => prev + emoji);
-    setShowEmojiPicker(false);
+    addRecentEmoji(emoji);
     textareaRef.current?.focus();
   }
 
@@ -825,17 +820,65 @@ export default function FeedPage() {
 
               {/* Emoji picker dropdown */}
               {showEmojiPicker && (
-                <div className="mt-3 p-4 bg-[var(--background)] rounded-lg border border-[var(--border)] max-h-[240px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <div className="grid grid-cols-8 gap-1.5">
-                    {EMOJI_GRID.map((emoji, i) => (
-                      <button
-                        key={i}
-                        onClick={() => insertEmoji(emoji)}
-                        className="w-12 h-12 flex items-center justify-center text-3xl hover:bg-[var(--accent)] rounded-lg transition-colors"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
+                <div className="mt-3 bg-[var(--background)] rounded-lg border border-[var(--border)] overflow-hidden flex flex-col" style={{ height: 300 }}>
+                  {/* Search */}
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] flex-shrink-0">
+                    <div className="flex-1 flex items-center gap-1.5 bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1">
+                      <Search className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                      <input
+                        type="text"
+                        value={composerEmojiSearch}
+                        onChange={(e) => setComposerEmojiSearch(e.target.value)}
+                        placeholder="Search emojis..."
+                        className="bg-transparent text-sm outline-none w-full"
+                      />
+                    </div>
+                  </div>
+                  {/* Category tabs */}
+                  {!composerEmojiSearch && (
+                    <div className="flex gap-1 px-2 py-1.5 border-b border-[var(--border)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-shrink-0">
+                      {EMOJI_CATEGORIES.map((cat, i) => (
+                        <button
+                          key={cat.name}
+                          type="button"
+                          onClick={() => setComposerEmojiCategory(i)}
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
+                            composerEmojiCategory === i ? "bg-gold-500/20" : "hover:bg-[var(--accent)]"
+                          }`}
+                          title={cat.name}
+                        >
+                          <span className="text-lg leading-none">{cat.icon}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {/* Emoji grid */}
+                  <div className="flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="grid grid-cols-8 gap-0.5">
+                      {(() => {
+                        const emojis: any[] = composerEmojiSearch
+                          ? EMOJI_CATEGORIES.flatMap((c) => c.emojis).filter((e: any) => typeof e === "string" ? false : e.name?.includes(composerEmojiSearch.toLowerCase()))
+                          : composerEmojiCategory === 0
+                            ? (() => { const recent = getRecentEmojis(); return recent.length > 0 ? recent.map((e) => ({ emoji: e, name: e })) : EMOJI_CATEGORIES[1]?.emojis || []; })()
+                            : EMOJI_CATEGORIES[composerEmojiCategory]?.emojis || [];
+                        return emojis.length === 0 ? (
+                          <p className="col-span-8 text-xs text-[var(--muted-foreground)] text-center py-4">
+                            {composerEmojiCategory === 0 ? "No recent emojis — they'll appear here as you use them" : "No emojis found"}
+                          </p>
+                        ) : (
+                          emojis.map((emoji: any, idx: number) => (
+                            <button
+                              key={`${typeof emoji === "string" ? emoji : emoji.emoji}-${idx}`}
+                              type="button"
+                              onClick={() => insertEmoji(typeof emoji === "string" ? emoji : emoji.emoji)}
+                              className="text-2xl hover:scale-110 hover:bg-[var(--accent)] rounded p-1 transition-transform cursor-pointer text-center"
+                            >
+                              {typeof emoji === "string" ? emoji : emoji.emoji}
+                            </button>
+                          ))
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
               )}
