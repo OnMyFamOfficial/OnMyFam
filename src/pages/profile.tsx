@@ -203,6 +203,7 @@ function ProfileMapAndDetails({ profile: p, canViewDetails = true }: { profile: 
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-gold-500" />
               <span className="font-semibold text-sm">{p.location}</span>
+              <InfoTip text="If the map doesn't display properly, press Ctrl+Shift+R (Cmd+Shift+R on Mac) or hard refresh on your mobile device." />
             </div>
             <button
               onClick={() => setShowFamily(!showFamily)}
@@ -326,6 +327,7 @@ function ProfileMapAndDetails({ profile: p, canViewDetails = true }: { profile: 
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-gold-500" />
               <h3 className="font-semibold text-sm">{p.display_name}'s Location</h3>
+              <InfoTip text="If the map doesn't display properly, press Ctrl+Shift+R (Cmd+Shift+R on Mac) or hard refresh on your mobile device." />
             </div>
             <button
               onClick={() => setMapFullscreen(false)}

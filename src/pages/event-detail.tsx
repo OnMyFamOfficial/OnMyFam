@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { EVENT_CATEGORIES } from "@/lib/constants";
 import { CalendarPicker } from "@/components/shared/calendar-picker";
 import { EventDetailsForm, parseDetails, detailsToJson, type EventDetails } from "@/components/shared/event-details-form";
+import { InfoTip } from "@/components/shared/info-tip";
 import { format, formatDistanceToNow } from "date-fns";
 import { useTheme } from "@/components/shared/theme-provider";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
@@ -958,6 +959,7 @@ export default function EventDetailPage() {
                       <p className="text-sm font-medium flex items-center gap-2">
                         <MapPin className="w-3.5 h-3.5 text-gold-500 flex-shrink-0" />
                         {event.location}
+                        <InfoTip text="If the map doesn't display properly, press Ctrl+Shift+R (Cmd+Shift+R on Mac) or hard refresh on your mobile device." />
                       </p>
                     )}
                     {event.address && (
@@ -1150,6 +1152,7 @@ export default function EventDetailPage() {
                   </DeferredMap>
                   {/* Pin toggles */}
                   <div className="flex flex-wrap items-center gap-3 px-3 py-2 text-xs">
+                    <InfoTip text="If the map doesn't display properly, press Ctrl+Shift+R (Cmd+Shift+R on Mac) or hard refresh on your mobile device." />
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input type="checkbox" checked={showEventPin} onChange={(e) => setShowEventPin(e.target.checked)} className="accent-gold-500" />
                       <span className="text-gold-500 font-medium">Event</span>

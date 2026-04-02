@@ -4,6 +4,7 @@ import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Gl
 import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { DeleteConfirmModal } from "@/components/shared/delete-confirm-modal";
 import { FamilyIcon } from "@/components/shared/family-icon";
+import { InfoTip } from "@/components/shared/info-tip";
 import { useTour } from "@/components/shared/tour-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTheme } from "@/components/shared/theme-provider";
@@ -2037,6 +2038,11 @@ export default function FamilyPage() {
               {/* Map */}
               {memberCoords && (
                 <div className="mx-4 mb-4 rounded-lg overflow-hidden border border-[var(--border)]">
+                  <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[var(--border)] bg-[var(--accent)]">
+                    <MapPin className="w-3.5 h-3.5 text-gold-500" />
+                    <span className="text-xs font-medium">Location</span>
+                    <InfoTip text="If the map doesn't display properly, press Ctrl+Shift+R (Cmd+Shift+R on Mac) or hard refresh on your mobile device." />
+                  </div>
                   <DeferredMap style={{ height: 200 }}>
                     <MapContainer
                       center={[memberCoords.lat, memberCoords.lon]}
