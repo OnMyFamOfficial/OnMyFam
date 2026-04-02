@@ -166,7 +166,7 @@ function ProfileMapAndDetails({ profile: p, canViewDetails = true }: { profile: 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* Details card */}
-      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden lg:min-h-[500px]">
+      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-md dark:shadow-black/30 overflow-hidden lg:min-h-[500px]">
         <div className="px-4 py-3 border-b border-[var(--border)]">
           <span className="font-semibold text-sm">About</span>
         </div>
@@ -198,7 +198,7 @@ function ProfileMapAndDetails({ profile: p, canViewDetails = true }: { profile: 
 
       {/* Map card */}
       {coords && (
-        <div className="lg:col-span-2 bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+        <div className="lg:col-span-2 bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-md dark:shadow-black/30 overflow-hidden">
           <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-gold-500" />
@@ -588,7 +588,7 @@ export default function ProfilePage() {
     <div className="space-y-6">
       {/* Profile header — full width, folds up when menu is open */}
       <div
-        className="bg-[var(--card)] rounded-2xl border border-[var(--border)] transition-all duration-500 ease-in-out"
+        className="bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-md dark:shadow-black/30 transition-all duration-500 ease-in-out"
         style={{
           maxHeight: profileMenuOpen ? "0px" : "none",
           opacity: profileMenuOpen ? 0 : 1,
@@ -813,7 +813,7 @@ export default function ProfilePage() {
 
       {/* Slide-in profile menu bar */}
       <div
-        className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] transition-all duration-500 ease-in-out"
+        className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] shadow-md dark:shadow-black/30 transition-all duration-500 ease-in-out"
         style={{
           maxHeight: profileMenuOpen ? "200px" : "0px",
           opacity: profileMenuOpen ? 1 : 0,
@@ -864,7 +864,7 @@ export default function ProfilePage() {
 
       {/* Profile section content */}
       {profileSection && (
-        <div className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)]">
+        <div className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] shadow-md dark:shadow-black/30">
           {profileSection === "about" && (
             <div className="p-6">
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2">

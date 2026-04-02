@@ -1180,7 +1180,7 @@ export default function EventDetailPage() {
               {hasLodging && (
                 <div className="rounded-lg border border-[var(--border)] shadow-md dark:shadow-black/30 p-4 space-y-3">
                   <h3 className="font-semibold text-sm flex items-center gap-2">
-                    <span className="text-lg">🏨</span> Lodging
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" className="w-5 h-5 fill-current"><rect x="2" y="38" width="60" height="4" rx="1" /><rect x="4" y="10" width="4" height="32" rx="1" /><path d="M12 24h44a4 4 0 0 1 4 4v10H8V28a4 4 0 0 1 4-4z" /><circle cx="16" cy="22" r="6" /><rect x="4" y="6" width="14" height="4" rx="2" /></svg> Lodging
                   </h3>
                   <div className="space-y-2 text-sm">
                     {d.lodging_hotel && (
@@ -1219,7 +1219,7 @@ export default function EventDetailPage() {
               {hasTransport && (
                 <div className="rounded-lg border border-[var(--border)] shadow-md dark:shadow-black/30 p-4 space-y-3">
                   <h3 className="font-semibold text-sm flex items-center gap-2">
-                    <span className="text-lg">🚗</span> Transportation
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" className="w-5 h-5 fill-current"><circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="5" /><circle cx="32" cy="32" r="6" /><path d="M32 8v14M32 42v14M8 32h14M42 32h14" stroke="currentColor" strokeWidth="4" strokeLinecap="round" /></svg> Transportation
                   </h3>
                   <div className="space-y-2 text-sm">
                     {d.transport_airports && <div><span className="text-gold-500 text-xs">Airports:</span> <span className="ml-1">{d.transport_airports}</span></div>}

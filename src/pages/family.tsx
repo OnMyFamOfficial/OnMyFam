@@ -857,7 +857,7 @@ export default function FamilyPage() {
 
       {/* Family header card */}
       <div
-        className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] transition-all duration-500 ease-in-out"
+        className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] shadow-md dark:shadow-black/30 transition-all duration-500 ease-in-out"
         style={{
           maxHeight: menuOpen ? "0px" : "600px",
           opacity: menuOpen ? 0 : 1,
@@ -944,7 +944,7 @@ export default function FamilyPage() {
 
       {/* Slide-in menu bar */}
       <div
-        className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] transition-all duration-500 ease-in-out"
+        className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] shadow-md dark:shadow-black/30 transition-all duration-500 ease-in-out"
         style={{
           maxHeight: menuOpen ? "200px" : "0px",
           opacity: menuOpen ? 1 : 0,
@@ -1028,7 +1028,7 @@ export default function FamilyPage() {
       </div>
 
       {/* Connected cards container */}
-      <div className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)]" style={{ display: activeSection === null ? "none" : undefined }}>
+      <div className="rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] shadow-md dark:shadow-black/30" style={{ display: activeSection === null ? "none" : undefined }}>
 
       {/* Incoming relation requests */}
       {activeSection === "invitations" && incomingRequests.length > 0 && (
