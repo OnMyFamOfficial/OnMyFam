@@ -224,6 +224,8 @@ export default function FamilyPage() {
   }, [searchParams, currentFamily]);
   const [searching, setSearching] = useState(false);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [inviteMaxUses, setInviteMaxUses] = useState("50");
+  const [inviteExpiry, setInviteExpiry] = useState("7");
   const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -527,13 +529,15 @@ export default function FamilyPage() {
   async function handleCreateInvite() {
     if (!currentFamily || !user) return;
 
+    const maxUses = parseInt(inviteMaxUses) || 50;
+    const expiryDays = parseInt(inviteExpiry) || 7;
     const { data, error } = await supabase
       .from("invites")
       .insert({
         family_id: currentFamily.id,
         created_by: user.id,
-        max_uses: 10,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        max_uses: maxUses,
+        expires_at: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString(),
       })
       .select()
       .single();
@@ -1170,42 +1174,81 @@ export default function FamilyPage() {
         </div>
 
       <div className="border-b border-[var(--border)] p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold">Invite Family Members</h3>
-            <p className="text-sm text-[var(--muted-foreground)]">
-              Generate a link to share with family
-            </p>
-          </div>
-          {!inviteToken ? (
+        <h3 className="font-semibold">Invite Family Members</h3>
+        <p className="text-sm text-[var(--muted-foreground)] mb-3">
+          Generate a link to share with family
+        </p>
+        {!inviteToken ? (
+          <>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Max uses</label>
+                <select
+                  value={inviteMaxUses}
+                  onChange={(e) => setInviteMaxUses(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                >
+                  <option value="1">1 person</option>
+                  <option value="5">5 people</option>
+                  <option value="10">10 people</option>
+                  <option value="25">25 people</option>
+                  <option value="50">50 people</option>
+                  <option value="100">100 people</option>
+                  <option value="999">Unlimited</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Expires in</label>
+                <select
+                  value={inviteExpiry}
+                  onChange={(e) => setInviteExpiry(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                >
+                  <option value="1">1 day</option>
+                  <option value="3">3 days</option>
+                  <option value="7">7 days</option>
+                  <option value="14">2 weeks</option>
+                  <option value="30">30 days</option>
+                  <option value="365">1 year</option>
+                </select>
+              </div>
+            </div>
             <button
               onClick={handleCreateInvite}
-              className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors flex items-center gap-2"
+              className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors flex items-center gap-2 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Generate Link
             </button>
-          ) : (
-            <button
-              onClick={copyInviteLink}
-              className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors flex items-center gap-2"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4" /> Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" /> Copy Invite Link
-                </>
-              )}
-            </button>
-          )}
-        </div>
-        {inviteToken && (
-          <div className="mt-3 p-2 bg-[var(--background)] rounded-lg text-xs font-mono text-[var(--muted-foreground)] break-all">
-            {window.location.origin}/invite/{inviteToken}
-          </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={copyInviteLink}
+                className="px-4 py-2 rounded-md bg-gold-500 text-white text-sm font-medium hover:bg-gold-600 transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4" /> Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" /> Copy Invite Link
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setInviteToken(null)}
+                className="px-3 py-2 rounded-md border border-[var(--border)] text-sm font-medium hover:bg-[var(--accent)] transition-colors cursor-pointer"
+              >
+                New Link
+              </button>
+            </div>
+            <div className="mt-3 p-2 bg-[var(--background)] rounded-lg text-xs font-mono text-[var(--muted-foreground)] break-all">
+              {window.location.origin}/invite/{inviteToken}
+            </div>
+          </>
         )}
       </div>
 
