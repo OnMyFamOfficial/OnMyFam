@@ -593,7 +593,7 @@ export default function ProfilePage() {
       >
         {/* Cover photo */}
         <div className="p-0 sm:p-3 rounded-t-2xl bg-[var(--card)]">
-          <div className="relative aspect-square sm:aspect-[2/1] lg:aspect-[2.5/1] group sm:rounded-2xl overflow-hidden">
+          <div className="relative aspect-square sm:h-80 sm:aspect-auto lg:h-88 group sm:rounded-2xl overflow-hidden">
             {displayCover ? (
               <img
                 src={displayCover}
