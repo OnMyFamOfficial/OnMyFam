@@ -18,7 +18,35 @@ export default function AlbumDetailPage() {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [pickingCover, setPickingCover] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const dragCounter = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.types.includes("Files")) setDragging(true);
+  }
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) setDragging(false);
+  }
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(false);
+    dragCounter.current = 0;
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleUpload(e.dataTransfer.files);
+    }
+  }
 
   useEffect(() => {
     if (albumId && user) loadAlbum();
@@ -98,7 +126,22 @@ export default function AlbumDetailPage() {
   const isCreator = album.created_by === user?.id;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div
+      className="max-w-5xl mx-auto space-y-6 relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {dragging && (
+        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center pointer-events-none">
+          <div className="bg-[var(--card)] border-2 border-dashed border-gold-500 rounded-2xl p-12 text-center">
+            <Upload className="w-16 h-16 text-gold-500 mx-auto" />
+            <p className="mt-4 text-lg font-medium text-gold-500">Drop photos to upload</p>
+          </div>
+        </div>
+      )}
       {/* Back button */}
       <button
         onClick={() => navigate("/photos")}
@@ -169,11 +212,13 @@ export default function AlbumDetailPage() {
       {/* Photo grid */}
       {media.length === 0 ? (
         <div
-          className="bg-[var(--card)] rounded-lg border-2 border-dashed border-[var(--border)] p-16 text-center cursor-pointer hover:border-gold-500/30 transition-colors"
+          className={`bg-[var(--card)] rounded-lg border-2 border-dashed p-16 text-center cursor-pointer transition-colors ${
+            dragging ? "border-gold-500 bg-gold-500/5" : "border-[var(--border)] hover:border-gold-500/30"
+          }`}
           onClick={() => fileRef.current?.click()}
         >
-          <Upload className="w-12 h-12 text-[var(--muted-foreground)] mx-auto" />
-          <p className="mt-4 text-[var(--muted-foreground)]">
+          <Upload className={`w-12 h-12 mx-auto ${dragging ? "text-gold-500" : "text-[var(--muted-foreground)]"}`} />
+          <p className={`mt-4 ${dragging ? "text-gold-500" : "text-[var(--muted-foreground)]"}`}>
             Click or drag photos here to upload
           </p>
         </div>
