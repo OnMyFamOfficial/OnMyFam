@@ -592,13 +592,13 @@ export default function ProfilePage() {
         }}
       >
         {/* Cover photo */}
-        <div className="p-0 sm:p-3 rounded-t-2xl bg-[var(--card)]">
-          <div className="relative aspect-square sm:h-80 sm:aspect-auto lg:h-88 group sm:rounded-2xl overflow-hidden">
+        <div className="p-0 sm:p-3 rounded-t-2xl bg-black sm:bg-[var(--card)]">
+          <div className="relative h-[100vw] sm:h-80 lg:h-88 group sm:rounded-2xl overflow-hidden bg-black">
             {displayCover ? (
               <img
                 src={displayCover}
                 alt="Cover"
-                className="w-full h-full object-cover cursor-pointer"
+                className="w-full h-full object-contain sm:object-cover cursor-pointer"
                 onClick={() => !editing && setLightboxImage(displayCover)}
               />
             ) : (
