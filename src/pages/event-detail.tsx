@@ -8,6 +8,7 @@ import { EVENT_CATEGORIES } from "@/lib/constants";
 import { CalendarPicker } from "@/components/shared/calendar-picker";
 import { EventDetailsForm, parseDetails, detailsToJson, type EventDetails } from "@/components/shared/event-details-form";
 import { InfoTip } from "@/components/shared/info-tip";
+import { useMobileMenu } from "@/components/layout/mobile-menu-context";
 import { format, formatDistanceToNow } from "date-fns";
 import { useTheme } from "@/components/shared/theme-provider";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
@@ -130,6 +131,26 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<FullEvent | null>(null);
   const [eventMenuOpen, setEventMenuOpen] = useState(false);
   const [eventSection, setEventSection] = useState<string | null>(null);
+  const { setMenuItems, clearMenu } = useMobileMenu();
+
+  // Clear mobile menu on unmount
+  useEffect(() => () => clearMenu(), []);
+
+  // Sync event menu to mobile bottom nav
+  useEffect(() => {
+    if (eventMenuOpen) {
+      setMenuItems([
+        { key: "home", icon: Home, label: "Home", active: eventSection === null, onClick: () => { setEventSection(null); setEventMenuOpen(false); } },
+        { key: "details", icon: Info, label: "Details", active: eventSection === "details", onClick: () => setEventSection("details") },
+        { key: "travel", icon: Luggage, label: "Travel", active: eventSection === "travel", onClick: () => setEventSection("travel") },
+        { key: "attending", icon: Users, label: "Attending", active: eventSection === "attending", onClick: () => setEventSection("attending") },
+        { key: "chat", icon: MessageSquare, label: "Chat", active: eventSection === "chat", onClick: () => setEventSection("chat") },
+        { key: "more", icon: Star, label: "More", active: eventSection === "more", onClick: () => setEventSection("more") },
+      ]);
+    } else {
+      clearMenu();
+    }
+  }, [eventMenuOpen, eventSection]);
   const [showEventPin, setShowEventPin] = useState(true);
   const [showLodgingPin, setShowLodgingPin] = useState(true);
   const [showAirportPins, setShowAirportPins] = useState(true);

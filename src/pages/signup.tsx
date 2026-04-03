@@ -49,6 +49,9 @@ export default function SignupPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--background)] px-4">
         <div className="w-full max-w-md text-center space-y-4">
+          <div className="flex justify-center mb-2">
+            <img src="/omf-logo.png" alt="OMF" className="w-16 h-16 rounded-lg" />
+          </div>
           <h1 className="text-3xl font-bold text-gold-500">{APP_NAME}</h1>
           <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] p-8">
             <div className="text-4xl mb-4">&#x2709;&#xFE0F;</div>
@@ -75,6 +78,9 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center bg-[var(--background)] px-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
+          <div className="flex justify-center mb-2">
+            <img src="/omf-logo.png" alt="OMF" className="w-16 h-16 rounded-lg" />
+          </div>
           <h1 className="text-3xl font-bold text-gold-500">{APP_NAME}</h1>
           <p className="mt-2 text-[var(--muted-foreground)]">
             Join your family's private space

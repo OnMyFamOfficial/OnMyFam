@@ -5,6 +5,7 @@ import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { DeleteConfirmModal } from "@/components/shared/delete-confirm-modal";
 import { FamilyIcon } from "@/components/shared/family-icon";
 import { InfoTip } from "@/components/shared/info-tip";
+import { useMobileMenu } from "@/components/layout/mobile-menu-context";
 import { useTour } from "@/components/shared/tour-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTheme } from "@/components/shared/theme-provider";
@@ -198,7 +199,10 @@ export default function FamilyPage() {
   const { currentFamily, members, myMembership, refreshFamilies, refreshMembers, setCurrentFamily } = useFamily();
   const [creating, setCreating] = useState(false);
   const { triggerPageTour } = useTour();
+  const { setMenuItems, clearMenu } = useMobileMenu();
   useEffect(() => { triggerPageTour("family"); }, [triggerPageTour]);
+  // Clear mobile menu on unmount
+  useEffect(() => () => clearMenu(), []);
 
   // Refresh data when page loads
   useEffect(() => {
@@ -309,6 +313,21 @@ export default function FamilyPage() {
   const [showCoverModal, setShowCoverModal] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  // Sync page menu to mobile bottom nav
+  useEffect(() => {
+    if (menuOpen) {
+      setMenuItems([
+        { key: "home", icon: Home, label: "Home", active: activeSection === null, onClick: () => { setActiveSection(null); setMenuOpen(false); } },
+        { key: "invitations", icon: Mail, label: "Invites", active: activeSection === "invitations", onClick: () => setActiveSection("invitations") },
+        { key: "settings", icon: Settings, label: "Settings", active: activeSection === "settings", onClick: () => setActiveSection("settings") },
+        { key: "connections", icon: GitBranch, label: "Connect", active: activeSection === "connections", onClick: () => setActiveSection("connections") },
+        { key: "danger", icon: AlertTriangle, label: "Danger", active: activeSection === "danger", onClick: () => setActiveSection("danger") },
+      ]);
+    } else {
+      clearMenu();
+    }
+  }, [menuOpen, activeSection]);
   const [memberProfile, setMemberProfile] = useState<Profile | null>(null);
   const [memberCoords, setMemberCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [relationPicker, setRelationPicker] = useState(false);
@@ -476,6 +495,8 @@ export default function FamilyPage() {
       user_id: user.id,
       role: "admin",
       relation_label: "Creator",
+      is_verified: true,
+      verified_at: new Date().toISOString(),
     });
 
     if (memberError) {
@@ -865,7 +886,7 @@ export default function FamilyPage() {
           overflow: "hidden",
         }}
       >
-        <div className="relative group" style={{ height: "480px", maxWidth: "1200px", width: "100%" }}>
+        <div className="relative group h-[320px] lg:h-[480px]" style={{ maxWidth: "1200px", width: "100%" }}>
           {currentFamily.cover_url ? (
             <img src={currentFamily.cover_url} alt="Family cover" className="w-full h-full object-cover" />
           ) : (
@@ -941,6 +962,34 @@ export default function FamilyPage() {
           </div>
         </div>
       </div>
+
+      {/* Mobile: Members list below header (hidden on desktop, hidden when menu open) */}
+      {!menuOpen && (
+      <div className="lg:hidden rounded-lg border border-[var(--border)] overflow-hidden bg-[var(--card)] shadow-md dark:shadow-black/30">
+        <div className="p-4">
+          <h3 className="font-semibold mb-3">Members ({members.length})</h3>
+          <div className="space-y-2">
+            {members.map((member) => {
+              const p: Profile = member.profile;
+              return (
+                <div key={member.id} onClick={() => setSelectedMember(member)} className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer">
+                  <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {p.avatar_url ? <img src={p.avatar_url} alt={p.display_name} className="w-full h-full object-cover" /> : <span className="text-xs font-medium text-gold-500">{p.display_name?.charAt(0).toUpperCase() || "?"}</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{p.display_name}</p>
+                    {member.user_id !== user?.id && approvedRelations.get(member.user_id) && <p className="text-[10px] text-gold-500">{approvedRelations.get(member.user_id)}</p>}
+                  </div>
+                  {member.is_verified && <VerifiedBadge size="xs" />}
+                  {member.role === "admin" && <Crown className="w-3 h-3 text-gold-500 flex-shrink-0" />}
+                  {member.role === "moderator" && <Shield className="w-3 h-3 text-blue-400 flex-shrink-0" />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      )}
 
       {/* Slide-in menu bar */}
       <div
@@ -1075,30 +1124,6 @@ export default function FamilyPage() {
         </div>
       )}
 
-      {/* Mobile: Members list (hidden on desktop since sidebar handles it) */}
-      {activeSection === "invitations" && (
-      <div className="lg:hidden border-b border-[var(--border)] p-4">
-        <h3 className="font-semibold mb-3">Members ({members.length})</h3>
-        <div className="space-y-2">
-          {members.map((member) => {
-            const p: Profile = member.profile;
-            return (
-              <div key={member.id} onClick={() => setSelectedMember(member)} className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer">
-                <div className="w-8 h-8 rounded-md bg-gold-500/20 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {p.avatar_url ? <img src={p.avatar_url} alt={p.display_name} className="w-full h-full object-cover" /> : <span className="text-xs font-medium text-gold-500">{p.display_name?.charAt(0).toUpperCase() || "?"}</span>}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{p.display_name}</p>
-                  {member.user_id !== user?.id && approvedRelations.get(member.user_id) && <p className="text-[10px] text-gold-500">{approvedRelations.get(member.user_id)}</p>}
-                </div>
-                {member.role === "admin" && <Crown className="w-3 h-3 text-gold-500 flex-shrink-0" />}
-                {member.role === "moderator" && <Shield className="w-3 h-3 text-blue-400 flex-shrink-0" />}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      )}
 
       {/* ===== Invitations section ===== */}
       {activeSection === "invitations" && (

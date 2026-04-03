@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { MobileNav } from "./mobile-nav";
+import { MobileMenuProvider } from "./mobile-menu-context";
 import { RightSidebar } from "./right-sidebar";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { InstallPrompt } from "@/components/shared/install-prompt";
@@ -13,6 +14,7 @@ export function AppLayout() {
   const [filterOpen, setFilterOpen] = useState(false);
 
   return (
+    <MobileMenuProvider>
     <div className="flex h-screen overflow-hidden light-gradient dark:bg-transparent">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -37,5 +39,6 @@ export function AppLayout() {
       <ChatPanel />
       <InstallPrompt />
     </div>
+    </MobileMenuProvider>
   );
 }

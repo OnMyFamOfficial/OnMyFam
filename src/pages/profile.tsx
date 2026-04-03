@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Camera, MapPin, Phone, ImagePlus, Calendar, Shield, User, Users, Heart, X, Maximize2, Menu, Home, Image, FileText, Star, Mail } from "lucide-react";
 import { InfoTip } from "@/components/shared/info-tip";
+import { useMobileMenu } from "@/components/layout/mobile-menu-context";
 import { useTour } from "@/components/shared/tour-provider";
 import { sanitizeForStorage } from "@/lib/sanitize";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -405,6 +406,25 @@ export default function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileSection, setProfileSection] = useState<string | null>(null);
+  const { setMenuItems, clearMenu } = useMobileMenu();
+
+  // Clear mobile menu on unmount
+  useEffect(() => () => clearMenu(), []);
+
+  // Sync profile menu to mobile bottom nav
+  useEffect(() => {
+    if (profileMenuOpen) {
+      setMenuItems([
+        { key: "home", icon: Home, label: "Home", active: profileSection === null, onClick: () => { setProfileSection(null); setProfileMenuOpen(false); } },
+        { key: "about", icon: User, label: "About", active: profileSection === "about", onClick: () => setProfileSection("about") },
+        { key: "photos", icon: Image, label: "Photos", active: profileSection === "photos", onClick: () => setProfileSection("photos") },
+        { key: "posts", icon: FileText, label: "Posts", active: profileSection === "posts", onClick: () => setProfileSection("posts") },
+        { key: "more", icon: Star, label: "More", active: profileSection === "more", onClick: () => setProfileSection("more") },
+      ]);
+    } else {
+      clearMenu();
+    }
+  }, [profileMenuOpen, profileSection]);
 
   // If viewing someone else's profile
   const { members: famMembers } = useFamily();

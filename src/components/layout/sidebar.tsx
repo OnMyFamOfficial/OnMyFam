@@ -115,8 +115,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               collapsed ? "justify-center w-full" : "space-x-3"
             )}
           >
-            <div className="w-8 h-8 rounded-md bg-gold-500 flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-serif font-bold text-sm">F</span>
+            <div className="w-8 h-8 rounded-md overflow-hidden flex-shrink-0">
+              <img src="/omf-logo.png" alt="OMF" className="w-full h-full object-cover" />
             </div>
             {!collapsed && (
               <h2 className="text-lg font-bold text-[var(--sidebar-foreground)] whitespace-nowrap">
