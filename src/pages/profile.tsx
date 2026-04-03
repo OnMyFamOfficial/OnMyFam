@@ -623,7 +623,7 @@ export default function ProfilePage() {
               <img
                 src={displayCover}
                 alt="Cover"
-                className="w-full h-full object-cover cursor-pointer"
+                className="w-full h-full object-cover object-top cursor-pointer"
                 onClick={() => !editing && setLightboxImage(displayCover)}
               />
             ) : (
