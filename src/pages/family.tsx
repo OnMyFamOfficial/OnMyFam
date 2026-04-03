@@ -601,6 +601,10 @@ export default function FamilyPage() {
   }
 
   const isAdmin = myMembership?.role === "admin" || myMembership?.role === "moderator";
+  const unverifiedCount = members.filter((m) => !m.is_verified && m.user_id !== user?.id).length;
+  const canVerifyMembers = currentFamily?.verification_mode === "admin_only"
+    ? myMembership?.role === "admin"
+    : myMembership?.is_verified;
   const canEditCover = currentFamily?.created_by === user?.id
     || myMembership?.role === "admin"
     || (currentFamily?.cover_edit_mode === "admin_and_moderators" && myMembership?.role === "moderator");
@@ -967,18 +971,33 @@ export default function FamilyPage() {
                 <span>Est. {currentFamily.established_year}</span>
               )}
             </div>
-            <button
-              onClick={() => { setMenuOpen(true); setActiveSection("invitations"); }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-medium transition-colors cursor-pointer shadow-lg hover:opacity-90"
-              style={{
-                background: theme === "dark"
-                  ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
-                  : "#000000",
-              }}
-            >
-              <Menu className="w-5 h-5" />
-              Menu
-            </button>
+            <div className="flex items-center gap-2">
+              {canVerifyMembers && unverifiedCount > 0 && (
+                <button
+                  onClick={() => { setMenuOpen(true); setActiveSection("invitations"); }}
+                  className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-red-500/15 text-red-400 text-sm font-medium hover:bg-red-500/25 transition-colors cursor-pointer relative"
+                  title={`${unverifiedCount} member${unverifiedCount !== 1 ? "s" : ""} awaiting verification`}
+                >
+                  <ShieldAlert className="w-4 h-4" />
+                  <span className="hidden sm:inline">Verify</span>
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
+                    {unverifiedCount}
+                  </span>
+                </button>
+              )}
+              <button
+                onClick={() => { setMenuOpen(true); setActiveSection("invitations"); }}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-medium transition-colors cursor-pointer shadow-lg hover:opacity-90"
+                style={{
+                  background: theme === "dark"
+                    ? "linear-gradient(135deg, hsl(38, 65%, 55%), hsl(38, 65%, 40%))"
+                    : "#000000",
+                }}
+              >
+                <Menu className="w-5 h-5" />
+                Menu
+              </button>
+            </div>
           </div>
         </div>
       </div>
