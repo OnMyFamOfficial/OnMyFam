@@ -136,7 +136,7 @@ export default function InviteClaimPage() {
     <div className="min-h-screen flex items-center justify-center bg-[var(--background)] px-4">
       <div className="w-full max-w-md text-center space-y-4">
         <div className="flex justify-center mb-2">
-          <img src="/omf-logo.png" alt="OMF" className="w-16 h-16 rounded-lg" />
+          <img src="/omf-logo.png" alt="OMF" className="w-16 h-16 rounded-lg bg-white" />
         </div>
         <h1 className="text-3xl font-bold text-gold-500">{APP_NAME}</h1>
 

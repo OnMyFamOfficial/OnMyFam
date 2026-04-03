@@ -47,7 +47,7 @@ export default function LandingPage() {
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full overflow-hidden">
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-white">
             <img src="/omf-logo.png" alt="OMF" className="w-full h-full object-cover" />
           </div>
           <span className="text-xl font-bold font-serif text-[var(--foreground)]">
@@ -146,7 +146,7 @@ export default function LandingPage() {
       <footer className="px-6 py-8 border-t border-[var(--border)]">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full overflow-hidden">
+            <div className="w-6 h-6 rounded-full overflow-hidden bg-white">
               <img src="/omf-logo.png" alt="OMF" className="w-full h-full object-cover" />
             </div>
             <span className="text-sm font-medium text-[var(--muted-foreground)]">
