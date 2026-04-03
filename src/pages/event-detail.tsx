@@ -11,51 +11,13 @@ import { InfoTip } from "@/components/shared/info-tip";
 import { useMobileMenu } from "@/components/layout/mobile-menu-context";
 import { format, formatDistanceToNow } from "date-fns";
 import { useTheme } from "@/components/shared/theme-provider";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapResizer, DeferredMap } from "@/components/shared/map-helpers";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { US_AIRPORTS } from "@/lib/airports";
 
-function MapResizer() {
-  const map = useMap();
-  useEffect(() => {
-    const timers = [100, 300, 600, 1000, 2000].map((ms) =>
-      setTimeout(() => map.invalidateSize(), ms)
-    );
-    const container = map.getContainer();
-    const observer = new ResizeObserver(() => map.invalidateSize());
-    observer.observe(container);
-    return () => {
-      timers.forEach(clearTimeout);
-      observer.disconnect();
-    };
-  }, [map]);
-  return null;
-}
 
-function DeferredMap({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const check = () => {
-      if (el.offsetWidth > 0 && el.offsetHeight > 0) setReady(true);
-    };
-    check();
-    if (!ready) {
-      const observer = new ResizeObserver(check);
-      observer.observe(el);
-      const timer = setTimeout(() => setReady(true), 500);
-      return () => { observer.disconnect(); clearTimeout(timer); };
-    }
-  }, [ready]);
-  return (
-    <div ref={ref} style={style} className={className}>
-      {ready ? children : null}
-    </div>
-  );
-}
 import type { FamilyEvent, EventRsvp, EventChatMessage, Profile } from "@/lib/types";
 
 const goldIcon = L.icon({
@@ -123,18 +85,37 @@ function dateToTimeString(dateStr: string): string {
 
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParamsEvent] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { members } = useFamily();
   const { theme } = useTheme();
   const [event, setEvent] = useState<FullEvent | null>(null);
-  const [eventMenuOpen, setEventMenuOpen] = useState(false);
-  const [eventSection, setEventSection] = useState<string | null>(null);
+  const [eventMenuOpen, setEventMenuOpen] = useState(() => !!searchParams.get("section"));
+  const [eventSection, setEventSection] = useState<string | null>(() => searchParams.get("section"));
   const { setMenuItems, clearMenu } = useMobileMenu();
 
   // Clear mobile menu on unmount
   useEffect(() => () => clearMenu(), []);
+
+  // Persist menu state in URL
+  useEffect(() => {
+    if (eventMenuOpen && eventSection) {
+      setSearchParamsEvent((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("section", eventSection);
+        return next;
+      }, { replace: true });
+    } else if (!eventMenuOpen) {
+      if (searchParams.has("section")) {
+        setSearchParamsEvent((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("section");
+          return next;
+        }, { replace: true });
+      }
+    }
+  }, [eventMenuOpen, eventSection]);
 
   // Sync event menu to mobile bottom nav
   useEffect(() => {

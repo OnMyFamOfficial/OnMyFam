@@ -34,22 +34,15 @@ export function OmfLoader({ size = "md", className, text }: OmfLoaderProps) {
             sizeClasses[size]
           )}
         />
-        <div
+        <img
+          src="/omf-logo.png"
+          alt="OMF"
           className={cn(
-            "rounded-md bg-gold-500/20 flex items-center justify-center animate-pulse",
+            "rounded-md bg-white object-cover animate-pulse",
             sizeClasses[size]
           )}
           style={{ animationDuration: "2s" }}
-        >
-          <span
-            className={cn(
-              "font-serif font-bold text-gold-500",
-              size === "sm" ? "text-xs" : size === "md" ? "text-sm" : "text-lg"
-            )}
-          >
-            F
-          </span>
-        </div>
+        />
       </div>
       {text && (
         <span className="text-sm text-[var(--muted-foreground)] animate-pulse">

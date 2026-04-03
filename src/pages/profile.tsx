@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { Camera, MapPin, Phone, ImagePlus, Calendar, Shield, User, Users, Heart, X, Maximize2, Menu, Home, Image, FileText, Star, Mail } from "lucide-react";
 import { InfoTip } from "@/components/shared/info-tip";
 import { useMobileMenu } from "@/components/layout/mobile-menu-context";
@@ -10,7 +10,7 @@ import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { uploadAvatar, uploadCover } from "@/services/storage";
 import { useTheme } from "@/components/shared/theme-provider";
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Tooltip } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-markercluster";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -38,52 +38,7 @@ const goldIcon = L.icon({
   shadowSize: [41, 41],
 });
 
-function MapResizer() {
-  const map = useMap();
-  useEffect(() => {
-    const timers = [100, 300, 600, 1000, 2000].map((ms) =>
-      setTimeout(() => map.invalidateSize(), ms)
-    );
-    const container = map.getContainer();
-    const observer = new ResizeObserver(() => map.invalidateSize());
-    observer.observe(container);
-    return () => {
-      timers.forEach(clearTimeout);
-      observer.disconnect();
-    };
-  }, [map]);
-  return null;
-}
-
-// Delays mounting MapContainer until the wrapper div has real dimensions
-function DeferredMap({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    // Wait for the container to have non-zero dimensions
-    const check = () => {
-      if (el.offsetWidth > 0 && el.offsetHeight > 0) {
-        setReady(true);
-      }
-    };
-    // Check immediately, then observe
-    check();
-    if (!ready) {
-      const observer = new ResizeObserver(check);
-      observer.observe(el);
-      // Fallback timeout
-      const timer = setTimeout(() => setReady(true), 500);
-      return () => { observer.disconnect(); clearTimeout(timer); };
-    }
-  }, [ready]);
-  return (
-    <div ref={ref} style={style} className={className}>
-      {ready ? children : null}
-    </div>
-  );
-}
+import { MapResizer, DeferredMap } from "@/components/shared/map-helpers";
 
 function ProfileMapAndDetails({ profile: p, canViewDetails = true }: { profile: Profile; canViewDetails?: boolean }) {
   const { members } = useFamily();
@@ -404,12 +359,32 @@ export default function ProfilePage() {
   const { theme } = useTheme();
   const [viewingProfile, setViewingProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [profileSection, setProfileSection] = useState<string | null>(null);
+  const [profileSearchParams, setProfileSearchParams] = useSearchParams();
+  const [profileMenuOpen, setProfileMenuOpen] = useState(() => !!profileSearchParams.get("section"));
+  const [profileSection, setProfileSection] = useState<string | null>(() => profileSearchParams.get("section"));
   const { setMenuItems, clearMenu } = useMobileMenu();
 
   // Clear mobile menu on unmount
   useEffect(() => () => clearMenu(), []);
+
+  // Persist menu state in URL
+  useEffect(() => {
+    if (profileMenuOpen && profileSection) {
+      setProfileSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("section", profileSection);
+        return next;
+      }, { replace: true });
+    } else if (!profileMenuOpen) {
+      if (profileSearchParams.has("section")) {
+        setProfileSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("section");
+          return next;
+        }, { replace: true });
+      }
+    }
+  }, [profileMenuOpen, profileSection]);
 
   // Sync profile menu to mobile bottom nav
   useEffect(() => {
@@ -618,12 +593,12 @@ export default function ProfilePage() {
       >
         {/* Cover photo with black surround */}
         <div className="p-3 rounded-t-2xl bg-[var(--card)]">
-          <div className="relative h-72 sm:h-80 lg:h-88 group rounded-2xl overflow-hidden">
+          <div className="relative aspect-square sm:aspect-[2/1] lg:aspect-[2.5/1] group rounded-2xl overflow-hidden">
             {displayCover ? (
               <img
                 src={displayCover}
                 alt="Cover"
-                className="w-full h-full object-cover object-top cursor-pointer"
+                className="w-full h-full object-cover cursor-pointer"
                 onClick={() => !editing && setLightboxImage(displayCover)}
               />
             ) : (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert, Menu, Home, Camera, Maximize2, LogOut } from "lucide-react";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
@@ -12,50 +12,12 @@ import { useTheme } from "@/components/shared/theme-provider";
 import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { uploadCover } from "@/services/storage";
-import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
+import { MapResizer, DeferredMap } from "@/components/shared/map-helpers";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-function MapResizer() {
-  const map = useMap();
-  useEffect(() => {
-    const timers = [100, 300, 600, 1000, 2000].map((ms) =>
-      setTimeout(() => map.invalidateSize(), ms)
-    );
-    const container = map.getContainer();
-    const observer = new ResizeObserver(() => map.invalidateSize());
-    observer.observe(container);
-    return () => {
-      timers.forEach(clearTimeout);
-      observer.disconnect();
-    };
-  }, [map]);
-  return null;
-}
 
-function DeferredMap({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const check = () => {
-      if (el.offsetWidth > 0 && el.offsetHeight > 0) setReady(true);
-    };
-    check();
-    if (!ready) {
-      const observer = new ResizeObserver(check);
-      observer.observe(el);
-      const timer = setTimeout(() => setReady(true), 500);
-      return () => { observer.disconnect(); clearTimeout(timer); };
-    }
-  }, [ready]);
-  return (
-    <div ref={ref} style={style} className={className}>
-      {ready ? children : null}
-    </div>
-  );
-}
 import type { Profile } from "@/lib/types";
 
 const goldIcon = L.icon({
@@ -326,8 +288,17 @@ export default function FamilyPage() {
   const [dangerTargetMember, setDangerTargetMember] = useState<string | null>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [showCoverModal, setShowCoverModal] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(() => !!searchParams.get("section"));
+  const [activeSection, setActiveSection] = useState<string | null>(() => searchParams.get("section"));
+
+  // Persist menu state in URL
+  useEffect(() => {
+    if (menuOpen && activeSection) {
+      setSearchParams({ section: activeSection }, { replace: true });
+    } else if (!menuOpen) {
+      if (searchParams.has("section")) setSearchParams({}, { replace: true });
+    }
+  }, [menuOpen, activeSection]);
 
   // Sync page menu to mobile bottom nav
   useEffect(() => {
