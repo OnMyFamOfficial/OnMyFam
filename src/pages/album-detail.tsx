@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Upload, X, ChevronLeft, ChevronRight, ArrowLeft, Trash2, ImageIcon } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { uploadAlbumMedia } from "@/services/storage";
 import type { Album, AlbumMedia } from "@/lib/types";
@@ -11,6 +12,7 @@ export default function AlbumDetailPage() {
   const { albumId } = useParams<{ albumId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { myMembership } = useFamily();
   const [album, setAlbum] = useState<Album | null>(null);
   const [media, setMedia] = useState<AlbumMedia[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +20,7 @@ export default function AlbumDetailPage() {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [pickingCover, setPickingCover] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragCounter = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -101,6 +104,25 @@ export default function AlbumDetailPage() {
     setPickingCover(false);
   }
 
+  async function handleDeletePhoto(mediaId: string) {
+    await supabase.from("album_media").delete().eq("id", mediaId);
+    // If deleted photo was the cover, clear it
+    const deleted = media.find((m) => m.id === mediaId);
+    if (deleted && album?.cover_url === deleted.media_url) {
+      await supabase.from("albums").update({ cover_url: null }).eq("id", album.id);
+    }
+    setShowDeletePhotoModal(false);
+    // Adjust viewer index
+    if (viewerIndex !== null) {
+      if (media.length <= 1) {
+        setViewerIndex(null);
+      } else if (viewerIndex >= media.length - 1) {
+        setViewerIndex(media.length - 2);
+      }
+    }
+    await loadAlbum();
+  }
+
   async function handleDeleteAlbum() {
     if (!album) return;
     await supabase.from("albums").delete().eq("id", album.id);
@@ -124,6 +146,8 @@ export default function AlbumDetailPage() {
   }
 
   const isCreator = album.created_by === user?.id;
+  const isAdmin = myMembership?.role === "admin";
+  const canDeletePhotos = isCreator || isAdmin;
 
   return (
     <div
@@ -264,15 +288,29 @@ export default function AlbumDetailPage() {
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
           onClick={() => setViewerIndex(null)}
         >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setViewerIndex(null);
-            }}
-            className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded-full"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            {canDeletePhotos && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeletePhotoModal(true);
+                }}
+                className="p-2 text-red-400 hover:bg-red-500/20 rounded-full transition-colors"
+                title="Delete photo"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewerIndex(null);
+              }}
+              className="p-2 text-white hover:bg-white/10 rounded-full"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
 
           {viewerIndex > 0 && (
             <button
@@ -311,7 +349,20 @@ export default function AlbumDetailPage() {
         </div>
       )}
 
-      {/* Delete confirmation modal */}
+      {/* Delete photo confirmation modal */}
+      {viewerIndex !== null && (
+        <DeleteConfirmModal
+          isOpen={showDeletePhotoModal}
+          onClose={() => setShowDeletePhotoModal(false)}
+          onConfirm={() => handleDeletePhoto(media[viewerIndex].id)}
+          title="Delete Photo"
+          itemName="DELETE"
+          description="This will permanently remove this photo from the album. This action cannot be undone."
+          confirmLabel="Delete Photo"
+        />
+      )}
+
+      {/* Delete album confirmation modal */}
       <DeleteConfirmModal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}

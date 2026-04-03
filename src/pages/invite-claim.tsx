@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useFamily } from "@/lib/hooks/use-family";
 import { supabase } from "@/lib/supabase";
 import { OmfLoader } from "@/components/shared/omf-loader";
 import { FamilyIcon } from "@/components/shared/family-icon";
@@ -10,6 +11,7 @@ export default function InviteClaimPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { refreshFamilies, setCurrentFamily } = useFamily();
   const [status, setStatus] = useState<
     "loading" | "valid" | "invalid" | "expired" | "claiming" | "success" | "already_member"
   >("loading");
@@ -120,8 +122,14 @@ export default function InviteClaimPage() {
     }
 
     localStorage.removeItem("omf-pending-invite");
+    // Switch to the joined family
+    const { data: joinedFamily } = await supabase.from("families").select("*").eq("id", invite.family_id).single();
+    if (joinedFamily) {
+      await refreshFamilies();
+      setCurrentFamily(joinedFamily as any);
+    }
     setStatus("success");
-    setTimeout(() => navigate("/feed"), 2000);
+    setTimeout(() => navigate("/family"), 2000);
   }
 
   if (authLoading || status === "loading") {

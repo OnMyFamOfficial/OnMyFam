@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Users, Crown, Shield, Copy, Check, Plus, Search, UserPlus, Settings, Globe, Lock, Mail, GitBranch, Link2, Unlink, ChevronRight, ChevronDown, X, MapPin, Phone, Calendar, Heart, Send, Trash2, AlertTriangle, ShieldCheck, ShieldAlert, Menu, Home, Camera, Maximize2, LogOut } from "lucide-react";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { DeleteConfirmModal } from "@/components/shared/delete-confirm-modal";
@@ -204,11 +204,24 @@ export default function FamilyPage() {
   // Clear mobile menu on unmount
   useEffect(() => () => clearMenu(), []);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // Refresh data when page loads
   useEffect(() => {
     refreshFamilies();
     refreshMembers();
   }, []);
+
+  // Handle ?action=search from sidebar
+  useEffect(() => {
+    if (searchParams.get("action") === "search" && currentFamily) {
+      setMenuOpen(true);
+      setActiveSection("connections");
+      setShowJoinAnother(true);
+      setSearching(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, currentFamily]);
   const [searching, setSearching] = useState(false);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -576,6 +589,9 @@ export default function FamilyPage() {
     } else {
       setJoinSuccess(familyId);
       await refreshFamilies();
+      // Switch to the joined family
+      const { data: joinedFam } = await supabase.from("families").select("*").eq("id", familyId).single();
+      if (joinedFam) setCurrentFamily(joinedFam as any);
     }
     setJoining(null);
   }
@@ -989,6 +1005,26 @@ export default function FamilyPage() {
           </div>
         </div>
       </div>
+      )}
+
+      {/* Join / Create another family — visible when menu is closed */}
+      {!menuOpen && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setMenuOpen(true); setActiveSection("connections"); setShowJoinAnother(true); setSearching(true); }}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-md dark:shadow-black/30 text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-gold-500/30 transition-colors cursor-pointer"
+          >
+            <Search className="w-4 h-4" />
+            Find a Family
+          </button>
+          <button
+            onClick={() => { setMenuOpen(true); setActiveSection("connections"); setShowJoinAnother(true); setCreating(true); }}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-md dark:shadow-black/30 text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-gold-500/30 transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Create a Family
+          </button>
+        </div>
       )}
 
       {/* Slide-in menu bar */}

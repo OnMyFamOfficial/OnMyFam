@@ -128,14 +128,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
         {/* Search bar */}
         <div className={cn("px-2 pb-2", collapsed && "hidden")}>
-          <div className="flex items-center gap-2 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2.5 py-1.5">
+          <button
+            onClick={() => { handleNav("/family?action=search"); }}
+            className="w-full flex items-center gap-2 bg-[var(--background)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 cursor-pointer hover:border-gold-500/30 transition-colors"
+          >
             <Search className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
-            <input
-              type="text"
-              placeholder="Search family..."
-              className="bg-transparent text-xs text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none w-full"
-            />
-          </div>
+            <span className="text-xs text-[var(--muted-foreground)]">Search family...</span>
+          </button>
         </div>
 
         {/* Family switcher */}
@@ -144,22 +143,23 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             <button
               onClick={() => setShowFamilySwitcher(!showFamilySwitcher)}
               className={cn(
-                "w-full flex items-center py-1.5 rounded-lg transition-colors text-left cursor-pointer hover:bg-black/5 dark:hover:bg-white/5",
-                collapsed ? "justify-center px-2" : "gap-2 px-3"
+                "w-full flex items-center py-1.5 rounded-lg transition-all text-left cursor-pointer border",
+                collapsed ? "justify-center px-2" : "gap-2 px-3",
+                "border-gold-500/40 bg-gold-500/10 hover:bg-gold-500/20 hover:border-gold-500/60"
               )}
               title={collapsed ? currentFamily?.name || "Switch family" : undefined}
             >
-              <div className="w-5 h-5 rounded-md bg-gold-500/20 flex items-center justify-center flex-shrink-0">
+              <div className="w-5 h-5 rounded-md bg-gold-500/30 flex items-center justify-center flex-shrink-0">
                 <span className="text-[9px] font-bold text-gold-500">
                   {currentFamily?.name?.charAt(0).toUpperCase() || "F"}
                 </span>
               </div>
               {!collapsed && (
                 <>
-                  <span className="text-xs truncate flex-1 text-[var(--sidebar-muted)]">
+                  <span className="text-xs truncate flex-1 text-gold-500 font-medium">
                     {currentFamily?.name || "Select family"}
                   </span>
-                  <ChevronDown className={cn("w-3 h-3 text-[var(--sidebar-muted)] transition-transform", showFamilySwitcher && "rotate-180")} />
+                  <ChevronDown className={cn("w-3 h-3 text-gold-500 transition-transform", showFamilySwitcher && "rotate-180")} />
                 </>
               )}
             </button>
